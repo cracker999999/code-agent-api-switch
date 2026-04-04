@@ -89,7 +89,20 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Style="{StaticResource ActionButtonStyle}" Click="ActivateProviderButton_Click">启用</Button>
+                                    <Button Click="ActivateProviderButton_Click">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
+                                                <Setter Property="Content" Value="启用" />
+                                                <Setter Property="IsEnabled" Value="True" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                        <Setter Property="Content" Value="使用中" />
+                                                        <Setter Property="IsEnabled" Value="False" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                     <Button Style="{StaticResource ActionButtonStyle}" Click="EditProviderButton_Click">编辑</Button>
                                     <Button Style="{StaticResource ActionButtonStyle}" Click="DeleteProviderButton_Click">删除</Button>
                                 </StackPanel>
