@@ -1,0 +1,103 @@
+﻿<Window x:Class="APISwitch.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:APISwitch.Models"
+        mc:Ignorable="d"
+        Title="APISwitch"
+        Height="640"
+        Width="900"
+        MinWidth="720"
+        MinHeight="460"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16" Background="#F3F4F6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="CodexTabButton"
+                        Width="120"
+                        Height="36"
+                        Margin="0,0,8,0"
+                        Click="CodexTabButton_Click"
+                        Cursor="Hand">Codex</Button>
+                <Button x:Name="ClaudeTabButton"
+                        Width="120"
+                        Height="36"
+                        Click="ClaudeTabButton_Click"
+                        Cursor="Hand">Claude Code</Button>
+            </StackPanel>
+
+            <Button x:Name="AddProviderButton"
+                    Grid.Column="1"
+                    Width="38"
+                    Height="38"
+                    FontSize="22"
+                    Click="AddProviderButton_Click"
+                    Cursor="Hand">+</Button>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="ProvidersItemsControl">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type models:Provider}">
+                        <Border Margin="0,0,0,10"
+                                Padding="14"
+                                Background="White"
+                                CornerRadius="10">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderBrush" Value="#D1D5DB" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="BorderBrush" Value="#2563EB" />
+                                            <Setter Property="BorderThickness" Value="2" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" Foreground="#111827" />
+                                    <TextBlock Text="{Binding BaseUrl}" Margin="0,6,0,0" FontSize="12" Foreground="#6B7280" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource ActionButtonStyle}" Click="ActivateProviderButton_Click">启用</Button>
+                                    <Button Style="{StaticResource ActionButtonStyle}" Click="EditProviderButton_Click">编辑</Button>
+                                    <Button Style="{StaticResource ActionButtonStyle}" Click="DeleteProviderButton_Click">删除</Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</Window>
