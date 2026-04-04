@@ -19,6 +19,49 @@
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
+
+        <Style x:Key="RoundedTabButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D1D5DB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#111827" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RoundedAddButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#F3F4F6" />
+            <Setter Property="BorderBrush" Value="#D1D5DB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#111827" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="16" Background="#F3F4F6">
@@ -35,25 +78,26 @@
 
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="CodexTabButton"
+                        Style="{StaticResource RoundedTabButtonStyle}"
                         Width="120"
                         Height="36"
                         Margin="0,0,8,0"
                         Click="CodexTabButton_Click"
-                        Cursor="Hand">Codex</Button>
+                        >Codex</Button>
                 <Button x:Name="ClaudeTabButton"
+                        Style="{StaticResource RoundedTabButtonStyle}"
                         Width="120"
                         Height="36"
-                        Click="ClaudeTabButton_Click"
-                        Cursor="Hand">Claude Code</Button>
+                        Click="ClaudeTabButton_Click">Claude Code</Button>
             </StackPanel>
 
             <Button x:Name="AddProviderButton"
+                    Style="{StaticResource RoundedAddButtonStyle}"
                     Grid.Column="1"
                     Width="38"
                     Height="38"
                     FontSize="22"
-                    Click="AddProviderButton_Click"
-                    Cursor="Hand">+</Button>
+                    Click="AddProviderButton_Click">+</Button>
         </Grid>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
