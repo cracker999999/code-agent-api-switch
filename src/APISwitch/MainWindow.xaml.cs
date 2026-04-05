@@ -1,4 +1,6 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -69,6 +71,33 @@ public partial class MainWindow : Window
         provider.SortOrder = GetNextSortOrder();
         _databaseService.AddProvider(provider);
         LoadProviders();
+    }
+
+    private void OpenConfigDirectoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var targetDirectory = _currentToolType == 0
+            ? Path.Combine(userProfile, ".codex")
+            : Path.Combine(userProfile, ".claude");
+
+        try
+        {
+            Directory.CreateDirectory(targetDirectory);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = targetDirectory,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                $"打开目录失败：{ex.Message}",
+                "错误",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
+        }
     }
 
     private void ActivateProviderButton_Click(object sender, RoutedEventArgs e)
@@ -173,4 +202,3 @@ public partial class MainWindow : Window
         button.BorderThickness = new System.Windows.Thickness(1);
     }
 }
-

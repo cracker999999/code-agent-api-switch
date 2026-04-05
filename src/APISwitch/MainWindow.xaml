@@ -91,13 +91,21 @@
                         Click="ClaudeTabButton_Click">Claude Code</Button>
             </StackPanel>
 
-            <Button x:Name="AddProviderButton"
-                    Style="{StaticResource RoundedAddButtonStyle}"
-                    Grid.Column="1"
-                    Width="38"
-                    Height="38"
-                    FontSize="22"
-                    Click="AddProviderButton_Click">+</Button>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="OpenConfigDirectoryButton"
+                        Style="{StaticResource RoundedAddButtonStyle}"
+                        Width="108"
+                        Height="38"
+                        Margin="0,0,8,0"
+                        FontSize="12"
+                        Click="OpenConfigDirectoryButton_Click">打开配置目录</Button>
+                <Button x:Name="AddProviderButton"
+                        Style="{StaticResource RoundedAddButtonStyle}"
+                        Width="38"
+                        Height="38"
+                        FontSize="22"
+                        Click="AddProviderButton_Click">+</Button>
+            </StackPanel>
         </Grid>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
