@@ -2,6 +2,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Windows.Documents;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -100,6 +102,39 @@ public partial class MainWindow : Window
         }
     }
 
+    private void BaseUrlHyperlink_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Hyperlink { DataContext: Provider provider })
+        {
+            return;
+        }
+
+        var input = provider.BaseUrl?.Trim();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return;
+        }
+
+        try
+        {
+            var openUrl = BuildOpenUrl(input);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = openUrl,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                $"打开链接失败：{ex.Message}",
+                "错误",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
+        }
+    }
+
     private void ActivateProviderButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: Provider provider })
@@ -183,6 +218,21 @@ public partial class MainWindow : Window
     {
         SetTabButtonSelectedState(CodexTabButton, _currentToolType == 0);
         SetTabButtonSelectedState(ClaudeTabButton, _currentToolType == 1);
+    }
+
+    private static string BuildOpenUrl(string input)
+    {
+        var normalized = input;
+        if (!Regex.IsMatch(normalized, @"^[a-z][a-z0-9+\-.]*://", RegexOptions.IgnoreCase))
+        {
+            normalized = $"https://{normalized}";
+        }
+
+        return Regex.Replace(
+            normalized,
+            @"/v1/?(?=($|[?#]))",
+            string.Empty,
+            RegexOptions.IgnoreCase);
     }
 
     private static void SetTabButtonSelectedState(System.Windows.Controls.Button button, bool isSelected)
