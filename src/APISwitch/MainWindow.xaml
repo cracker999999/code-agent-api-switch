@@ -159,6 +159,7 @@
                                             </Style>
                                         </Button.Style>
                                     </Button>
+                                    <Button Style="{StaticResource ActionButtonStyle}" Click="TestProviderButton_Click">测试</Button>
                                     <Button Style="{StaticResource ActionButtonStyle}" Click="EditProviderButton_Click">编辑</Button>
                                     <Button Style="{StaticResource ActionButtonStyle}" Click="DeleteProviderButton_Click">删除</Button>
                                 </StackPanel>

@@ -17,12 +17,14 @@ public partial class MainWindow : Window
 {
     private readonly DatabaseService _databaseService;
     private readonly ConfigWriterService _configWriterService;
+    private readonly ApiTestService _apiTestService;
     private int _currentToolType;
 
     public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService)
     {
         _databaseService = databaseService;
         _configWriterService = configWriterService;
+        _apiTestService = new ApiTestService();
         _currentToolType = 0;
 
         InitializeComponent();
@@ -151,6 +153,46 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show(this, ex.Message, "启用失败", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    private async void TestProviderButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button button || button.DataContext is not Provider provider)
+        {
+            return;
+        }
+
+        var originalContent = button.Content;
+        button.IsEnabled = false;
+        button.Content = "测试中...";
+
+        try
+        {
+            var result = await _apiTestService.TestProviderAsync(provider);
+            if (result.Success)
+            {
+                System.Windows.MessageBox.Show(
+                    this,
+                    $"响应时间：{result.ResponseTimeMs ?? 0} ms",
+                    "测试成功",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show(
+                    this,
+                    result.Message,
+                    "测试失败",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
+        }
+        finally
+        {
+            button.Content = originalContent;
+            button.IsEnabled = true;
         }
     }
 
