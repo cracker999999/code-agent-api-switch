@@ -172,6 +172,8 @@ public partial class MainWindow : Window
             var result = await _apiTestService.TestProviderAsync(provider);
             if (result.Success)
             {
+                _databaseService.UpdateTestStatus(provider.Id, 1);
+                LoadProviders();
                 System.Windows.MessageBox.Show(
                     this,
                     $"响应时间：{result.ResponseTimeMs ?? 0} ms",
@@ -181,6 +183,8 @@ public partial class MainWindow : Window
             }
             else
             {
+                _databaseService.UpdateTestStatus(provider.Id, 2);
+                LoadProviders();
                 System.Windows.MessageBox.Show(
                     this,
                     result.Message,
@@ -213,7 +217,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        _databaseService.UpdateProvider(dialog.Provider);
+        var updatedProvider = dialog.Provider;
+        updatedProvider.TestStatus = 0;
+        _databaseService.UpdateProvider(updatedProvider);
         LoadProviders();
     }
 

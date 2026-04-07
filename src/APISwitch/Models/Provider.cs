@@ -15,4 +15,6 @@ public class Provider
     public bool IsActive { get; set; }
 
     public int SortOrder { get; set; }
+
+    public int TestStatus { get; set; }
 }

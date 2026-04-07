@@ -1,8 +1,5 @@
-# provider-management Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change apiswitch-desktop-app. Update Purpose after archive.
-## Requirements
 ### Requirement: SQLite 数据库初始化
 系统 SHALL 在启动时检查 SQLite 数据库文件是否存在，不存在则自动创建并建立 Providers 表。
 
@@ -21,13 +18,6 @@ Provider 数据模型 SHALL 包含以下字段：Id（INTEGER PK 自增）、Too
 - **WHEN** 系统从数据库读取供应商记录
 - **THEN** 系统 SHALL 同时读取 `TestStatus` 并映射到 Provider 模型
 
-### Requirement: 新增供应商
-系统 SHALL 支持新增供应商记录，包含 Name、BaseUrl、ApiKey 字段。
-
-#### Scenario: 成功新增供应商
-- **WHEN** 用户提交有效的供应商信息（Name、BaseUrl、ApiKey）
-- **THEN** 系统将记录插入数据库，IsActive 默认为 0
-
 ### Requirement: 编辑供应商
 系统 SHALL 支持修改已有供应商的 Name、BaseUrl、ApiKey。
 
@@ -39,30 +29,7 @@ Provider 数据模型 SHALL 包含以下字段：Id（INTEGER PK 自增）、Too
 - **WHEN** 用户保存对 Name、BaseUrl 或 ApiKey 的编辑
 - **THEN** 系统 SHALL 将该记录 `TestStatus` 重置为 `0`
 
-### Requirement: 删除供应商
-系统 SHALL 支持删除供应商记录。删除激活项时不修改配置文件。
-
-#### Scenario: 删除非激活供应商
-- **WHEN** 用户删除一个非激活的供应商
-- **THEN** 系统从数据库中删除该记录
-
-#### Scenario: 删除激活供应商
-- **WHEN** 用户删除当前激活的供应商
-- **THEN** 系统从数据库中删除该记录，但不修改配置文件，保持最后写入的值不变
-
-### Requirement: 激活供应商
-系统 SHALL 支持将某个供应商设为当前激活项，同一 ToolType 下只能有一个激活项。
-
-#### Scenario: 激活供应商
-- **WHEN** 用户点击某供应商的启用按钮
-- **THEN** 系统将该供应商 IsActive 设为 1，同 ToolType 下其他供应商 IsActive 设为 0
-
-### Requirement: 按 ToolType 查询供应商列表
-系统 SHALL 支持按 ToolType 查询供应商列表，按 SortOrder 排序。
-
-#### Scenario: 查询 Codex 供应商列表
-- **WHEN** 用户切换到 Codex 标签
-- **THEN** 系统返回所有 ToolType=0 的供应商记录，按 SortOrder 排序
+## ADDED Requirements
 
 ### Requirement: 更新测试状态
 系统 SHALL 支持按供应商记录更新最后测试状态。
@@ -74,4 +41,3 @@ Provider 数据模型 SHALL 包含以下字段：Id（INTEGER PK 自增）、Too
 #### Scenario: 写入失败状态
 - **WHEN** 测试结果为失败
 - **THEN** 系统 SHALL 将目标供应商 `TestStatus` 更新为 `2`
-
