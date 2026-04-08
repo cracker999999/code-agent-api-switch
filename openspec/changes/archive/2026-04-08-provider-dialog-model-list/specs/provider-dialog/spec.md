@@ -1,8 +1,5 @@
-# provider-dialog Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change apiswitch-desktop-app. Update Purpose after archive.
-## Requirements
 ### Requirement: 供应商对话框字段
 对话框 SHALL 包含 Name、BaseUrl、ApiKey 三个输入字段，并包含模型获取与列表展示区域。
 
@@ -18,16 +15,7 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **WHEN** 对话框渲染完成
 - **THEN** 页面显示“获取模型”按钮、模型列表区域和搜索输入框
 
-### Requirement: 对话框确认与取消
-对话框 SHALL 包含确认和取消按钮。
-
-#### Scenario: 确认提交
-- **WHEN** 用户填写完信息并点击确认
-- **THEN** 系统保存数据并关闭对话框，刷新供应商列表
-
-#### Scenario: 取消操作
-- **WHEN** 用户点击取消
-- **THEN** 对话框关闭，不保存任何数据
+## ADDED Requirements
 
 ### Requirement: 手动获取模型
 对话框 SHALL 仅在用户点击“获取模型”时请求模型列表。
@@ -49,4 +37,3 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 #### Scenario: 模型请求失败
 - **WHEN** 模型接口请求失败
 - **THEN** 对话框在模型区域显示错误信息
-

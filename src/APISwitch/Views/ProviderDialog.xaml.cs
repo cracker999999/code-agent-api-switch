@@ -1,10 +1,14 @@
-﻿using System.Windows;
+using System.Windows;
 using APISwitch.Models;
+using APISwitch.Services;
 
 namespace APISwitch.Views;
 
 public partial class ProviderDialog : Window
 {
+    private readonly ModelDiscoveryService _modelDiscoveryService = new();
+    private List<string> _allModels = new();
+
     public Provider Provider { get; }
 
     public ProviderDialog(int toolType)
@@ -21,6 +25,8 @@ public partial class ProviderDialog : Window
             1 => "新增供应商（Claude Code）",
             _ => "新增供应商"
         };
+
+        ModelSearchTextBox.Text = string.Empty;
     }
 
     public ProviderDialog(Provider provider)
@@ -34,13 +40,15 @@ public partial class ProviderDialog : Window
             BaseUrl = provider.BaseUrl,
             ApiKey = provider.ApiKey,
             IsActive = provider.IsActive,
-            SortOrder = provider.SortOrder
+            SortOrder = provider.SortOrder,
+            TestStatus = provider.TestStatus
         };
         Title = "编辑供应商";
 
         NameTextBox.Text = Provider.Name;
         BaseUrlTextBox.Text = Provider.BaseUrl;
         ApiKeyTextBox.Text = Provider.ApiKey;
+        ModelSearchTextBox.Text = string.Empty;
     }
 
     private void ConfirmButton_Click(object sender, RoutedEventArgs e)
@@ -70,5 +78,71 @@ public partial class ProviderDialog : Window
         DialogResult = false;
         Close();
     }
-}
 
+    private async void FetchModelsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var originalContent = FetchModelsButton.Content;
+        FetchModelsButton.IsEnabled = false;
+        FetchModelsButton.Content = "获取中...";
+
+        try
+        {
+            var probeProvider = new Provider
+            {
+                ToolType = Provider.ToolType,
+                Name = NameTextBox.Text.Trim(),
+                BaseUrl = BaseUrlTextBox.Text.Trim(),
+                ApiKey = ApiKeyTextBox.Text.Trim()
+            };
+
+            var result = await _modelDiscoveryService.GetModelsAsync(probeProvider);
+            if (!result.Success)
+            {
+                _allModels = new List<string>();
+                ModelListBox.ItemsSource = _allModels;
+                ModelErrorTextBlock.Text = result.ErrorMessage;
+                ModelErrorTextBlock.Visibility = Visibility.Visible;
+                return;
+            }
+
+            _allModels = result.Models;
+            ApplyModelFilter();
+
+            if (_allModels.Count == 0)
+            {
+                ModelErrorTextBlock.Text = "模型列表为空";
+                ModelErrorTextBlock.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                ModelErrorTextBlock.Text = string.Empty;
+                ModelErrorTextBlock.Visibility = Visibility.Collapsed;
+            }
+        }
+        finally
+        {
+            FetchModelsButton.IsEnabled = true;
+            FetchModelsButton.Content = originalContent;
+        }
+    }
+
+    private void ModelSearchTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        ApplyModelFilter();
+    }
+
+    private void ApplyModelFilter()
+    {
+        var keyword = ModelSearchTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            ModelListBox.ItemsSource = _allModels;
+            return;
+        }
+
+        var filtered = _allModels
+            .Where(model => model.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        ModelListBox.ItemsSource = filtered;
+    }
+}
