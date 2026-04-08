@@ -135,7 +135,8 @@
                         <Border Margin="0,0,0,10"
                                 Padding="14"
                                 Background="White"
-                                CornerRadius="10">
+                                CornerRadius="10"
+                                MouseLeftButtonDown="ProviderCard_MouseLeftButtonDown">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderBrush" Value="#D1D5DB" />

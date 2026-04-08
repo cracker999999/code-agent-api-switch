@@ -207,6 +207,32 @@ public partial class MainWindow : Window
             return;
         }
 
+        OpenEditProviderDialog(provider);
+    }
+
+    private void ProviderCard_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2)
+        {
+            return;
+        }
+
+        if (sender is not FrameworkElement { DataContext: Provider provider } card)
+        {
+            return;
+        }
+
+        if (IsClickFromInteractiveElement(e.OriginalSource as DependencyObject, card))
+        {
+            return;
+        }
+
+        OpenEditProviderDialog(provider);
+        e.Handled = true;
+    }
+
+    private void OpenEditProviderDialog(Provider provider)
+    {
         var dialog = new ProviderDialog(provider)
         {
             Owner = this
@@ -221,6 +247,37 @@ public partial class MainWindow : Window
         updatedProvider.TestStatus = 0;
         _databaseService.UpdateProvider(updatedProvider);
         LoadProviders();
+    }
+
+    private static bool IsClickFromInteractiveElement(DependencyObject? source, DependencyObject container)
+    {
+        var current = source;
+        while (current is not null && current != container)
+        {
+            if (current is System.Windows.Controls.Button || current is Hyperlink)
+            {
+                return true;
+            }
+
+            current = GetParentObject(current);
+        }
+
+        return false;
+    }
+
+    private static DependencyObject? GetParentObject(DependencyObject child)
+    {
+        if (child is FrameworkContentElement contentElement)
+        {
+            return contentElement.Parent;
+        }
+
+        if (child is Visual visual)
+        {
+            return VisualTreeHelper.GetParent(visual);
+        }
+
+        return null;
     }
 
     private void DeleteProviderButton_Click(object sender, RoutedEventArgs e)
