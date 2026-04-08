@@ -195,6 +195,16 @@ WHERE Id = $id;";
         }
     }
 
+    public void MoveProviderUp(int id, int toolType)
+    {
+        MoveProvider(id, toolType, moveUp: true);
+    }
+
+    public void MoveProviderDown(int id, int toolType)
+    {
+        MoveProvider(id, toolType, moveUp: false);
+    }
+
     private static void EnsureTestStatusColumn(SqliteConnection connection)
     {
         using var checkCommand = connection.CreateCommand();
@@ -221,6 +231,94 @@ WHERE Id = $id;";
         using var alterCommand = connection.CreateCommand();
         alterCommand.CommandText = "ALTER TABLE Providers ADD COLUMN TestStatus INTEGER NOT NULL DEFAULT 0;";
         alterCommand.ExecuteNonQuery();
+    }
+
+    private void MoveProvider(int id, int toolType, bool moveUp)
+    {
+        lock (_syncRoot)
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+
+            using var transaction = connection.BeginTransaction();
+
+            int? currentSortOrder;
+            using (var currentCommand = connection.CreateCommand())
+            {
+                currentCommand.Transaction = transaction;
+                currentCommand.CommandText = @"
+SELECT SortOrder
+FROM Providers
+WHERE Id = $id AND ToolType = $toolType;";
+                currentCommand.Parameters.AddWithValue("$id", id);
+                currentCommand.Parameters.AddWithValue("$toolType", toolType);
+                var result = currentCommand.ExecuteScalar();
+                currentSortOrder = result is null || result is DBNull ? null : Convert.ToInt32(result);
+            }
+
+            if (currentSortOrder is null)
+            {
+                transaction.Rollback();
+                return;
+            }
+
+            int? neighborId = null;
+            int? neighborSortOrder = null;
+
+            using (var neighborCommand = connection.CreateCommand())
+            {
+                neighborCommand.Transaction = transaction;
+                neighborCommand.CommandText = moveUp
+                    ? @"
+SELECT Id, SortOrder
+FROM Providers
+WHERE ToolType = $toolType AND SortOrder < $sortOrder
+ORDER BY SortOrder DESC, Id DESC
+LIMIT 1;"
+                    : @"
+SELECT Id, SortOrder
+FROM Providers
+WHERE ToolType = $toolType AND SortOrder > $sortOrder
+ORDER BY SortOrder ASC, Id ASC
+LIMIT 1;";
+
+                neighborCommand.Parameters.AddWithValue("$toolType", toolType);
+                neighborCommand.Parameters.AddWithValue("$sortOrder", currentSortOrder.Value);
+
+                using var neighborReader = neighborCommand.ExecuteReader();
+                if (neighborReader.Read())
+                {
+                    neighborId = neighborReader.GetInt32(0);
+                    neighborSortOrder = neighborReader.GetInt32(1);
+                }
+            }
+
+            if (neighborId is null || neighborSortOrder is null)
+            {
+                transaction.Rollback();
+                return;
+            }
+
+            using (var updateCurrent = connection.CreateCommand())
+            {
+                updateCurrent.Transaction = transaction;
+                updateCurrent.CommandText = "UPDATE Providers SET SortOrder = $sortOrder WHERE Id = $id;";
+                updateCurrent.Parameters.AddWithValue("$sortOrder", neighborSortOrder.Value);
+                updateCurrent.Parameters.AddWithValue("$id", id);
+                updateCurrent.ExecuteNonQuery();
+            }
+
+            using (var updateNeighbor = connection.CreateCommand())
+            {
+                updateNeighbor.Transaction = transaction;
+                updateNeighbor.CommandText = "UPDATE Providers SET SortOrder = $sortOrder WHERE Id = $id;";
+                updateNeighbor.Parameters.AddWithValue("$sortOrder", currentSortOrder.Value);
+                updateNeighbor.Parameters.AddWithValue("$id", neighborId.Value);
+                updateNeighbor.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
     }
 
     private SqliteConnection CreateConnection()

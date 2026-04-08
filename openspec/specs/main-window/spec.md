@@ -15,11 +15,11 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **THEN** 列表显示所有 ToolType=1 的供应商卡片
 
 ### Requirement: 供应商卡片显示
-每张供应商卡片 SHALL 显示名称（大字）、BaseUrl（小字灰色），右侧包含启用、测试、编辑、删除四个操作按钮；名称前 SHALL 根据测试状态显示状态点。
+每张供应商卡片 SHALL 显示名称（大字）、BaseUrl（小字灰色），右侧包含启用、测试、上移、下移、编辑、删除操作按钮；名称前 SHALL 根据测试状态显示状态点。
 
 #### Scenario: 卡片内容展示
 - **WHEN** 供应商列表加载完成
-- **THEN** 每张卡片显示供应商名称和 BaseUrl，右侧显示启用、测试、编辑、删除操作按钮
+- **THEN** 每张卡片显示供应商名称和 BaseUrl，右侧显示启用、测试、上移、下移、编辑、删除操作按钮
 
 #### Scenario: 测试按钮位置
 - **WHEN** 卡片按钮区域渲染
@@ -40,6 +40,14 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 #### Scenario: 状态点显示规则（未知）
 - **WHEN** `TestStatus=0` 或空值
 - **THEN** 不显示状态点
+
+#### Scenario: 上移按钮边界禁用
+- **WHEN** 当前卡片为列表第一项
+- **THEN** 上移按钮禁用
+
+#### Scenario: 下移按钮边界禁用
+- **WHEN** 当前卡片为列表最后一项
+- **THEN** 下移按钮禁用
 
 ### Requirement: 激活卡片高亮
 当前激活的供应商卡片 SHALL 有蓝色边框/高亮标识，与其他卡片区分。
@@ -90,4 +98,15 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 #### Scenario: 测试失败
 - **WHEN** 测试请求失败返回（HTTP 错误、超时或连接错误）
 - **THEN** 系统将该供应商 `TestStatus` 更新为 `2` 并持久化，显示 MessageBox，标题"测试失败"，按钮恢复可用
+
+### Requirement: 顺序调整按钮交互
+点击上移/下移按钮 SHALL 在当前 ToolType 列表内调整供应商顺序并刷新显示。
+
+#### Scenario: 点击上移
+- **WHEN** 用户点击某卡片的上移按钮且该卡片不是第一项
+- **THEN** 系统将该卡片与前一项交换顺序，列表立即按新顺序刷新
+
+#### Scenario: 点击下移
+- **WHEN** 用户点击某卡片的下移按钮且该卡片不是最后一项
+- **THEN** 系统将该卡片与后一项交换顺序，列表立即按新顺序刷新
 

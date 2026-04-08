@@ -17,4 +17,8 @@ public class Provider
     public int SortOrder { get; set; }
 
     public int TestStatus { get; set; }
+
+    public bool CanMoveUp { get; set; }
+
+    public bool CanMoveDown { get; set; }
 }

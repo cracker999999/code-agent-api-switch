@@ -185,6 +185,12 @@
                                     <Button Style="{StaticResource ActionButtonStyle}" Click="TestProviderButton_Click">测试</Button>
                                     <Button Style="{StaticResource ActionButtonStyle}" Click="EditProviderButton_Click">编辑</Button>
                                     <Button Style="{StaticResource ActionButtonStyle}" Click="DeleteProviderButton_Click">删除</Button>
+                                    <Button Style="{StaticResource ActionButtonStyle}"
+                                            Click="MoveProviderUpButton_Click"
+                                            IsEnabled="{Binding CanMoveUp}">↑</Button>
+                                    <Button Style="{StaticResource ActionButtonStyle}"
+                                            Click="MoveProviderDownButton_Click"
+                                            IsEnabled="{Binding CanMoveDown}">↓</Button>
                                 </StackPanel>
                             </Grid>
                         </Border>

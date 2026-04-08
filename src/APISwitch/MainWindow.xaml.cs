@@ -246,9 +246,38 @@ public partial class MainWindow : Window
         LoadProviders();
     }
 
+    private void MoveProviderUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: Provider provider })
+        {
+            return;
+        }
+
+        _databaseService.MoveProviderUp(provider.Id, _currentToolType);
+        LoadProviders();
+    }
+
+    private void MoveProviderDownButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: Provider provider })
+        {
+            return;
+        }
+
+        _databaseService.MoveProviderDown(provider.Id, _currentToolType);
+        LoadProviders();
+    }
+
     private void LoadProviders()
     {
-        ProvidersItemsControl.ItemsSource = _databaseService.GetProviders(_currentToolType);
+        var providers = _databaseService.GetProviders(_currentToolType);
+        for (var index = 0; index < providers.Count; index++)
+        {
+            providers[index].CanMoveUp = index > 0;
+            providers[index].CanMoveDown = index < providers.Count - 1;
+        }
+
+        ProvidersItemsControl.ItemsSource = providers;
     }
 
     private int GetNextSortOrder()
