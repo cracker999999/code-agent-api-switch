@@ -1,0 +1,230 @@
+<Window x:Class="APISwitch.Views.SessionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="会话管理"
+        Width="900"
+        Height="640"
+        MinWidth="760"
+        MinHeight="480"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style x:Key="TabButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Width" Value="120" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D1D5DB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#111827" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SessionListBoxItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Arrow" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="White"
+                                BorderBrush="#E5E7EB"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="10">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Cursor" Value="Hand" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#2563EB" />
+                                <Setter TargetName="ItemBorder" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16" Background="#F3F4F6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- <TextBlock Text="会话管理"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="#111827" /> -->
+
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="CodexTabButton"
+                        Style="{StaticResource TabButtonStyle}"
+                        Click="CodexTabButton_Click">Codex</Button>
+                <Button x:Name="ClaudeTabButton"
+                        Style="{StaticResource TabButtonStyle}"
+                        Margin="0"
+                        Click="ClaudeTabButton_Click">Claude Code</Button>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Background="White"
+                    BorderBrush="#E5E7EB"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="SessionCountTextBlock"
+                               Margin="14,12,14,10"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="#374151"
+                               Text="会话列表 (0)" />
+
+                    <Grid Grid.Row="1" Margin="10,0,10,10">
+                        <ListBox x:Name="SessionListBox"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ItemContainerStyle="{StaticResource SessionListBoxItemStyle}"
+                                 SelectionChanged="SessionListBox_SelectionChanged"
+                                 PreviewMouseWheel="SessionListBox_PreviewMouseWheel"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.CanContentScroll="True"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="{Binding Title}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#111827"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Row="1"
+                                                   Margin="0,6,0,0"
+                                                   Text="{Binding RelativeTime}"
+                                                   FontSize="12"
+                                                   Foreground="#6B7280" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock x:Name="SessionEmptyTextBlock"
+                                   Text="暂无会话"
+                                   FontSize="13"
+                                   Foreground="#9CA3AF"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Background="White"
+                    BorderBrush="#E5E7EB"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Margin="14,12,14,10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock x:Name="SessionTitleTextBlock"
+                                   Text="请选择左侧会话"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+
+                        <TextBlock x:Name="SessionProjectPathTextBlock"
+                                   Grid.Row="1"
+                                   Margin="0,6,0,0"
+                                   FontSize="12"
+                                   Foreground="#2563EB"
+                                   Cursor="Hand"
+                                   TextDecorations="Underline"
+                                   TextTrimming="CharacterEllipsis"
+                                   Visibility="Collapsed"
+                                   MouseLeftButtonUp="SessionProjectPathTextBlock_MouseLeftButtonUp" />
+
+                        <Button x:Name="DeleteSessionButton"
+                                Grid.RowSpan="2"
+                                Grid.Column="1"
+                                Width="76"
+                                Height="30"
+                                Cursor="Hand"
+                                Click="DeleteSessionButton_Click"
+                                Visibility="Collapsed">删除会话</Button>
+                    </Grid>
+
+                    <ScrollViewer x:Name="MessagesScrollViewer"
+                                  Grid.Row="1"
+                                  PreviewMouseWheel="MessagesScrollViewer_PreviewMouseWheel"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="MessagesPanel" Margin="14,0,14,14" />
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

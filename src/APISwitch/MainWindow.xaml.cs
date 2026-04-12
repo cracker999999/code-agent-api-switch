@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private readonly DatabaseService _databaseService;
     private readonly ConfigWriterService _configWriterService;
     private readonly ApiTestService _apiTestService;
+    private SessionWindow? _sessionWindow;
     private int _currentToolType;
 
     public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService)
@@ -75,6 +76,32 @@ public partial class MainWindow : Window
         provider.SortOrder = GetNextSortOrder();
         _databaseService.AddProvider(provider);
         LoadProviders();
+    }
+
+    private void SessionManagerButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_sessionWindow is null)
+        {
+            _sessionWindow = new SessionWindow
+            {
+                Owner = this
+            };
+            _sessionWindow.Closed += (_, _) => _sessionWindow = null;
+            _sessionWindow.Show();
+            return;
+        }
+
+        if (_sessionWindow.WindowState == WindowState.Minimized)
+        {
+            _sessionWindow.WindowState = WindowState.Normal;
+        }
+
+        if (!_sessionWindow.IsVisible)
+        {
+            _sessionWindow.Show();
+        }
+
+        _sessionWindow.Activate();
     }
 
     private void OpenConfigDirectoryButton_Click(object sender, RoutedEventArgs e)
