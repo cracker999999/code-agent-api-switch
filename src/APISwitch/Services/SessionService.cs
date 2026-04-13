@@ -939,6 +939,11 @@ public class SessionService
             return "user";
         }
 
+        if (string.Equals(role, "developer", StringComparison.OrdinalIgnoreCase))
+        {
+            return "developer";
+        }
+
         if (string.Equals(role, "tool", StringComparison.OrdinalIgnoreCase))
         {
             return "tool";

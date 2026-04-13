@@ -261,13 +261,13 @@ public partial class SessionWindow : Window
     private void ShowMessagePlaceholder(string text)
     {
         MessagesPanel.Children.Clear();
-        MessagesPanel.Children.Add(new TextBlock
-        {
-            Text = text,
-            Margin = new Thickness(0, 10, 0, 0),
-            FontSize = 13,
-            Foreground = CreateBrush("#9CA3AF")
-        });
+        var placeholder = CreateSelectableTextElement(
+            text,
+            13,
+            CreateBrush("#9CA3AF"),
+            textWrapping: TextWrapping.Wrap);
+        placeholder.Margin = new Thickness(0, 10, 0, 0);
+        MessagesPanel.Children.Add(placeholder);
     }
 
     private void RenderMessages(IReadOnlyList<SessionMessage> messages)
@@ -321,34 +321,26 @@ public partial class SessionWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var roleText = new TextBlock
-        {
-            Text = roleDisplayName,
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = isUser ? Media.Brushes.White : CreateBrush("#3B82F6")
-        };
+        var roleText = CreateSelectableTextElement(
+            roleDisplayName,
+            12,
+            isUser ? Media.Brushes.White : CreateBrush("#3B82F6"),
+            FontWeights.SemiBold);
         header.Children.Add(roleText);
 
-        var timestampText = new TextBlock
-        {
-            Text = FormatMessageTime(timestamp),
-            FontSize = 12,
-            Foreground = isUser ? CreateBrush("#DBEAFE") : CreateBrush("#6B7280")
-        };
+        var timestampText = CreateSelectableTextElement(
+            FormatMessageTime(timestamp),
+            12,
+            isUser ? CreateBrush("#DBEAFE") : CreateBrush("#6B7280"));
         Grid.SetColumn(timestampText, 1);
         header.Children.Add(timestampText);
 
         container.Children.Add(header);
-        container.Children.Add(new TextBlock
-        {
-            Text = content,
-            TextWrapping = TextWrapping.Wrap,
-            FontSize = 13,
-            Foreground = isUser
-                ? Media.Brushes.White
-                : CreateBrush("#111827")
-        });
+        container.Children.Add(CreateSelectableTextElement(
+            content,
+            13,
+            isUser ? Media.Brushes.White : CreateBrush("#111827"),
+            textWrapping: TextWrapping.Wrap));
         bubble.Child = container;
 
         return bubble;
@@ -360,20 +352,16 @@ public partial class SessionWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        header.Children.Add(new TextBlock
-        {
-            Text = "工具",
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = CreateBrush("#1E3A8A")
-        });
+        header.Children.Add(CreateSelectableTextElement(
+            "工具",
+            12,
+            CreateBrush("#1E3A8A"),
+            FontWeights.SemiBold));
 
-        var timestampText = new TextBlock
-        {
-            Text = FormatMessageTime(timestamp),
-            FontSize = 12,
-            Foreground = CreateBrush("#6B7280")
-        };
+        var timestampText = CreateSelectableTextElement(
+            FormatMessageTime(timestamp),
+            12,
+            CreateBrush("#6B7280"));
         Grid.SetColumn(timestampText, 1);
         header.Children.Add(timestampText);
 
@@ -390,16 +378,44 @@ public partial class SessionWindow : Window
             Background = CreateBrush("#EEF2FF"),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(10, 8, 10, 8),
-            Child = new TextBlock
-            {
-                Text = content,
-                TextWrapping = TextWrapping.Wrap,
-                FontSize = 12,
-                Foreground = CreateBrush("#1E3A8A")
-            }
+            Child = CreateSelectableTextElement(
+                content,
+                12,
+                CreateBrush("#1E3A8A"),
+                textWrapping: TextWrapping.Wrap)
         };
 
         return expander;
+    }
+
+    private static System.Windows.Controls.TextBox CreateSelectableTextElement(
+        string text,
+        double fontSize,
+        Media.Brush foreground,
+        FontWeight? fontWeight = null,
+        TextWrapping textWrapping = TextWrapping.NoWrap)
+    {
+        var textBox = new System.Windows.Controls.TextBox
+        {
+            Text = text,
+            FontSize = fontSize,
+            Foreground = foreground,
+            Background = Media.Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            IsReadOnly = true,
+            IsUndoEnabled = false,
+            AcceptsReturn = true,
+            TextWrapping = textWrapping,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        if (fontWeight.HasValue)
+        {
+            textBox.FontWeight = fontWeight.Value;
+        }
+
+        return textBox;
     }
 
     private void UpdateTabButtons()
@@ -445,6 +461,11 @@ public partial class SessionWindow : Window
         if (string.Equals(role, "user", StringComparison.OrdinalIgnoreCase))
         {
             return "用户";
+        }
+
+        if (string.Equals(role, "developer", StringComparison.OrdinalIgnoreCase))
+        {
+            return "developer";
         }
 
         if (string.Equals(role, "tool", StringComparison.OrdinalIgnoreCase))
