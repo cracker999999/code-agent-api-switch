@@ -58,6 +58,7 @@ public partial class App : System.Windows.Application
 
         var contextMenu = new Forms.ContextMenuStrip();
         contextMenu.Items.Add("显示主窗口", null, (_, _) => ShowMainWindow());
+        contextMenu.Items.Add("会话管理", null, (_, _) => ShowSessionManagerWindow());
         contextMenu.Items.Add("退出", null, (_, _) => ExitApplication());
 
         _notifyIcon.ContextMenuStrip = contextMenu;
@@ -104,5 +105,16 @@ public partial class App : System.Windows.Application
         IsExitRequested = true;
         _mainWindow?.Close();
         Shutdown();
+    }
+
+    private void ShowSessionManagerWindow()
+    {
+        if (_mainWindow is null)
+        {
+            return;
+        }
+
+        //ShowMainWindow();
+        _mainWindow.OpenSessionManagerWindow();
     }
 }

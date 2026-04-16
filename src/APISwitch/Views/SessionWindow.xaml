@@ -187,13 +187,36 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock x:Name="SessionTitleTextBlock"
-                                   Text="请选择左侧会话"
-                                   FontSize="14"
-                                   FontWeight="SemiBold"
-                                   Foreground="#111827"
-                                   VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock x:Name="SessionTitleTextBlock"
+                                       Text="请选择左侧会话"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="#111827"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+
+                            <TextBox x:Name="SessionIdTextBox"
+                                     Grid.Column="1"
+                                     Margin="8,0,0,0"
+                                     FontSize="12"
+                                     Foreground="#6B7280"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     IsReadOnly="True"
+                                     RenderTransformOrigin="0,0.5"
+                                     VerticalAlignment="Center"
+                                     Visibility="Collapsed">
+                                <TextBox.RenderTransform>
+                                    <TranslateTransform X="-10" />
+                                </TextBox.RenderTransform>
+                            </TextBox>
+                        </Grid>
 
                         <TextBlock x:Name="SessionProjectPathTextBlock"
                                    Grid.Row="1"

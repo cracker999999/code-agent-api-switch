@@ -59,6 +59,7 @@ public partial class SessionWindow : Window
 
         _selectedSession = item.Session;
         SessionTitleTextBlock.Text = item.Title;
+        UpdateSessionIdDisplay(_selectedSession.SessionId);
         UpdateProjectPathDisplay(_selectedSession.ProjectDir);
         DeleteSessionButton.Visibility = Visibility.Visible;
         ShowMessagePlaceholder("加载中...");
@@ -198,11 +199,27 @@ public partial class SessionWindow : Window
     private void ResetDetailPanel()
     {
         SessionTitleTextBlock.Text = "请选择左侧会话";
+        UpdateSessionIdDisplay(null);
         SessionProjectPathTextBlock.Text = string.Empty;
         SessionProjectPathTextBlock.ToolTip = null;
         SessionProjectPathTextBlock.Visibility = Visibility.Collapsed;
         DeleteSessionButton.Visibility = Visibility.Collapsed;
         ShowMessagePlaceholder("选中会话后查看聊天详情");
+    }
+
+    private void UpdateSessionIdDisplay(string? sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            SessionIdTextBox.Text = string.Empty;
+            SessionIdTextBox.ToolTip = null;
+            SessionIdTextBox.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        SessionIdTextBox.Text = sessionId;
+        SessionIdTextBox.ToolTip = sessionId;
+        SessionIdTextBox.Visibility = Visibility.Visible;
     }
 
     private void UpdateProjectPathDisplay(string? projectDir)

@@ -80,6 +80,11 @@ public partial class MainWindow : Window
 
     private void SessionManagerButton_Click(object sender, RoutedEventArgs e)
     {
+        OpenSessionManagerWindow();
+    }
+
+    internal void OpenSessionManagerWindow()
+    {
         if (_sessionWindow is null)
         {
             _sessionWindow = new SessionWindow
