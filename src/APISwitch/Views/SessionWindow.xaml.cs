@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using APISwitch.Models;
 using APISwitch.Services;
 using Media = System.Windows.Media;
@@ -310,13 +311,19 @@ public partial class SessionWindow : Window
                 message.Content,
                 isUser,
                 GetRoleDisplayName(message.Role),
-                message.Timestamp));
+                message.Timestamp,
+                message.ImageDataUrls));
         }
 
         MessagesScrollViewer.ScrollToHome();
     }
 
-    private static FrameworkElement CreateBubbleMessageElement(string content, bool isUser, string roleDisplayName, DateTime timestamp)
+    private static FrameworkElement CreateBubbleMessageElement(
+        string content,
+        bool isUser,
+        string roleDisplayName,
+        DateTime timestamp,
+        IReadOnlyList<string> imageDataUrls)
     {
         var bubble = new Border
         {
@@ -353,11 +360,27 @@ public partial class SessionWindow : Window
         header.Children.Add(timestampText);
 
         container.Children.Add(header);
-        container.Children.Add(CreateSelectableTextElement(
-            content,
-            13,
-            isUser ? Media.Brushes.White : CreateBrush("#111827"),
-            textWrapping: TextWrapping.Wrap));
+
+        foreach (var imageDataUrl in imageDataUrls)
+        {
+            var imageElement = CreateImageElementFromDataUrl(imageDataUrl);
+            if (imageElement is null)
+            {
+                continue;
+            }
+
+            container.Children.Add(imageElement);
+        }
+
+        if (!string.IsNullOrWhiteSpace(content))
+        {
+            container.Children.Add(CreateSelectableTextElement(
+                content,
+                13,
+                isUser ? Media.Brushes.White : CreateBrush("#111827"),
+                textWrapping: TextWrapping.Wrap));
+        }
+
         bubble.Child = container;
 
         return bubble;
@@ -433,6 +456,67 @@ public partial class SessionWindow : Window
         }
 
         return textBox;
+    }
+
+    private static FrameworkElement? CreateImageElementFromDataUrl(string imageDataUrl)
+    {
+        var imageSource = DecodeDataUrlImage(imageDataUrl);
+        if (imageSource is null)
+        {
+            return null;
+        }
+
+        return new Border
+        {
+            Margin = new Thickness(0, 0, 0, 8),
+            CornerRadius = new CornerRadius(6),
+            ClipToBounds = true,
+            Child = new System.Windows.Controls.Image
+            {
+                Source = imageSource,
+                Stretch = Media.Stretch.Uniform,
+                MaxWidth = 420,
+                MaxHeight = 320
+            }
+        };
+    }
+
+    private static Media.ImageSource? DecodeDataUrlImage(string imageDataUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageDataUrl))
+        {
+            return null;
+        }
+
+        var commaIndex = imageDataUrl.IndexOf(',');
+        if (commaIndex <= 0 || commaIndex >= imageDataUrl.Length - 1)
+        {
+            return null;
+        }
+
+        var prefix = imageDataUrl[..commaIndex];
+        if (!prefix.Contains(";base64", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var base64Part = imageDataUrl[(commaIndex + 1)..];
+        try
+        {
+            var imageBytes = Convert.FromBase64String(base64Part);
+            using var stream = new MemoryStream(imageBytes);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch (Exception ex) when (ex is FormatException or IOException or NotSupportedException)
+        {
+            return null;
+        }
     }
 
     private void UpdateTabButtons()

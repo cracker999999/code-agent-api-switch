@@ -347,7 +347,7 @@ public class SessionService
                 }
 
                 if (!TryGetObject(root, "payload", out var payload) ||
-                    !TryExtractCodexMessage(payload, out var role, out var content))
+                    !TryExtractCodexMessage(payload, out var role, out var content, out var imageDataUrls))
                 {
                     continue;
                 }
@@ -360,6 +360,7 @@ public class SessionService
                 {
                     Role = NormalizeRole(role),
                     Content = content,
+                    ImageDataUrls = imageDataUrls,
                     Timestamp = timestamp
                 });
             }
@@ -402,8 +403,18 @@ public class SessionService
 
     private static bool TryExtractCodexMessage(JsonElement payload, out string role, out string content)
     {
+        return TryExtractCodexMessage(payload, out role, out content, out _);
+    }
+
+    private static bool TryExtractCodexMessage(
+        JsonElement payload,
+        out string role,
+        out string content,
+        out List<string> imageDataUrls)
+    {
         role = string.Empty;
         content = string.Empty;
+        imageDataUrls = new List<string>();
 
         if (!TryGetString(payload, "type", out var payloadType))
         {
@@ -413,8 +424,9 @@ public class SessionService
         if (string.Equals(payloadType, "message", StringComparison.OrdinalIgnoreCase))
         {
             role = TryGetString(payload, "role", out var parsedRole) ? parsedRole : "assistant";
+            imageDataUrls = ExtractCodexInputImageDataUrls(payload);
             content = ExtractJsonText(payload, "content");
-            return !string.IsNullOrWhiteSpace(content);
+            return !string.IsNullOrWhiteSpace(content) || imageDataUrls.Count > 0;
         }
 
         if (string.Equals(payloadType, "function_call", StringComparison.OrdinalIgnoreCase))
@@ -433,6 +445,32 @@ public class SessionService
         }
 
         return false;
+    }
+
+    private static List<string> ExtractCodexInputImageDataUrls(JsonElement payload)
+    {
+        var imageDataUrls = new List<string>();
+
+        if (!TryGetProperty(payload, "content", out var contentElement) ||
+            contentElement.ValueKind != JsonValueKind.Array)
+        {
+            return imageDataUrls;
+        }
+
+        foreach (var item in contentElement.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object ||
+                !TryGetString(item, "type", out var itemType) ||
+                !string.Equals(itemType, "input_image", StringComparison.OrdinalIgnoreCase) ||
+                !TryGetString(item, "image_url", out var imageUrl))
+            {
+                continue;
+            }
+
+            imageDataUrls.Add(imageUrl);
+        }
+
+        return imageDataUrls;
     }
 
     private static bool TryExtractClaudeMessage(JsonElement root, out SessionMessage message)
