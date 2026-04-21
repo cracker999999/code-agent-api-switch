@@ -136,6 +136,10 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
@@ -145,6 +149,13 @@
                                                    FontWeight="SemiBold"
                                                    Foreground="#111827"
                                                    TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1"
+                                                   Margin="8,0,0,0"
+                                                   Text="{Binding FileSize}"
+                                                   FontSize="11"
+                                                   Foreground="#6B7280"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Right" />
                                         <TextBlock Grid.Row="1"
                                                    Margin="0,6,0,0"
                                                    Text="{Binding RelativeTime}"

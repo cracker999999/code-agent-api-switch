@@ -179,7 +179,8 @@ public partial class SessionWindow : Window
             .Select(session => new SessionListItem(
                 session,
                 BuildDisplayTitle(session),
-                FormatRelativeTime(session.LastActiveAt)))
+                FormatRelativeTime(session.LastActiveAt),
+                FormatFileSize(GetSessionFileLength(session.SourcePath))))
             .ToList();
 
         SessionListBox.ItemsSource = items;
@@ -195,6 +196,46 @@ public partial class SessionWindow : Window
         }
 
         return string.IsNullOrWhiteSpace(session.SessionId) ? "未命名会话" : session.SessionId;
+    }
+
+    private static long GetSessionFileLength(string sourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+        {
+            return 0;
+        }
+
+        try
+        {
+            return new FileInfo(sourcePath).Length;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return 0;
+        }
+    }
+
+    private static string FormatFileSize(long fileSizeBytes)
+    {
+        if (fileSizeBytes < 1024)
+        {
+            return $"{Math.Max(0, fileSizeBytes)} B";
+        }
+
+        var sizeKb = fileSizeBytes / 1024d;
+        if (sizeKb < 1024)
+        {
+            return $"{sizeKb:0.0} KB";
+        }
+
+        var sizeMb = sizeKb / 1024d;
+        if (sizeMb < 1024)
+        {
+            return $"{sizeMb:0.0} MB";
+        }
+
+        var sizeGb = sizeMb / 1024d;
+        return $"{sizeGb:0.0} GB";
     }
 
     private void ResetDetailPanel()
@@ -670,11 +711,12 @@ public partial class SessionWindow : Window
 
     private sealed class SessionListItem
     {
-        public SessionListItem(SessionMeta session, string title, string relativeTime)
+        public SessionListItem(SessionMeta session, string title, string relativeTime, string fileSize)
         {
             Session = session;
             Title = title;
             RelativeTime = relativeTime;
+            FileSize = fileSize;
         }
 
         public SessionMeta Session { get; }
@@ -682,5 +724,7 @@ public partial class SessionWindow : Window
         public string Title { get; }
 
         public string RelativeTime { get; }
+
+        public string FileSize { get; }
     }
 }
