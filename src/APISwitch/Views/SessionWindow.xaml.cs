@@ -219,7 +219,7 @@ public partial class SessionWindow : Window
     {
         if (fileSizeBytes < 1024)
         {
-            return $"{Math.Max(0, fileSizeBytes)} B";
+            return $"{fileSizeBytes} B";
         }
 
         var sizeKb = fileSizeBytes / 1024d;
@@ -672,10 +672,6 @@ public partial class SessionWindow : Window
         }
 
         var wheelLines = SystemParameters.WheelScrollLines;
-        if (wheelLines <= 0)
-        {
-            wheelLines = 3;
-        }
 
         var steps = (e.Delta / (double)System.Windows.Input.Mouse.MouseWheelDeltaForOneLine) * wheelLines * scale;
         stepRemainder += steps;

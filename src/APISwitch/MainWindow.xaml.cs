@@ -367,6 +367,11 @@ public partial class MainWindow : Window
         }
 
         ProvidersItemsControl.ItemsSource = providers;
+
+        if (System.Windows.Application.Current is App app)
+        {
+            app.RefreshTrayTooltip();
+        }
     }
 
     private int GetNextSortOrder()
