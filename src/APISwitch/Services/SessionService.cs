@@ -17,6 +17,12 @@ public class SessionService
     private static readonly Regex UuidPattern = new(
         @"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b",
         RegexOptions.Compiled);
+    private static readonly Regex CodexImageOpenTagPattern = new(
+        @"^\s*<image\b[^>]*>\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex CodexImageCloseTagPattern = new(
+        @"^\s*</image>\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly string _codexSessionsDirectory;
     private readonly string _claudeProjectsDirectory;
@@ -424,6 +430,11 @@ public class SessionService
         if (string.Equals(payloadType, "message", StringComparison.OrdinalIgnoreCase))
         {
             role = TryGetString(payload, "role", out var parsedRole) ? parsedRole : "assistant";
+            if (TryExtractCodexMessageContent(payload, out content, out imageDataUrls))
+            {
+                return !string.IsNullOrWhiteSpace(content) || imageDataUrls.Count > 0;
+            }
+
             imageDataUrls = ExtractCodexInputImageDataUrls(payload);
             content = ExtractJsonText(payload, "content");
             return !string.IsNullOrWhiteSpace(content) || imageDataUrls.Count > 0;
@@ -447,6 +458,98 @@ public class SessionService
         return false;
     }
 
+    private static bool TryExtractCodexMessageContent(JsonElement payload, out string content, out List<string> imageDataUrls)
+    {
+        content = string.Empty;
+        imageDataUrls = new List<string>();
+
+        if (!TryGetProperty(payload, "content", out var contentElement))
+        {
+            return false;
+        }
+
+        if (contentElement.ValueKind != JsonValueKind.Array)
+        {
+            content = ExtractJsonText(payload, "content");
+            imageDataUrls = ExtractCodexInputImageDataUrls(payload);
+            return true;
+        }
+
+        var items = contentElement.EnumerateArray().ToList();
+        var textParts = new List<string>();
+        for (var index = 0; index < items.Count; index++)
+        {
+            if (TryMatchCodexWrappedInputImage(items, index, out var wrappedImageUrl))
+            {
+                imageDataUrls.Add(wrappedImageUrl);
+                index += 2;
+                continue;
+            }
+
+            if (TryExtractCodexInputImageDataUrl(items[index], out var standaloneImageUrl))
+            {
+                imageDataUrls.Add(standaloneImageUrl);
+                continue;
+            }
+
+            var part = ExtractJsonText(items[index]);
+            if (!string.IsNullOrWhiteSpace(part))
+            {
+                textParts.Add(part.Trim());
+            }
+        }
+
+        content = string.Join(Environment.NewLine, textParts).Trim();
+        return true;
+    }
+
+    private static bool TryMatchCodexWrappedInputImage(IReadOnlyList<JsonElement> items, int startIndex, out string imageUrl)
+    {
+        imageUrl = string.Empty;
+        if (startIndex + 2 >= items.Count)
+        {
+            return false;
+        }
+
+        if (!TryExtractCodexInputText(items[startIndex], out var openTagText) ||
+            !CodexImageOpenTagPattern.IsMatch(openTagText))
+        {
+            return false;
+        }
+
+        if (!TryExtractCodexInputImageDataUrl(items[startIndex + 1], out imageUrl))
+        {
+            return false;
+        }
+
+        if (!TryExtractCodexInputText(items[startIndex + 2], out var closeTagText) ||
+            !CodexImageCloseTagPattern.IsMatch(closeTagText))
+        {
+            imageUrl = string.Empty;
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryExtractCodexInputText(JsonElement item, out string text)
+    {
+        text = string.Empty;
+        return item.ValueKind == JsonValueKind.Object &&
+               TryGetString(item, "type", out var itemType) &&
+               string.Equals(itemType, "input_text", StringComparison.OrdinalIgnoreCase) &&
+               TryGetString(item, "text", out text);
+    }
+
+    private static bool TryExtractCodexInputImageDataUrl(JsonElement item, out string imageUrl)
+    {
+        imageUrl = string.Empty;
+        return item.ValueKind == JsonValueKind.Object &&
+               TryGetString(item, "type", out var itemType) &&
+               string.Equals(itemType, "input_image", StringComparison.OrdinalIgnoreCase) &&
+               TryGetString(item, "image_url", out imageUrl);
+    }
+
     private static List<string> ExtractCodexInputImageDataUrls(JsonElement payload)
     {
         var imageDataUrls = new List<string>();
@@ -459,10 +562,7 @@ public class SessionService
 
         foreach (var item in contentElement.EnumerateArray())
         {
-            if (item.ValueKind != JsonValueKind.Object ||
-                !TryGetString(item, "type", out var itemType) ||
-                !string.Equals(itemType, "input_image", StringComparison.OrdinalIgnoreCase) ||
-                !TryGetString(item, "image_url", out var imageUrl))
+            if (!TryExtractCodexInputImageDataUrl(item, out var imageUrl))
             {
                 continue;
             }
