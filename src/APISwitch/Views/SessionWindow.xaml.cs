@@ -339,11 +339,23 @@ public partial class SessionWindow : Window
             return;
         }
 
-        foreach (var message in messages)
+        var isCodexSession = _selectedSession is not null &&
+            string.Equals(_selectedSession.ProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase);
+
+        for (var index = 0; index < messages.Count; index++)
         {
+            var message = messages[index];
             if (string.Equals(message.Role, "tool", StringComparison.OrdinalIgnoreCase))
             {
                 MessagesPanel.Children.Add(CreateToolMessageElement(message.Content, message.Timestamp));
+                continue;
+            }
+
+            if (isCodexSession &&
+                index == 0 &&
+                string.Equals(message.Role, "developer", StringComparison.OrdinalIgnoreCase))
+            {
+                MessagesPanel.Children.Add(CreateDeveloperMessageElement(message.Content, message.Timestamp));
                 continue;
             }
 
@@ -429,12 +441,22 @@ public partial class SessionWindow : Window
 
     private static FrameworkElement CreateToolMessageElement(string content, DateTime timestamp)
     {
+        return CreateCollapsedMessageElement("工具", content, timestamp);
+    }
+
+    private static FrameworkElement CreateDeveloperMessageElement(string content, DateTime timestamp)
+    {
+        return CreateCollapsedMessageElement("developer", content, timestamp);
+    }
+
+    private static FrameworkElement CreateCollapsedMessageElement(string title, string content, DateTime timestamp)
+    {
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         header.Children.Add(CreateSelectableTextElement(
-            "工具",
+            title,
             12,
             CreateBrush("#1E3A8A"),
             FontWeights.SemiBold));
