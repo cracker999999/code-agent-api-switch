@@ -154,6 +154,7 @@ public class SessionService
 
         string? sessionId = null;
         string? projectDir = null;
+        string? customTitle = null;
         DateTime? createdAt = null;
         DateTime? lastActiveAt = null;
         var hasMessage = false;
@@ -188,6 +189,14 @@ public class SessionService
 
                 createdAt ??= TryGetDateTime(metaPayload, "timestamp") ?? TryGetDateTime(root, "timestamp");
             }
+            else if (string.Equals(eventType, "event_msg", StringComparison.OrdinalIgnoreCase) &&
+                     TryGetObject(root, "payload", out var eventPayload) &&
+                     TryGetString(eventPayload, "type", out var payloadType) &&
+                     string.Equals(payloadType, "thread_name_updated", StringComparison.OrdinalIgnoreCase) &&
+                     TryGetString(eventPayload, "thread_name", out var threadName))
+            {
+                customTitle = threadName;
+            }
             else if (string.Equals(eventType, "response_item", StringComparison.OrdinalIgnoreCase) &&
                      TryGetObject(root, "payload", out var responsePayload) &&
                      TryExtractCodexMessage(responsePayload, out _, out _))
@@ -216,12 +225,6 @@ public class SessionService
             return null;
         }
 
-        sessionId ??= ExtractUuidFromFileName(filePath);
-        if (string.IsNullOrWhiteSpace(sessionId))
-        {
-            return null;
-        }
-
         projectDir ??= string.Empty;
         var fallbackTime = File.GetLastWriteTime(filePath);
         var resolvedCreatedAt = createdAt ?? lastActiveAt ?? fallbackTime;
@@ -230,8 +233,10 @@ public class SessionService
         return new SessionMeta
         {
             ProviderId = ProviderCodex,
-            SessionId = sessionId,
-            Title = BuildSessionTitle(projectDir, sessionId),
+            SessionId = sessionId ?? string.Empty,
+            Title = FirstNonEmpty(
+                NormalizeTitleText(customTitle),
+                BuildSessionTitle(projectDir, string.Empty)),
             ProjectDir = projectDir,
             CreatedAt = resolvedCreatedAt,
             LastActiveAt = resolvedLastActiveAt,
@@ -305,24 +310,18 @@ public class SessionService
             return null;
         }
 
-        sessionId ??= Path.GetFileNameWithoutExtension(filePath);
-        if (string.IsNullOrWhiteSpace(sessionId))
-        {
-            return null;
-        }
-
         projectDir ??= string.Empty;
         var fallbackTime = File.GetLastWriteTime(filePath);
         var resolvedCreatedAt = createdAt ?? lastActiveAt ?? fallbackTime;
         var resolvedLastActiveAt = lastActiveAt ?? resolvedCreatedAt;
         var title = FirstNonEmpty(
             NormalizeTitleText(customTitle),
-            BuildSessionTitle(projectDir, sessionId));
+            BuildSessionTitle(projectDir, string.Empty));
 
         return new SessionMeta
         {
             ProviderId = ProviderClaude,
-            SessionId = sessionId,
+            SessionId = sessionId ?? string.Empty,
             Title = title,
             ProjectDir = projectDir,
             CreatedAt = resolvedCreatedAt,
