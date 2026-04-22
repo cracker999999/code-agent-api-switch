@@ -278,6 +278,10 @@ public partial class MainWindow : Window
         var updatedProvider = dialog.Provider;
         updatedProvider.TestStatus = 0;
         _databaseService.UpdateProvider(updatedProvider);
+        if (updatedProvider.IsActive)
+        {
+            _configWriterService.ApplyProvider(updatedProvider);
+        }
         LoadProviders();
     }
 
