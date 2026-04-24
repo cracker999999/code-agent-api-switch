@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using APISwitch.Models;
 
 namespace APISwitch.Services;
@@ -45,7 +46,22 @@ public class ApiTestService
     private async Task<ApiTestResult> TestCodexAsync(Provider provider)
     {
         var url = $"{provider.BaseUrl.TrimEnd('/')}/responses";
-        const string body = "{\"model\":\"gpt-5.3-codex\",\"input\":[{\"role\":\"user\",\"content\":\"你是什么模型\"}],\"stream\":true}";
+        var model = string.IsNullOrWhiteSpace(provider.TestModel)
+            ? "gpt-5.3-codex"
+            : provider.TestModel.Trim();
+        var body = JsonSerializer.Serialize(new
+        {
+            model,
+            input = new[]
+            {
+                new
+                {
+                    role = "user",
+                    content = "你是什么模型"
+                }
+            },
+            stream = true
+        });
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -64,7 +80,23 @@ public class ApiTestService
     private async Task<ApiTestResult> TestClaudeAsync(Provider provider)
     {
         var url = $"{provider.BaseUrl.TrimEnd('/')}/v1/messages";
-        const string body = "{\"model\":\"claude-opus-4-6\",\"max_tokens\":1,\"messages\":[{\"role\":\"user\",\"content\":\"你是什么模型\"}],\"stream\":true}";
+        var model = string.IsNullOrWhiteSpace(provider.TestModel)
+            ? "claude-opus-4-6"
+            : provider.TestModel.Trim();
+        var body = JsonSerializer.Serialize(new
+        {
+            model,
+            max_tokens = 1,
+            messages = new[]
+            {
+                new
+                {
+                    role = "user",
+                    content = "你是什么模型"
+                }
+            },
+            stream = true
+        });
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -159,4 +191,3 @@ public class ApiTestService
         }
     }
 }
-

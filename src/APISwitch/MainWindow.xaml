@@ -167,6 +167,25 @@
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Ellipse Style="{StaticResource TestStatusDotStyle}" />
                                         <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" Foreground="#111827" />
+                                        <TextBlock Margin="8,0,0,0"
+                                                   Text="{Binding Remark}"
+                                                   FontSize="11"
+                                                   Foreground="#9CA3AF"
+                                                   VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Remark}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Remark}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </StackPanel>
                                     <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="#6B7280">
                                         <Hyperlink Click="BaseUrlHyperlink_Click">

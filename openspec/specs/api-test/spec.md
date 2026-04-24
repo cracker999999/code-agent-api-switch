@@ -4,18 +4,26 @@
 TBD - created by archiving change test-model. Update Purpose after archive.
 ## Requirements
 ### Requirement: Codex 供应商测试请求
-系统 SHALL 向 `{BaseUrl}/responses` 发送流式 POST 请求验证 Codex 供应商连通性。
+系统 SHALL 向 `{BaseUrl}/responses` 发送流式 POST 请求验证 Codex 供应商连通性，使用供应商配置的 TestModel 作为模型 ID。
 
-#### Scenario: Codex 测试请求格式
-- **WHEN** 用户测试一个 ToolType=0（Codex）的供应商
-- **THEN** 系统发送 POST 请求到 `{BaseUrl}/responses`，携带以下 headers：`authorization: Bearer {ApiKey}`、`content-type: application/json`、`accept: text/event-stream`、`accept-encoding: identity`、`user-agent: codex-tui/0.118.0 (Windows 10.0.19045; x86_64) WindowsTerminal (codex-tui; 0.118.0)`、`originator: codex_tui`，body 为 `{"model":"gpt-5.3-codex","input":[{"role":"user","content":"你是什么模型"}],"stream":true}`
+#### Scenario: Codex 测试请求使用自定义模型
+- **WHEN** 用户测试一个 ToolType=0（Codex）的供应商且 TestModel 不为空
+- **THEN** 系统发送 POST 请求，body 中 `model` 字段使用 `provider.TestModel` 的值
+
+#### Scenario: Codex 测试请求使用默认模型
+- **WHEN** 用户测试一个 ToolType=0（Codex）的供应商且 TestModel 为空
+- **THEN** 系统发送 POST 请求，body 中 `model` 字段使用默认值 `gpt-5.3-codex`
 
 ### Requirement: Claude Code 供应商测试请求
-系统 SHALL 向 `{BaseUrl}/v1/messages` 发送流式 POST 请求验证 Claude Code 供应商连通性。
+系统 SHALL 向 `{BaseUrl}/v1/messages` 发送流式 POST 请求验证 Claude Code 供应商连通性，使用供应商配置的 TestModel 作为模型 ID。
 
-#### Scenario: Claude Code 测试请求格式
-- **WHEN** 用户测试一个 ToolType=1（Claude Code）的供应商
-- **THEN** 系统发送 POST 请求到 `{BaseUrl}/v1/messages`，携带以下 headers：`authorization: Bearer {ApiKey}`、`x-api-key: {ApiKey}`、`anthropic-version: 2023-06-01`、`anthropic-beta: claude-code-20250219,interleaved-thinking-2025-05-14`、`anthropic-dangerous-direct-browser-access: true`、`content-type: application/json`、`accept: application/json`、`accept-encoding: identity`、`accept-language: *`、`user-agent: claude-cli/2.1.77 (external, cli)`、`x-app: cli`，body 为 `{"model":"claude-opus-4-6","max_tokens":1,"messages":[{"role":"user","content":"你是什么模型"}],"stream":true}`
+#### Scenario: Claude Code 测试请求使用自定义模型
+- **WHEN** 用户测试一个 ToolType=1（Claude Code）的供应商且 TestModel 不为空
+- **THEN** 系统发送 POST 请求，body 中 `model` 字段使用 `provider.TestModel` 的值
+
+#### Scenario: Claude Code 测试请求使用默认模型
+- **WHEN** 用户测试一个 ToolType=1（Claude Code）的供应商且 TestModel 为空
+- **THEN** 系统发送 POST 请求，body 中 `model` 字段使用默认值 `claude-opus-4-6`
 
 ### Requirement: 流式判定成功
 系统 SHALL 使用 `HttpCompletionOption.ResponseHeadersRead` + `ReadAsStreamAsync` 实现流式读取，收到首个 stream chunk 即判定成功。

@@ -15,11 +15,19 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **THEN** 列表显示所有 ToolType=1 的供应商卡片
 
 ### Requirement: 供应商卡片显示
-每张供应商卡片 SHALL 显示名称（大字）、BaseUrl（小字灰色），右侧包含启用、测试、上移、下移、编辑、删除操作按钮；名称前 SHALL 根据测试状态显示状态点。
+每张供应商卡片 SHALL 显示名称（大字）、备注（名字右侧，浅色小字）、BaseUrl（小字灰色），右侧包含启用、测试、上移、下移、编辑、删除操作按钮；名称前 SHALL 根据测试状态显示状态点。
 
 #### Scenario: 卡片内容展示
 - **WHEN** 供应商列表加载完成
 - **THEN** 每张卡片显示供应商名称和 BaseUrl，右侧显示启用、测试、上移、下移、编辑、删除操作按钮
+
+#### Scenario: 备注显示
+- **WHEN** 供应商 Remark 不为空
+- **THEN** 备注文字显示在名称右侧同一行，颜色为 `#9CA3AF`，字号为 `11`
+
+#### Scenario: 备注为空时不显示
+- **WHEN** 供应商 Remark 为空或 null
+- **THEN** 名称右侧不显示额外元素
 
 #### Scenario: 测试按钮位置
 - **WHEN** 卡片按钮区域渲染
@@ -75,7 +83,7 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 
 #### Scenario: 点击编辑
 - **WHEN** 用户点击某供应商卡片的编辑按钮
-- **THEN** 弹出对话框，预填该供应商的 Name、BaseUrl、ApiKey
+- **THEN** 弹出对话框，预填该供应商的 Name、BaseUrl、ApiKey、TestModel、Remark
 
 ### Requirement: 删除按钮
 点击删除按钮 SHALL 弹出确认对话框，确认后删除。

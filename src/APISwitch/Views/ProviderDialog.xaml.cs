@@ -41,21 +41,27 @@ public partial class ProviderDialog : Window
             ApiKey = provider.ApiKey,
             IsActive = provider.IsActive,
             SortOrder = provider.SortOrder,
-            TestStatus = provider.TestStatus
+            TestStatus = provider.TestStatus,
+            TestModel = provider.TestModel,
+            Remark = provider.Remark
         };
         Title = "编辑供应商";
 
         NameTextBox.Text = Provider.Name;
+        RemarkTextBox.Text = Provider.Remark;
         BaseUrlTextBox.Text = Provider.BaseUrl;
         ApiKeyTextBox.Text = Provider.ApiKey;
+        TestModelTextBox.Text = Provider.TestModel;
         ModelSearchTextBox.Text = string.Empty;
     }
 
     private void ConfirmButton_Click(object sender, RoutedEventArgs e)
     {
         var name = NameTextBox.Text.Trim();
+        var remark = RemarkTextBox.Text.Trim();
         var baseUrl = BaseUrlTextBox.Text.Trim();
         var apiKey = ApiKeyTextBox.Text.Trim();
+        var testModel = TestModelTextBox.Text.Trim();
 
         if (string.IsNullOrWhiteSpace(name) ||
             string.IsNullOrWhiteSpace(baseUrl) ||
@@ -66,8 +72,10 @@ public partial class ProviderDialog : Window
         }
 
         Provider.Name = name;
+        Provider.Remark = remark;
         Provider.BaseUrl = baseUrl;
         Provider.ApiKey = apiKey;
+        Provider.TestModel = testModel;
 
         DialogResult = true;
         Close();

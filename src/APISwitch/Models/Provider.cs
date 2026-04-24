@@ -18,6 +18,10 @@ public class Provider
 
     public int TestStatus { get; set; }
 
+    public string TestModel { get; set; } = string.Empty;
+
+    public string Remark { get; set; } = string.Empty;
+
     public bool CanMoveUp { get; set; }
 
     public bool CanMoveDown { get; set; }

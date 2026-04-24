@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS Providers (
         command.CommandText = sql;
         command.ExecuteNonQuery();
 
-        EnsureTestStatusColumn(connection);
+        EnsureProviderColumns(connection);
     }
 
     public List<Provider> GetProviders(int toolType)
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS Providers (
 
             using var command = connection.CreateCommand();
             command.CommandText = @"
-SELECT Id, ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus
+SELECT Id, ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark
 FROM Providers
 WHERE ToolType = $toolType
 ORDER BY SortOrder ASC, Id ASC;";
@@ -73,7 +73,9 @@ ORDER BY SortOrder ASC, Id ASC;";
                     ApiKey = reader.GetString(4),
                     IsActive = reader.GetInt32(5) == 1,
                     SortOrder = reader.GetInt32(6),
-                    TestStatus = reader.GetInt32(7)
+                    TestStatus = reader.GetInt32(7),
+                    TestModel = reader.IsDBNull(8) ? string.Empty : reader.GetString(8),
+                    Remark = reader.IsDBNull(9) ? string.Empty : reader.GetString(9)
                 });
             }
 
@@ -90,8 +92,8 @@ ORDER BY SortOrder ASC, Id ASC;";
 
             using var command = connection.CreateCommand();
             command.CommandText = @"
-INSERT INTO Providers (ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus)
-VALUES ($toolType, $name, $baseUrl, $apiKey, $isActive, $sortOrder, $testStatus);
+INSERT INTO Providers (ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark)
+VALUES ($toolType, $name, $baseUrl, $apiKey, $isActive, $sortOrder, $testStatus, $testModel, $remark);
 SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$toolType", provider.ToolType);
             command.Parameters.AddWithValue("$name", provider.Name);
@@ -100,6 +102,8 @@ SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$isActive", provider.IsActive ? 1 : 0);
             command.Parameters.AddWithValue("$sortOrder", provider.SortOrder);
             command.Parameters.AddWithValue("$testStatus", provider.TestStatus);
+            command.Parameters.AddWithValue("$testModel", provider.TestModel);
+            command.Parameters.AddWithValue("$remark", provider.Remark);
 
             var insertedId = command.ExecuteScalar();
             return Convert.ToInt32(insertedId);
@@ -120,7 +124,9 @@ SET Name = $name,
     BaseUrl = $baseUrl,
     ApiKey = $apiKey,
     SortOrder = $sortOrder,
-    TestStatus = $testStatus
+    TestStatus = $testStatus,
+    TestModel = $testModel,
+    Remark = $remark
 WHERE Id = $id;";
             command.Parameters.AddWithValue("$id", provider.Id);
             command.Parameters.AddWithValue("$name", provider.Name);
@@ -128,6 +134,8 @@ WHERE Id = $id;";
             command.Parameters.AddWithValue("$apiKey", provider.ApiKey);
             command.Parameters.AddWithValue("$sortOrder", provider.SortOrder);
             command.Parameters.AddWithValue("$testStatus", provider.TestStatus);
+            command.Parameters.AddWithValue("$testModel", provider.TestModel);
+            command.Parameters.AddWithValue("$remark", provider.Remark);
             command.ExecuteNonQuery();
         }
     }
@@ -205,31 +213,40 @@ WHERE Id = $id;";
         MoveProvider(id, toolType, moveUp: false);
     }
 
-    private static void EnsureTestStatusColumn(SqliteConnection connection)
+    private static void EnsureProviderColumns(SqliteConnection connection)
+    {
+        EnsureProviderColumn(
+            connection,
+            "TestStatus",
+            "ALTER TABLE Providers ADD COLUMN TestStatus INTEGER NOT NULL DEFAULT 0;");
+        EnsureProviderColumn(
+            connection,
+            "TestModel",
+            "ALTER TABLE Providers ADD COLUMN TestModel TEXT;");
+        EnsureProviderColumn(
+            connection,
+            "Remark",
+            "ALTER TABLE Providers ADD COLUMN Remark TEXT;");
+    }
+
+    private static void EnsureProviderColumn(SqliteConnection connection, string columnName, string alterSql)
     {
         using var checkCommand = connection.CreateCommand();
         checkCommand.CommandText = "PRAGMA table_info(Providers);";
 
-        var hasColumn = false;
         using (var reader = checkCommand.ExecuteReader())
         {
             while (reader.Read())
             {
-                if (string.Equals(reader.GetString(1), "TestStatus", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
                 {
-                    hasColumn = true;
-                    break;
+                    return;
                 }
             }
         }
 
-        if (hasColumn)
-        {
-            return;
-        }
-
         using var alterCommand = connection.CreateCommand();
-        alterCommand.CommandText = "ALTER TABLE Providers ADD COLUMN TestStatus INTEGER NOT NULL DEFAULT 0;";
+        alterCommand.CommandText = alterSql;
         alterCommand.ExecuteNonQuery();
     }
 
