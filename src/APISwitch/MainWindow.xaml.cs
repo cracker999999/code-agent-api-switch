@@ -85,9 +85,10 @@ public partial class MainWindow : Window
 
     internal void OpenSessionManagerWindow()
     {
+        var providerId = GetCurrentProviderId();
         if (_sessionWindow is null)
         {
-            _sessionWindow = new SessionWindow
+            _sessionWindow = new SessionWindow(providerId)
             {
                 Owner = this
             };
@@ -95,6 +96,8 @@ public partial class MainWindow : Window
             _sessionWindow.Show();
             return;
         }
+
+        _ = _sessionWindow.SelectProviderAsync(providerId);
 
         if (_sessionWindow.WindowState == WindowState.Minimized)
         {
@@ -107,6 +110,13 @@ public partial class MainWindow : Window
         }
 
         _sessionWindow.Activate();
+    }
+
+    private string GetCurrentProviderId()
+    {
+        return _currentToolType == 1
+            ? SessionService.ProviderClaude
+            : SessionService.ProviderCodex;
     }
 
     private void OpenConfigDirectoryButton_Click(object sender, RoutedEventArgs e)

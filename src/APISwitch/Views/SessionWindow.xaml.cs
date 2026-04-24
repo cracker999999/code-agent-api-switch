@@ -18,11 +18,25 @@ public partial class SessionWindow : Window
     private double _sessionListWheelStepRemainder;
     private double _messagesWheelStepRemainder;
 
-    public SessionWindow()
+    public SessionWindow(string? initialProviderId = null)
     {
+        _currentProviderId = NormalizeProviderId(initialProviderId);
         InitializeComponent();
         UpdateTabButtons();
         _ = ReloadSessionsAsync();
+    }
+
+    public async Task SelectProviderAsync(string providerId)
+    {
+        var targetProviderId = NormalizeProviderId(providerId);
+        if (string.Equals(_currentProviderId, targetProviderId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _currentProviderId = targetProviderId;
+        UpdateTabButtons();
+        await ReloadSessionsAsync();
     }
 
     private async void CodexTabButton_Click(object sender, RoutedEventArgs e)
@@ -638,6 +652,13 @@ public partial class SessionWindow : Window
         }
 
         return "AI";
+    }
+
+    private static string NormalizeProviderId(string? providerId)
+    {
+        return string.Equals(providerId, SessionService.ProviderClaude, StringComparison.OrdinalIgnoreCase)
+            ? SessionService.ProviderClaude
+            : SessionService.ProviderCodex;
     }
 
     private static string FormatMessageTime(DateTime timestamp)
