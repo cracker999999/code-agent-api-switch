@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Windows.Data;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -193,11 +194,16 @@ public partial class SessionWindow : Window
             .Select(session => new SessionListItem(
                 session,
                 BuildDisplayTitle(session),
+                BuildProjectGroupName(session),
                 FormatRelativeTime(session.LastActiveAt),
                 FormatFileSize(GetSessionFileLength(session.SourcePath))))
             .ToList();
 
-        SessionListBox.ItemsSource = items;
+        var groupedView = CollectionViewSource.GetDefaultView(items);
+        groupedView.GroupDescriptions.Clear();
+        groupedView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(SessionListItem.ProjectGroupName)));
+
+        SessionListBox.ItemsSource = groupedView;
         SessionCountTextBlock.Text = $"会话列表 ({items.Count})";
         SessionEmptyTextBlock.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -210,6 +216,21 @@ public partial class SessionWindow : Window
         }
 
         return string.IsNullOrWhiteSpace(session.SessionId) ? "未命名会话" : session.SessionId;
+    }
+
+    private static string BuildProjectGroupName(SessionMeta session)
+    {
+        if (!string.IsNullOrWhiteSpace(session.ProjectDir))
+        {
+            var normalized = session.ProjectDir.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var name = Path.GetFileName(normalized);
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                return name;
+            }
+        }
+
+        return "未分组项目";
     }
 
     private static long GetSessionFileLength(string sourcePath)
@@ -750,10 +771,11 @@ public partial class SessionWindow : Window
 
     private sealed class SessionListItem
     {
-        public SessionListItem(SessionMeta session, string title, string relativeTime, string fileSize)
+        public SessionListItem(SessionMeta session, string title, string projectGroupName, string relativeTime, string fileSize)
         {
             Session = session;
             Title = title;
+            ProjectGroupName = projectGroupName;
             RelativeTime = relativeTime;
             FileSize = fileSize;
         }
@@ -761,6 +783,8 @@ public partial class SessionWindow : Window
         public SessionMeta Session { get; }
 
         public string Title { get; }
+
+        public string ProjectGroupName { get; }
 
         public string RelativeTime { get; }
 
