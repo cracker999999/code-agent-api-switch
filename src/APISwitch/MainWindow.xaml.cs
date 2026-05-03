@@ -286,7 +286,15 @@ public partial class MainWindow : Window
         }
 
         var updatedProvider = dialog.Provider;
-        updatedProvider.TestStatus = 0;
+        var hasConnectionChanged =
+            !string.Equals(provider.BaseUrl, updatedProvider.BaseUrl, StringComparison.Ordinal) ||
+            !string.Equals(provider.ApiKey, updatedProvider.ApiKey, StringComparison.Ordinal);
+
+        if (hasConnectionChanged)
+        {
+            updatedProvider.TestStatus = 0;
+        }
+
         _databaseService.UpdateProvider(updatedProvider);
         if (updatedProvider.IsActive)
         {
