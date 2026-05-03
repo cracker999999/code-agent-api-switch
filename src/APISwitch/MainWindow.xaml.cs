@@ -296,7 +296,7 @@ public partial class MainWindow : Window
         }
 
         _databaseService.UpdateProvider(updatedProvider);
-        if (updatedProvider.IsActive)
+        if (updatedProvider.IsActive && hasConnectionChanged)
         {
             _configWriterService.ApplyProvider(updatedProvider);
         }
