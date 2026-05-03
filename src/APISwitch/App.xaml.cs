@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using APISwitch.Services;
 using Forms = System.Windows.Forms;
@@ -10,16 +11,31 @@ namespace APISwitch;
 public partial class App : System.Windows.Application
 {
     private const int NotifyIconTextMaxLength = 63;
+    private const string SingleInstanceMutexName = @"Global\APISwitch.SingleInstance";
+    private const string ShowMainWindowEventName = @"Global\APISwitch.ShowMainWindow";
 
     private Forms.NotifyIcon? _notifyIcon;
     private MainWindow? _mainWindow;
     private DatabaseService? _databaseService;
+    private Mutex? _singleInstanceMutex;
+    private bool _ownsSingleInstanceMutex;
+    private EventWaitHandle? _showMainWindowEvent;
+    private RegisteredWaitHandle? _showMainWindowSignalWaitHandle;
 
     internal bool IsExitRequested { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        _showMainWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowMainWindowEventName);
+        _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out var createdNew);
+        _ownsSingleInstanceMutex = createdNew;
+        if (!createdNew)
+        {
+            _showMainWindowEvent.Set();
+            Shutdown();
+            return;
+        }
 
         try
         {
@@ -29,7 +45,7 @@ public partial class App : System.Windows.Application
             var configWriterService = new ConfigWriterService();
             _mainWindow = new MainWindow(_databaseService, configWriterService);
             MainWindow = _mainWindow;
-
+            StartShowMainWindowSignalListener();
             InitializeTrayIcon();
             _mainWindow.Show();
         }
@@ -47,6 +63,19 @@ public partial class App : System.Windows.Application
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
         }
+
+        if (_ownsSingleInstanceMutex)
+        {
+            _singleInstanceMutex?.ReleaseMutex();
+            _ownsSingleInstanceMutex = false;
+        }
+
+        _singleInstanceMutex?.Dispose();
+        _singleInstanceMutex = null;
+        _showMainWindowSignalWaitHandle?.Unregister(null);
+        _showMainWindowSignalWaitHandle = null;
+        _showMainWindowEvent?.Dispose();
+        _showMainWindowEvent = null;
 
         base.OnExit(e);
     }
@@ -175,5 +204,28 @@ public partial class App : System.Windows.Application
         {
             return "未知";
         }
+    }
+
+    private void StartShowMainWindowSignalListener()
+    {
+        if (_showMainWindowEvent is null)
+        {
+            return;
+        }
+
+        _showMainWindowSignalWaitHandle = ThreadPool.RegisterWaitForSingleObject(
+            _showMainWindowEvent,
+            static (state, timedOut) =>
+            {
+                if (timedOut || state is not App app)
+                {
+                    return;
+                }
+
+                app.Dispatcher.Invoke(app.ShowMainWindow);
+            },
+            this,
+            Timeout.Infinite,
+            executeOnlyOnce: false);
     }
 }
