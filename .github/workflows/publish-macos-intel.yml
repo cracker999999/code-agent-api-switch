@@ -42,21 +42,63 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           TS="$(date -u +%Y%m%d-%H%M%S)"
           TAG="build-${TS}-${SHORT_SHA}-r${GITHUB_RUN_NUMBER}"
-          ZIP="APISwitch-osx-x64-${TAG}.zip"
+          ZIP="APISwitch-macos-intel-${TAG}.zip"
           echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
           echo "timestamp=${TS}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "zip=${ZIP}" >> "$GITHUB_OUTPUT"
 
-      - name: Package zip
+      - name: Build .app bundle
+        shell: bash
+        run: |
+          APP_DIR="out/APISwitch.app"
+          CONTENTS_DIR="${APP_DIR}/Contents"
+          MACOS_DIR="${CONTENTS_DIR}/MacOS"
+          RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+          EXECUTABLE_NAME="APISwitch.Avalonia"
+
+          rm -rf "${APP_DIR}"
+          mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
+          cp -R out/osx-x64/* "${MACOS_DIR}/"
+
+          cat > "${CONTENTS_DIR}/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>APISwitch</string>
+            <key>CFBundleDisplayName</key>
+            <string>APISwitch</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.leen.apiswitch</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleExecutable</key>
+            <string>APISwitch.Avalonia</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+
+          chmod +x "${MACOS_DIR}/${EXECUTABLE_NAME}"
+
+      - name: Package .app zip
         run: |
           cd out
-          zip -r "${{ steps.meta.outputs.zip }}" osx-x64
+          zip -r "${{ steps.meta.outputs.zip }}" APISwitch.app
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: APISwitch-osx-x64-${{ steps.meta.outputs.tag }}
+          name: APISwitch-macos-intel-${{ steps.meta.outputs.tag }}
           path: out/${{ steps.meta.outputs.zip }}
           retention-days: 30
 
