@@ -4,14 +4,17 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>APISwitch.Avalonia</AssemblyName>
+    <PackageId>APISwitch.Avalonia</PackageId>
+    <RootNamespace>APISwitch.Avalonia</RootNamespace>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.1.10" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.1.10" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.10" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.10" />
+    <PackageReference Include="Avalonia" Version="11.2.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.0" />
   </ItemGroup>
 
   <ItemGroup>
