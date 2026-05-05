@@ -2,11 +2,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="APISwitch.Avalonia.Views.SessionWindow"
         Title="会话管理"
-        Icon="/Assets/app.ico"
-        Width="900"
-        Height="640"
+        Icon="/Assets/app-preview.png"
+        Width="980"
+        Height="700"
         MinWidth="760"
-        MinHeight="480"
+        MinHeight="520"
         WindowStartupLocation="CenterOwner">
   <Window.Styles>
     <Style Selector="Button.tab-btn">
@@ -31,11 +31,6 @@
       <Setter Property="FontSize" Value="12" />
     </Style>
 
-    <Style Selector="ListBox#SessionListBox > ListBoxItem">
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Margin" Value="0,0,0,8" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    </Style>
   </Window.Styles>
 
   <Grid Margin="16" Background="#F3F4F6" RowDefinitions="Auto,*">
@@ -60,27 +55,50 @@
             <ListBox x:Name="SessionListBox"
                      SelectionChanged="SessionListBox_SelectionChanged"
                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+              <ListBox.ItemContainerTheme>
+                <ControlTheme TargetType="ListBoxItem">
+                  <Setter Property="Margin" Value="0,0,0,8" />
+                  <Setter Property="Padding" Value="0" />
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  <Setter Property="FocusAdorner" Value="{x:Null}" />
+                  <Setter Property="Template">
+                    <ControlTemplate>
+                      <Border x:Name="ItemBorder"
+                              Padding="10"
+                              Background="White"
+                              BorderBrush="#E5E7EB"
+                              BorderThickness="1"
+                              CornerRadius="8">
+                        <ContentPresenter />
+                      </Border>
+                    </ControlTemplate>
+                  </Setter>
+
+                  <Style Selector="^:selected /template/ Border#ItemBorder">
+                    <Setter Property="BorderBrush" Value="#2563EB" />
+                    <Setter Property="BorderThickness" Value="2" />
+                  </Style>
+                </ControlTheme>
+              </ListBox.ItemContainerTheme>
               <ListBox.ItemTemplate>
                 <DataTemplate>
-                  <Border Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8" Padding="10">
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                      <TextBlock Text="{Binding Title}"
-                                 FontSize="13"
-                                 FontWeight="SemiBold"
-                                 Foreground="#111827"
-                                 TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Column="1"
-                                 Margin="8,0,0,0"
-                                 Text="{Binding FileSize}"
-                                 FontSize="11"
-                                 Foreground="#6B7280" />
-                      <TextBlock Grid.Row="1"
-                                 Margin="0,6,0,0"
-                                 Text="{Binding RelativeTime}"
-                                 FontSize="12"
-                                 Foreground="#6B7280" />
-                    </Grid>
-                  </Border>
+                  <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="#111827"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1"
+                               Margin="8,0,0,0"
+                               Text="{Binding FileSize}"
+                               FontSize="11"
+                               Foreground="#6B7280" />
+                    <TextBlock Grid.Row="1"
+                               Margin="0,6,0,0"
+                               Text="{Binding RelativeTime}"
+                               FontSize="12"
+                               Foreground="#6B7280" />
+                  </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>

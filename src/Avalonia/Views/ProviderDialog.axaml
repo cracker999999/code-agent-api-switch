@@ -2,11 +2,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="APISwitch.Avalonia.Views.ProviderDialog"
         Title="供应商"
-        Icon="/Assets/app.ico"
+        Icon="/Assets/app-preview.png"
         Width="680"
         SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Button.dialog-action">
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
   <Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
     <Grid ColumnDefinitions="*,12,220">
       <TextBlock Text="名称" FontWeight="SemiBold" />
@@ -40,8 +46,8 @@
       <Grid RowDefinitions="*,Auto">
         <ListBox x:Name="ModelListBox" Grid.Row="0" BorderThickness="0" />
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
-          <Button Width="88" Height="32" Click="ConfirmButton_Click" Content="确认" />
-          <Button Width="88" Height="32" Click="CancelButton_Click" Content="取消" />
+          <Button Classes="dialog-action" Width="88" Height="32" Click="ConfirmButton_Click" Content="确认" />
+          <Button Classes="dialog-action" Width="88" Height="32" Click="CancelButton_Click" Content="取消" />
         </StackPanel>
       </Grid>
     </Border>

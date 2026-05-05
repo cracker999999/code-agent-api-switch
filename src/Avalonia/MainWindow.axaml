@@ -3,7 +3,7 @@
         xmlns:models="clr-namespace:APISwitch.Models;assembly=Core"
         x:Class="APISwitch.Avalonia.MainWindow"
         Title="APISwitch"
-        Icon="/Assets/app.ico"
+        Icon="/Assets/app-preview.png"
         Width="980"
         Height="700"
         MinWidth="760"
@@ -11,6 +11,8 @@
         WindowStartupLocation="CenterScreen">
   <Window.Styles>
     <Style Selector="Button.tab">
+      <Setter Property="Width" Value="120" />
+      <Setter Property="Height" Value="36" />
       <Setter Property="Background" Value="White" />
       <Setter Property="BorderBrush" Value="#D1D5DB" />
       <Setter Property="BorderThickness" Value="1" />

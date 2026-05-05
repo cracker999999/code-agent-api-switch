@@ -116,6 +116,9 @@ public partial class App : Application
     {
         var candidates = new[]
         {
+            "avares://APISwitch/Assets/app-preview-16.png",
+            "avares://APISwitch/Assets/app-preview.png",
+            "avares://APISwitch/Assets/app.ico",
             "avares://APISwitch.Avalonia/Assets/app-preview-16.png",
             "avares://APISwitch.Avalonia/Assets/app-preview.png",
             "avares://APISwitch.Avalonia/Assets/app.ico"

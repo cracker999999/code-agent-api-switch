@@ -4,9 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>APISwitch.Avalonia</AssemblyName>
+    <AssemblyName>APISwitch</AssemblyName>
     <PackageId>APISwitch.Avalonia</PackageId>
     <RootNamespace>APISwitch.Avalonia</RootNamespace>
+    <ApplicationTitle>APISwitch</ApplicationTitle>
+    <Product>APISwitch</Product>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
   </PropertyGroup>
 

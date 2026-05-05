@@ -55,11 +55,19 @@ jobs:
           CONTENTS_DIR="${APP_DIR}/Contents"
           MACOS_DIR="${CONTENTS_DIR}/MacOS"
           RESOURCES_DIR="${CONTENTS_DIR}/Resources"
-          EXECUTABLE_NAME="APISwitch.Avalonia"
+          EXECUTABLE_NAME="APISwitch"
 
           rm -rf "${APP_DIR}"
           mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
           cp -R out/osx-x64/* "${MACOS_DIR}/"
+
+          mkdir -p out/icon.iconset
+          for size in 16 32 128 256 512; do
+            sips -z "${size}" "${size}" src/Avalonia/Assets/app-preview.png --out "out/icon.iconset/icon_${size}x${size}.png"
+            sips -z "$((size * 2))" "$((size * 2))" src/Avalonia/Assets/app-preview.png --out "out/icon.iconset/icon_${size}x${size}@2x.png"
+          done
+          iconutil -c icns out/icon.iconset -o "${RESOURCES_DIR}/app.icns"
+          rm -rf out/icon.iconset
 
           cat > "${CONTENTS_DIR}/Info.plist" <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -79,7 +87,9 @@ jobs:
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleExecutable</key>
-            <string>APISwitch.Avalonia</string>
+            <string>APISwitch</string>
+            <key>CFBundleIconFile</key>
+            <string>app.icns</string>
             <key>LSMinimumSystemVersion</key>
             <string>10.15</string>
             <key>NSHighResolutionCapable</key>
