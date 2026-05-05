@@ -1,0 +1,70 @@
+name: Publish macOS Intel
+
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-osx-x64:
+    name: Build and Release (osx-x64)
+    runs-on: macos-15-intel
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore APISwitch.sln
+
+      - name: Publish osx-x64
+        run: |
+          dotnet publish src/Avalonia/Avalonia.csproj \
+            -c Release \
+            -r osx-x64 \
+            --self-contained true \
+            -p:UseAppHost=true \
+            -o out/osx-x64
+
+      - name: Build metadata
+        id: meta
+        shell: bash
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          TS="$(date -u +%Y%m%d-%H%M%S)"
+          TAG="build-${TS}-${SHORT_SHA}-r${GITHUB_RUN_NUMBER}"
+          ZIP="APISwitch-osx-x64-${TAG}.zip"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "timestamp=${TS}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "zip=${ZIP}" >> "$GITHUB_OUTPUT"
+
+      - name: Package zip
+        run: |
+          cd out
+          zip -r "${{ steps.meta.outputs.zip }}" osx-x64
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: APISwitch-osx-x64-${{ steps.meta.outputs.tag }}
+          path: out/${{ steps.meta.outputs.zip }}
+          retention-days: 30
+
+      - name: Create GitHub Release (new version per commit)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.meta.outputs.tag }}" \
+            "out/${{ steps.meta.outputs.zip }}" \
+            --title "APISwitch macOS Intel ${{ steps.meta.outputs.tag }}" \
+            --notes "Commit: ${{ github.sha }}\nBranch: ${{ github.ref_name }}\nRun: ${{ github.run_id }}"
