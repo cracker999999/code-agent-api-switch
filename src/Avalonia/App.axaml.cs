@@ -98,7 +98,7 @@ public partial class App : Application
 
         _trayIcon = new TrayIcon
         {
-            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://Avalonia/Assets/app.ico"))),
+            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://APISwitch.Avalonia/Assets/app.ico"))),
             ToolTipText = "APISwitch",
             Menu = menu,
             IsVisible = true

@@ -61,7 +61,7 @@ internal static class DialogService
                 new TextBlock
                 {
                     Text = message,
-                    TextWrapping = TextWrapping.Wrap,
+                    TextWrapping = global::Avalonia.Media.TextWrapping.Wrap,
                     MaxWidth = 420
                 },
                 buttons

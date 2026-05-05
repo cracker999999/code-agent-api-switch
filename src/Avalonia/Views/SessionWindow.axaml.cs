@@ -376,17 +376,17 @@ public partial class SessionWindow : Window
     {
         if (isSelected)
         {
-            button.Background = Avalonia.Media.Brush.Parse("#2563EB");
-            button.Foreground = Avalonia.Media.Brushes.White;
-            button.BorderBrush = Avalonia.Media.Brush.Parse("#1D4ED8");
-            button.BorderThickness = new Avalonia.Thickness(1);
+            button.Background = global::Avalonia.Media.Brush.Parse("#2563EB");
+            button.Foreground = global::Avalonia.Media.Brushes.White;
+            button.BorderBrush = global::Avalonia.Media.Brush.Parse("#1D4ED8");
+            button.BorderThickness = new global::Avalonia.Thickness(1);
             return;
         }
 
-        button.Background = Avalonia.Media.Brushes.White;
-        button.Foreground = Avalonia.Media.Brush.Parse("#111827");
-        button.BorderBrush = Avalonia.Media.Brush.Parse("#D1D5DB");
-        button.BorderThickness = new Avalonia.Thickness(1);
+        button.Background = global::Avalonia.Media.Brushes.White;
+        button.Foreground = global::Avalonia.Media.Brush.Parse("#111827");
+        button.BorderBrush = global::Avalonia.Media.Brush.Parse("#D1D5DB");
+        button.BorderThickness = new global::Avalonia.Thickness(1);
     }
 
     private sealed class SessionListItem

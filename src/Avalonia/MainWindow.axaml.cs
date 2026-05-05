@@ -51,7 +51,6 @@ public partial class MainWindow : Window
         {
             _sessionWindow = new SessionWindow(providerId)
             {
-                Owner = this,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
             _sessionWindow.Closed += (_, _) => _sessionWindow = null;
@@ -65,7 +64,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(WindowClosingEventArgs e)
     {
-        if (OperatingSystem.IsWindows() && Avalonia.Application.Current is App app && !app.IsExitRequested)
+        if (OperatingSystem.IsWindows() && global::Avalonia.Application.Current is App app && !app.IsExitRequested)
         {
             e.Cancel = true;
             Hide();
@@ -342,16 +341,16 @@ public partial class MainWindow : Window
     {
         if (isSelected)
         {
-            button.Background = Avalonia.Media.Brush.Parse("#2563EB");
-            button.Foreground = Avalonia.Media.Brushes.White;
-            button.BorderBrush = Avalonia.Media.Brush.Parse("#1D4ED8");
-            button.BorderThickness = new Avalonia.Thickness(1);
+            button.Background = global::Avalonia.Media.Brush.Parse("#2563EB");
+            button.Foreground = global::Avalonia.Media.Brushes.White;
+            button.BorderBrush = global::Avalonia.Media.Brush.Parse("#1D4ED8");
+            button.BorderThickness = new global::Avalonia.Thickness(1);
             return;
         }
 
-        button.Background = Avalonia.Media.Brushes.White;
-        button.Foreground = Avalonia.Media.Brush.Parse("#111827");
-        button.BorderBrush = Avalonia.Media.Brush.Parse("#D1D5DB");
-        button.BorderThickness = new Avalonia.Thickness(1);
+        button.Background = global::Avalonia.Media.Brushes.White;
+        button.Foreground = global::Avalonia.Media.Brush.Parse("#111827");
+        button.BorderBrush = global::Avalonia.Media.Brush.Parse("#D1D5DB");
+        button.BorderThickness = new global::Avalonia.Thickness(1);
     }
 }
