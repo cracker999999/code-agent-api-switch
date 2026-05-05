@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
+using Avalonia.Threading;
 
 namespace APISwitch.Avalonia;
 
@@ -62,6 +63,7 @@ public partial class App : Application
             };
 
             InitializeTrayIcon(mainWindow, desktop);
+            InitializeDockMenu(mainWindow, desktop);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -79,11 +81,17 @@ public partial class App : Application
             var menu = new NativeMenu();
 
             var showMainWindowItem = new NativeMenuItem("显示主窗口");
-            showMainWindowItem.Click += (_, _) => mainWindow.ShowAndActivate();
+            showMainWindowItem.Click += (_, _) =>
+            {
+                Dispatcher.UIThread.Post(mainWindow.ShowAndActivate);
+            };
             menu.Add(showMainWindowItem);
 
             var sessionWindowItem = new NativeMenuItem("会话管理");
-            sessionWindowItem.Click += (_, _) => mainWindow.OpenSessionManagerWindow();
+            sessionWindowItem.Click += (_, _) =>
+            {
+                Dispatcher.UIThread.Post(mainWindow.OpenSessionManagerWindow);
+            };
             menu.Add(sessionWindowItem);
 
             menu.Add(new NativeMenuItemSeparator());
@@ -91,8 +99,11 @@ public partial class App : Application
             var exitItem = new NativeMenuItem("退出");
             exitItem.Click += (_, _) =>
             {
-                RequestExit();
-                desktop.Shutdown();
+                Dispatcher.UIThread.Post(() =>
+                {
+                    RequestExit();
+                    desktop.Shutdown();
+                });
             };
             menu.Add(exitItem);
 
@@ -104,7 +115,10 @@ public partial class App : Application
                 IsVisible = true
             };
 
-            _trayIcon.Clicked += (_, _) => mainWindow.ShowAndActivate();
+            _trayIcon.Clicked += (_, _) =>
+            {
+                Dispatcher.UIThread.Post(mainWindow.ShowAndActivate);
+            };
         }
         catch
         {
@@ -112,14 +126,58 @@ public partial class App : Application
         }
     }
 
+    private void InitializeDockMenu(MainWindow mainWindow, IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        try
+        {
+            var dockMenu = new NativeMenu();
+
+            var showMainWindowItem = new NativeMenuItem("显示主窗口");
+            showMainWindowItem.Click += (_, _) =>
+            {
+                Dispatcher.UIThread.Post(mainWindow.ShowAndActivate);
+            };
+            dockMenu.Add(showMainWindowItem);
+
+            var sessionWindowItem = new NativeMenuItem("会话管理");
+            sessionWindowItem.Click += (_, _) =>
+            {
+                Dispatcher.UIThread.Post(mainWindow.OpenSessionManagerWindow);
+            };
+            dockMenu.Add(sessionWindowItem);
+
+            dockMenu.Add(new NativeMenuItemSeparator());
+
+            var exitItem = new NativeMenuItem("退出");
+            exitItem.Click += (_, _) =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    RequestExit();
+                    desktop.Shutdown();
+                });
+            };
+            dockMenu.Add(exitItem);
+
+            NativeDock.SetMenu(this, dockMenu);
+        }
+        catch
+        {
+            // ignore dock menu failures to avoid startup crash
+        }
+    }
+
     private static WindowIcon LoadTrayIcon()
     {
         var candidates = new[]
         {
-            "avares://APISwitch/Assets/app-preview-16.png",
             "avares://APISwitch/Assets/app-preview.png",
             "avares://APISwitch/Assets/app.ico",
-            "avares://APISwitch.Avalonia/Assets/app-preview-16.png",
             "avares://APISwitch.Avalonia/Assets/app-preview.png",
             "avares://APISwitch.Avalonia/Assets/app.ico"
         };

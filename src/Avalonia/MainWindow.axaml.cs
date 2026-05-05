@@ -46,20 +46,36 @@ public partial class MainWindow : Window
 
     public async void OpenSessionManagerWindow()
     {
-        var providerId = GetCurrentProviderId();
-        if (_sessionWindow is null)
+        try
         {
-            _sessionWindow = new SessionWindow(providerId)
+            var providerId = GetCurrentProviderId();
+            if (_sessionWindow is null)
             {
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            _sessionWindow.Closed += (_, _) => _sessionWindow = null;
-            _sessionWindow.Show(this);
-            return;
-        }
+                _sessionWindow = new SessionWindow(providerId)
+                {
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                _sessionWindow.Closed += (_, _) => _sessionWindow = null;
 
-        await _sessionWindow.SelectProviderAsync(providerId);
-        _sessionWindow.ShowAndActivate();
+                if (IsVisible)
+                {
+                    _sessionWindow.Show(this);
+                }
+                else
+                {
+                    _sessionWindow.Show();
+                }
+
+                return;
+            }
+
+            await _sessionWindow.SelectProviderAsync(providerId);
+            _sessionWindow.ShowAndActivate();
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(this, "错误", $"打开会话管理失败：{ex.Message}");
+        }
     }
 
     protected override void OnClosing(WindowClosingEventArgs e)

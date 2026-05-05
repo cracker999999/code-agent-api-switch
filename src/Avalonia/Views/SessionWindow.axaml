@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:APISwitch.Avalonia.Views"
         x:Class="APISwitch.Avalonia.Views.SessionWindow"
         Title="会话管理"
         Icon="/Assets/app-preview.png"
@@ -81,7 +82,7 @@
                 </ControlTheme>
               </ListBox.ItemContainerTheme>
               <ListBox.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate DataType="views:SessionListItem">
                   <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                     <TextBlock Text="{Binding Title}"
                                FontSize="13"
