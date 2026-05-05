@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:APISwitch.Models;assembly=Core"
+        x:Class="APISwitch.Avalonia.MainWindow"
+        Title="APISwitch"
+        Width="980"
+        Height="700"
+        MinWidth="760"
+        MinHeight="520"
+        WindowStartupLocation="CenterScreen">
+  <Window.Styles>
+    <Style Selector="Button.tab">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="#D1D5DB" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="#111827" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="14,8" />
+    </Style>
+    <Style Selector="Border.provider-card">
+      <Setter Property="BorderBrush" Value="#D1D5DB" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="White" />
+      <Setter Property="Padding" Value="12" />
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style Selector="Border.provider-card.active">
+      <Setter Property="BorderBrush" Value="#2563EB" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="Button.link-button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Foreground" Value="#2563EB" />
+    </Style>
+    <Style Selector="Button.action-btn">
+      <Setter Property="Margin" Value="8,0,0,0" />
+      <Setter Property="MinWidth" Value="56" />
+      <Setter Property="Height" Value="30" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="16" RowDefinitions="Auto,*">
+    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button x:Name="CodexTabButton" Classes="tab" Click="CodexTabButton_Click" Content="Codex" />
+        <Button x:Name="ClaudeTabButton" Classes="tab" Click="ClaudeTabButton_Click" Content="Claude Code" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button x:Name="SessionManagerButton" Height="36" Click="SessionManagerButton_Click" Content="会话管理" />
+        <Button x:Name="OpenConfigDirectoryButton" Height="36" Click="OpenConfigDirectoryButton_Click" Content="打开配置目录" />
+        <Button x:Name="AddProviderButton" Width="38" Height="38" Click="AddProviderButton_Click" Content="+" FontSize="20" />
+      </StackPanel>
+    </Grid>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl x:Name="ProvidersItemsControl">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="models:Provider">
+            <Border Classes="provider-card" Classes.active="{Binding IsActive}">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Remark}" Foreground="#9CA3AF" FontSize="11" />
+                    <TextBlock Text="使用中" IsVisible="{Binding IsActive}" Foreground="#1D4ED8" FontSize="11" />
+                  </StackPanel>
+                  <Button Classes="link-button" Click="BaseUrlButton_Click" Content="{Binding BaseUrl}" Margin="0,6,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                  <Button Classes="action-btn" Click="ActivateProviderButton_Click" Content="启用" />
+                  <Button Classes="action-btn" Click="TestProviderButton_Click" Content="测试" />
+                  <Button Classes="action-btn" Click="EditProviderButton_Click" Content="编辑" />
+                  <Button Classes="action-btn" Click="DeleteProviderButton_Click" Content="删除" />
+                  <Button Classes="action-btn" Click="MoveProviderUpButton_Click" Content="↑" IsEnabled="{Binding CanMoveUp}" />
+                  <Button Classes="action-btn" Click="MoveProviderDownButton_Click" Content="↓" IsEnabled="{Binding CanMoveDown}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</Window>
