@@ -17,6 +17,7 @@ public partial class App : Application
     private TrayIcon? _trayIcon;
 
     public bool IsExitRequested { get; private set; }
+    public bool HasStatusIcon => _trayIcon is not null;
 
     public override void Initialize()
     {
@@ -60,10 +61,7 @@ public partial class App : Application
                 _singleInstanceMutex = null;
             };
 
-            if (OperatingSystem.IsWindows())
-            {
-                InitializeTrayIcon(mainWindow, desktop);
-            }
+            InitializeTrayIcon(mainWindow, desktop);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -76,34 +74,65 @@ public partial class App : Application
 
     private void InitializeTrayIcon(MainWindow mainWindow, IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var menu = new NativeMenu();
-
-        var showMainWindowItem = new NativeMenuItem("显示主窗口");
-        showMainWindowItem.Click += (_, _) => mainWindow.ShowAndActivate();
-        menu.Add(showMainWindowItem);
-
-        var sessionWindowItem = new NativeMenuItem("会话管理");
-        sessionWindowItem.Click += (_, _) => mainWindow.OpenSessionManagerWindow();
-        menu.Add(sessionWindowItem);
-
-        menu.Add(new NativeMenuItemSeparator());
-
-        var exitItem = new NativeMenuItem("退出");
-        exitItem.Click += (_, _) =>
+        try
         {
-            RequestExit();
-            desktop.Shutdown();
-        };
-        menu.Add(exitItem);
+            var menu = new NativeMenu();
 
-        _trayIcon = new TrayIcon
+            var showMainWindowItem = new NativeMenuItem("显示主窗口");
+            showMainWindowItem.Click += (_, _) => mainWindow.ShowAndActivate();
+            menu.Add(showMainWindowItem);
+
+            var sessionWindowItem = new NativeMenuItem("会话管理");
+            sessionWindowItem.Click += (_, _) => mainWindow.OpenSessionManagerWindow();
+            menu.Add(sessionWindowItem);
+
+            menu.Add(new NativeMenuItemSeparator());
+
+            var exitItem = new NativeMenuItem("退出");
+            exitItem.Click += (_, _) =>
+            {
+                RequestExit();
+                desktop.Shutdown();
+            };
+            menu.Add(exitItem);
+
+            _trayIcon = new TrayIcon
+            {
+                Icon = LoadTrayIcon(),
+                ToolTipText = "APISwitch",
+                Menu = menu,
+                IsVisible = true
+            };
+
+            _trayIcon.Clicked += (_, _) => mainWindow.ShowAndActivate();
+        }
+        catch
         {
-            Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://APISwitch.Avalonia/Assets/app.ico"))),
-            ToolTipText = "APISwitch",
-            Menu = menu,
-            IsVisible = true
+            _trayIcon = null;
+        }
+    }
+
+    private static WindowIcon LoadTrayIcon()
+    {
+        var candidates = new[]
+        {
+            "avares://APISwitch.Avalonia/Assets/app-preview-16.png",
+            "avares://APISwitch.Avalonia/Assets/app-preview.png",
+            "avares://APISwitch.Avalonia/Assets/app.ico"
         };
 
-        _trayIcon.Clicked += (_, _) => mainWindow.ShowAndActivate();
+        foreach (var candidate in candidates)
+        {
+            try
+            {
+                return new WindowIcon(AssetLoader.Open(new Uri(candidate)));
+            }
+            catch
+            {
+                continue;
+            }
+        }
+
+        throw new InvalidOperationException("无法加载托盘图标资源。");
     }
 }

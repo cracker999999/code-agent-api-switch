@@ -1,11 +1,15 @@
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using APISwitch.Avalonia.Services;
 using APISwitch.Models;
 using APISwitch.Services;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 
 namespace APISwitch.Avalonia.Views;
 
@@ -85,11 +89,10 @@ public partial class SessionWindow : Window
 
         _selectedSession = item.Session;
         SessionTitleTextBlock.Text = item.Title;
-        SessionProjectPathTextBlock.Text = _selectedSession.ProjectDir;
-        SessionProjectPathTextBlock.IsVisible = !string.IsNullOrWhiteSpace(_selectedSession.ProjectDir);
-        OpenProjectButton.IsVisible = !string.IsNullOrWhiteSpace(_selectedSession.ProjectDir);
+        SessionProjectPathButton.Content = _selectedSession.ProjectDir;
+        SessionProjectPathButton.IsVisible = !string.IsNullOrWhiteSpace(_selectedSession.ProjectDir);
         DeleteSessionButton.IsVisible = true;
-        MessagesTextBox.Text = "加载中...";
+        ShowMessagePlaceholder("加载中...");
 
         var currentVersion = ++_loadMessagesVersion;
         List<SessionMessage> messages;
@@ -106,7 +109,7 @@ public partial class SessionWindow : Window
             }
 
             await DialogService.ShowErrorAsync(this, "错误", $"加载会话失败：{ex.Message}");
-            MessagesTextBox.Text = "加载失败";
+            ShowMessagePlaceholder("加载失败");
             return;
         }
 
@@ -115,8 +118,7 @@ public partial class SessionWindow : Window
             return;
         }
 
-        MessagesTextBox.Text = BuildMessagesText(messages);
-        MessagesTextBox.CaretIndex = 0;
+        RenderMessages(messages);
     }
 
     private async void DeleteSessionButton_Click(object? sender, RoutedEventArgs e)
@@ -148,7 +150,7 @@ public partial class SessionWindow : Window
         ResetDetailPanel();
     }
 
-    private async void OpenProjectButton_Click(object? sender, RoutedEventArgs e)
+    private async void SessionProjectPathButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_selectedSession is null || string.IsNullOrWhiteSpace(_selectedSession.ProjectDir))
         {
@@ -181,8 +183,9 @@ public partial class SessionWindow : Window
         _selectedSession = null;
         _loadMessagesVersion++;
 
+        SessionListBox.SelectedItem = null;
         SessionListBox.ItemsSource = null;
-        SessionCountTextBlock.Text = "会话（加载中...）";
+        SessionCountTextBlock.Text = "会话列表（加载中...）";
         SessionEmptyTextBlock.IsVisible = false;
         ResetDetailPanel();
 
@@ -205,6 +208,7 @@ public partial class SessionWindow : Window
             .Select(session => new SessionListItem(
                 session,
                 BuildDisplayTitle(session),
+                BuildProjectGroupName(session),
                 FormatRelativeTime(session.LastActiveAt),
                 FormatFileSize(GetSessionFileLength(session.SourcePath))))
             .ToList();
@@ -212,16 +216,6 @@ public partial class SessionWindow : Window
         SessionListBox.ItemsSource = items;
         SessionCountTextBlock.Text = $"会话列表 ({items.Count})";
         SessionEmptyTextBlock.IsVisible = items.Count == 0;
-    }
-
-    private void ResetDetailPanel()
-    {
-        SessionTitleTextBlock.Text = "请选择左侧会话";
-        SessionProjectPathTextBlock.Text = string.Empty;
-        SessionProjectPathTextBlock.IsVisible = false;
-        OpenProjectButton.IsVisible = false;
-        DeleteSessionButton.IsVisible = false;
-        MessagesTextBox.Text = "选中会话后查看聊天详情";
     }
 
     private static string BuildDisplayTitle(SessionMeta session)
@@ -232,6 +226,21 @@ public partial class SessionWindow : Window
         }
 
         return string.IsNullOrWhiteSpace(session.SessionId) ? "未命名会话" : session.SessionId;
+    }
+
+    private static string BuildProjectGroupName(SessionMeta session)
+    {
+        if (!string.IsNullOrWhiteSpace(session.ProjectDir))
+        {
+            var normalized = session.ProjectDir.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var name = Path.GetFileName(normalized);
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                return name;
+            }
+        }
+
+        return "未分组项目";
     }
 
     private static long GetSessionFileLength(string sourcePath)
@@ -274,6 +283,240 @@ public partial class SessionWindow : Window
         return $"{sizeGb:0.0} GB";
     }
 
+    private void ResetDetailPanel()
+    {
+        SessionTitleTextBlock.Text = "请选择左侧会话";
+        SessionProjectPathButton.Content = string.Empty;
+        SessionProjectPathButton.IsVisible = false;
+        DeleteSessionButton.IsVisible = false;
+        ShowMessagePlaceholder("选中会话后查看聊天详情");
+    }
+
+    private void ShowMessagePlaceholder(string text)
+    {
+        MessagesPanel.Children.Clear();
+        MessagesPanel.Children.Add(CreateTextBlock(text, 13, CreateBrush("#9CA3AF"), textWrapping: TextWrapping.Wrap));
+    }
+
+    private void RenderMessages(IReadOnlyList<SessionMessage> messages)
+    {
+        MessagesPanel.Children.Clear();
+
+        if (messages.Count == 0)
+        {
+            ShowMessagePlaceholder("暂无消息");
+            return;
+        }
+
+        var isCodexSession = _selectedSession is not null &&
+            string.Equals(_selectedSession.ProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase);
+
+        for (var index = 0; index < messages.Count; index++)
+        {
+            var message = messages[index];
+            if (string.Equals(message.Role, "tool", StringComparison.OrdinalIgnoreCase))
+            {
+                MessagesPanel.Children.Add(CreateCollapsedMessageElement("工具", message.Content, message.Timestamp));
+                continue;
+            }
+
+            if (isCodexSession &&
+                index == 0 &&
+                string.Equals(message.Role, "developer", StringComparison.OrdinalIgnoreCase))
+            {
+                MessagesPanel.Children.Add(CreateCollapsedMessageElement("developer", message.Content, message.Timestamp));
+                continue;
+            }
+
+            var isUser = string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase);
+            MessagesPanel.Children.Add(CreateBubbleMessageElement(
+                message.Content,
+                isUser,
+                GetRoleDisplayName(message.Role),
+                message.Timestamp,
+                message.ImageDataUrls));
+        }
+    }
+
+    private static Control CreateBubbleMessageElement(
+        string content,
+        bool isUser,
+        string roleDisplayName,
+        DateTime timestamp,
+        IReadOnlyList<string> imageDataUrls)
+    {
+        var bubble = new Border
+        {
+            Background = isUser ? CreateBrush("#2563EB") : CreateBrush("#F3F4F6"),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 0, 10),
+            HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+            MaxWidth = 520
+        };
+
+        var container = new StackPanel
+        {
+            Spacing = 6
+        };
+
+        var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var roleText = CreateTextBlock(
+            roleDisplayName,
+            12,
+            isUser ? Brushes.White : CreateBrush("#3B82F6"),
+            FontWeight.SemiBold);
+        header.Children.Add(roleText);
+
+        var timeText = CreateTextBlock(
+            FormatMessageTime(timestamp),
+            12,
+            isUser ? CreateBrush("#DBEAFE") : CreateBrush("#6B7280"));
+        Grid.SetColumn(timeText, 1);
+        header.Children.Add(timeText);
+
+        container.Children.Add(header);
+
+        foreach (var imageDataUrl in imageDataUrls)
+        {
+            var imageElement = CreateImageElementFromDataUrl(imageDataUrl);
+            if (imageElement is not null)
+            {
+                container.Children.Add(imageElement);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(content))
+        {
+            container.Children.Add(CreateTextBlock(
+                content,
+                13,
+                isUser ? Brushes.White : CreateBrush("#111827"),
+                textWrapping: TextWrapping.Wrap));
+        }
+
+        bubble.Child = container;
+        return bubble;
+    }
+
+    private static Control CreateCollapsedMessageElement(string title, string content, DateTime timestamp)
+    {
+        var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        header.Children.Add(CreateTextBlock(title, 12, CreateBrush("#1E3A8A"), FontWeight.SemiBold));
+
+        var timeText = CreateTextBlock(FormatMessageTime(timestamp), 12, CreateBrush("#6B7280"));
+        Grid.SetColumn(timeText, 1);
+        header.Children.Add(timeText);
+
+        var expander = new Expander
+        {
+            Header = header,
+            IsExpanded = false,
+            Margin = new Thickness(0, 0, 0, 10),
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+
+        expander.Content = new Border
+        {
+            Background = CreateBrush("#EEF2FF"),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10, 8, 10, 8),
+            Child = CreateTextBlock(content, 12, CreateBrush("#1E3A8A"), textWrapping: TextWrapping.Wrap)
+        };
+
+        return expander;
+    }
+
+    private static TextBlock CreateTextBlock(
+        string text,
+        double fontSize,
+        IBrush foreground,
+        FontWeight? fontWeight = null,
+        TextWrapping textWrapping = TextWrapping.NoWrap)
+    {
+        var textBlock = new TextBlock
+        {
+            Text = text,
+            FontSize = fontSize,
+            Foreground = foreground,
+            TextWrapping = textWrapping,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        if (fontWeight.HasValue)
+        {
+            textBlock.FontWeight = fontWeight.Value;
+        }
+
+        return textBlock;
+    }
+
+    private static Control? CreateImageElementFromDataUrl(string imageDataUrl)
+    {
+        var image = DecodeDataUrlImage(imageDataUrl);
+        if (image is null)
+        {
+            return null;
+        }
+
+        return new Border
+        {
+            Margin = new Thickness(0, 0, 0, 8),
+            CornerRadius = new CornerRadius(6),
+            ClipToBounds = true,
+            Child = new Image
+            {
+                Source = image,
+                Stretch = Stretch.Uniform,
+                MaxWidth = 420,
+                MaxHeight = 320
+            }
+        };
+    }
+
+    private static Bitmap? DecodeDataUrlImage(string imageDataUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageDataUrl))
+        {
+            return null;
+        }
+
+        var commaIndex = imageDataUrl.IndexOf(',');
+        if (commaIndex <= 0 || commaIndex >= imageDataUrl.Length - 1)
+        {
+            return null;
+        }
+
+        var prefix = imageDataUrl[..commaIndex];
+        if (!prefix.Contains(";base64", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var base64Part = imageDataUrl[(commaIndex + 1)..];
+        try
+        {
+            var bytes = Convert.FromBase64String(base64Part);
+            return new Bitmap(new MemoryStream(bytes));
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private void UpdateTabButtons()
+    {
+        SetTabButtonSelectedState(CodexTabButton, string.Equals(_currentProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase));
+        SetTabButtonSelectedState(ClaudeTabButton, string.Equals(_currentProviderId, SessionService.ProviderClaude, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string FormatRelativeTime(DateTime timestamp)
     {
         var now = DateTime.Now;
@@ -306,39 +549,6 @@ public partial class SessionWindow : Window
         return timestamp.ToString("yyyy/MM/dd");
     }
 
-    private static string BuildMessagesText(IReadOnlyList<SessionMessage> messages)
-    {
-        if (messages.Count == 0)
-        {
-            return "暂无消息";
-        }
-
-        var builder = new StringBuilder();
-        foreach (var message in messages)
-        {
-            builder.Append('[')
-                .Append(message.Timestamp.ToString("yyyy/M/d HH:mm:ss"))
-                .Append("] ")
-                .Append(GetRoleDisplayName(message.Role))
-                .Append(':')
-                .AppendLine();
-
-            if (!string.IsNullOrWhiteSpace(message.Content))
-            {
-                builder.AppendLine(message.Content.Trim());
-            }
-
-            if (message.ImageDataUrls.Count > 0)
-            {
-                builder.AppendLine($"[images: {message.ImageDataUrls.Count}]");
-            }
-
-            builder.AppendLine();
-        }
-
-        return builder.ToString().TrimEnd();
-    }
-
     private static string GetRoleDisplayName(string role)
     {
         if (string.Equals(role, "user", StringComparison.OrdinalIgnoreCase))
@@ -366,35 +576,40 @@ public partial class SessionWindow : Window
             : SessionService.ProviderCodex;
     }
 
-    private void UpdateTabButtons()
+    private static string FormatMessageTime(DateTime timestamp)
     {
-        SetTabButtonSelectedState(CodexTabButton, string.Equals(_currentProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase));
-        SetTabButtonSelectedState(ClaudeTabButton, string.Equals(_currentProviderId, SessionService.ProviderClaude, StringComparison.OrdinalIgnoreCase));
+        return timestamp.ToString("yyyy/M/d HH:mm:ss");
     }
 
     private static void SetTabButtonSelectedState(Button button, bool isSelected)
     {
         if (isSelected)
         {
-            button.Background = global::Avalonia.Media.Brush.Parse("#2563EB");
-            button.Foreground = global::Avalonia.Media.Brushes.White;
-            button.BorderBrush = global::Avalonia.Media.Brush.Parse("#1D4ED8");
-            button.BorderThickness = new global::Avalonia.Thickness(1);
+            button.Background = CreateBrush("#2563EB");
+            button.Foreground = Brushes.White;
+            button.BorderBrush = CreateBrush("#1D4ED8");
+            button.BorderThickness = new Thickness(1);
             return;
         }
 
-        button.Background = global::Avalonia.Media.Brushes.White;
-        button.Foreground = global::Avalonia.Media.Brush.Parse("#111827");
-        button.BorderBrush = global::Avalonia.Media.Brush.Parse("#D1D5DB");
-        button.BorderThickness = new global::Avalonia.Thickness(1);
+        button.Background = Brushes.White;
+        button.Foreground = CreateBrush("#111827");
+        button.BorderBrush = CreateBrush("#D1D5DB");
+        button.BorderThickness = new Thickness(1);
+    }
+
+    private static IBrush CreateBrush(string hexColor)
+    {
+        return new SolidColorBrush(Color.Parse(hexColor));
     }
 
     private sealed class SessionListItem
     {
-        public SessionListItem(SessionMeta session, string title, string relativeTime, string fileSize)
+        public SessionListItem(SessionMeta session, string title, string projectGroupName, string relativeTime, string fileSize)
         {
             Session = session;
             Title = title;
+            ProjectGroupName = projectGroupName;
             RelativeTime = relativeTime;
             FileSize = fileSize;
         }
@@ -402,6 +617,8 @@ public partial class SessionWindow : Window
         public SessionMeta Session { get; }
 
         public string Title { get; }
+
+        public string ProjectGroupName { get; }
 
         public string RelativeTime { get; }
 

@@ -51,6 +51,7 @@ public partial class MainWindow : Window
         {
             _sessionWindow = new SessionWindow(providerId)
             {
+                Owner = this,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
             _sessionWindow.Closed += (_, _) => _sessionWindow = null;
@@ -64,7 +65,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(WindowClosingEventArgs e)
     {
-        if (OperatingSystem.IsWindows() && global::Avalonia.Application.Current is App app && !app.IsExitRequested)
+        if (global::Avalonia.Application.Current is App app && app.HasStatusIcon && !app.IsExitRequested)
         {
             e.Cancel = true;
             Hide();
