@@ -51,11 +51,10 @@ public partial class MainWindow : Window
         {
             _sessionWindow = new SessionWindow(providerId)
             {
-                Owner = this,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
             _sessionWindow.Closed += (_, _) => _sessionWindow = null;
-            _sessionWindow.Show();
+            _sessionWindow.Show(this);
             return;
         }
 
