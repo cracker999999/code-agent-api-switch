@@ -467,7 +467,7 @@ public partial class SessionWindow : Window
             Stroke = CreateBrush("#374151"),
             StrokeThickness = 2,
             StrokeLineCap = PenLineCap.Round,
-            StrokeLineJoin = PenLineJoin.Round,
+            StrokeJoin = PenLineJoin.Round,
             Width = 12,
             Height = 9,
             HorizontalAlignment = HorizontalAlignment.Center,
