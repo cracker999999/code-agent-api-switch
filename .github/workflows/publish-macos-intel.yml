@@ -42,7 +42,7 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           TS="$(date -u +%Y%m%d-%H%M%S)"
           TAG="${TS}-${SHORT_SHA}-r${GITHUB_RUN_NUMBER}"
-          ZIP="APISwitch-macos-intel-${TAG}.zip"
+          ZIP="APISwitch-osx-intel-${TAG}.zip"
           echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
           echo "timestamp=${TS}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
@@ -118,5 +118,5 @@ jobs:
         run: |
           gh release create "${{ steps.meta.outputs.tag }}" \
             "out/${{ steps.meta.outputs.zip }}" \
-            --title "APISwitch macOS Intel ${{ steps.meta.outputs.tag }}" \
+            --title "APISwitch OSX Intel ${{ steps.meta.outputs.tag }}" \
             --notes "Commit: ${{ github.sha }}\nBranch: ${{ github.ref_name }}\nRun: ${{ github.run_id }}"

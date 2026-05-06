@@ -131,6 +131,8 @@
                     Grid.Column="1"
                     Width="76"
                     Height="30"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
                     Click="DeleteSessionButton_Click"
                     IsVisible="False"
                     Content="删除会话" />

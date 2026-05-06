@@ -30,7 +30,9 @@ internal static class DialogService
         {
             Content = "确认",
             MinWidth = 80,
-            HorizontalAlignment = HorizontalAlignment.Right
+            HorizontalAlignment = HorizontalAlignment.Right,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center
         };
 
         var cancelButton = new Button
@@ -38,7 +40,9 @@ internal static class DialogService
             Content = "取消",
             MinWidth = 80,
             IsVisible = showCancel,
-            Margin = new Thickness(8, 0, 0, 0)
+            Margin = new Thickness(8, 0, 0, 0),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center
         };
 
         var buttons = new StackPanel
