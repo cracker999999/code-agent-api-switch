@@ -21,6 +21,8 @@ public partial class SessionWindow : Window
     private SessionMeta? _selectedSession;
     private List<SessionGroupItem> _sessionGroups = new();
     private int _loadMessagesVersion;
+    private ListBox? _selectedGroupListBox;
+    private bool _isSwitchingSelection;
 
     public SessionWindow(string? initialProviderId = null)
     {
@@ -88,12 +90,30 @@ public partial class SessionWindow : Window
 
         if (listBox.SelectedItem is not SessionListItem item)
         {
+            if (_isSwitchingSelection)
+            {
+                return;
+            }
+
+            if (_selectedGroupListBox is not null && !ReferenceEquals(_selectedGroupListBox, listBox))
+            {
+                return;
+            }
+
+            _selectedGroupListBox = null;
             _selectedSession = null;
             ResetDetailPanel();
             return;
         }
 
-        DeselectOtherGroupLists(listBox);
+        if (_selectedGroupListBox is not null && !ReferenceEquals(_selectedGroupListBox, listBox))
+        {
+            _isSwitchingSelection = true;
+            _selectedGroupListBox.SelectedItem = null;
+            _isSwitchingSelection = false;
+        }
+
+        _selectedGroupListBox = listBox;
 
         _selectedSession = item.Session;
         SessionTitleTextBlock.Text = item.Title;
@@ -191,6 +211,7 @@ public partial class SessionWindow : Window
     {
         _selectedSession = null;
         _loadMessagesVersion++;
+        _selectedGroupListBox = null;
 
         _sessionGroups.Clear();
         SessionGroupsItemsControl.ItemsSource = null;
@@ -556,47 +577,6 @@ public partial class SessionWindow : Window
         }
 
         return groups;
-    }
-
-    private void DeselectOtherGroupLists(ListBox selectedSource)
-    {
-        foreach (var listBox in FindDescendantListBoxes(SessionGroupsItemsControl))
-        {
-            if (ReferenceEquals(listBox, selectedSource))
-            {
-                continue;
-            }
-
-            if (listBox.SelectedItem is not null)
-            {
-                listBox.SelectedItem = null;
-            }
-        }
-    }
-
-    private static IEnumerable<ListBox> FindDescendantListBoxes(Control root)
-    {
-        var queue = new Queue<Control>();
-        queue.Enqueue(root);
-
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            foreach (var child in current.GetVisualChildren())
-            {
-                if (child is not Control childControl)
-                {
-                    continue;
-                }
-
-                if (childControl is ListBox listBox)
-                {
-                    yield return listBox;
-                }
-
-                queue.Enqueue(childControl);
-            }
-        }
     }
 
     private void UpdateTabButtons()

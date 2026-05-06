@@ -39,11 +39,9 @@ jobs:
         id: meta
         shell: bash
         run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
           TS="$(date -u +%Y%m%d-%H%M%S)"
-          TAG="${TS}-${SHORT_SHA}-r${GITHUB_RUN_NUMBER}"
+          TAG="${TS}-r${GITHUB_RUN_NUMBER}"
           ZIP="APISwitch-osx-intel-${TAG}.zip"
-          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
           echo "timestamp=${TS}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "zip=${ZIP}" >> "$GITHUB_OUTPUT"
