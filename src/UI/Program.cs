@@ -1,6 +1,6 @@
 using Avalonia;
 
-namespace APISwitch.Avalonia;
+namespace APISwitch.UI;
 
 internal static class Program
 {

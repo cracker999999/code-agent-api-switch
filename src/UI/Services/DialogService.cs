@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 
-namespace APISwitch.Avalonia.Services;
+namespace APISwitch.UI.Services;
 
 internal static class DialogService
 {

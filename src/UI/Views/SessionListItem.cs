@@ -1,6 +1,6 @@
 using APISwitch.Models;
 
-namespace APISwitch.Avalonia.Views;
+namespace APISwitch.UI.Views;
 
 public sealed class SessionListItem
 {

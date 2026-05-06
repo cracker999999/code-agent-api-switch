@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="APISwitch.Avalonia.Views.ProviderDialog"
+        x:Class="APISwitch.UI.Views.ProviderDialog"
         Title="供应商"
         Width="640"
         SizeToContent="Height"

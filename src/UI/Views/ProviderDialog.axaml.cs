@@ -1,10 +1,10 @@
-using APISwitch.Avalonia.Services;
+using APISwitch.UI.Services;
 using APISwitch.Models;
 using APISwitch.Services;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
-namespace APISwitch.Avalonia.Views;
+namespace APISwitch.UI.Views;
 
 public partial class ProviderDialog : Window
 {

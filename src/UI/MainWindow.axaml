@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:APISwitch.Models;assembly=Core"
         xmlns:shapes="clr-namespace:Avalonia.Controls.Shapes;assembly=Avalonia.Controls"
-        x:Class="APISwitch.Avalonia.MainWindow"
+        x:Class="APISwitch.UI.MainWindow"
         Title="APISwitch"
         Icon="/Assets/app-preview.png"
         Width="900"

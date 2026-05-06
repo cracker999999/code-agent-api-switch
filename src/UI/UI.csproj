@@ -5,8 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>APISwitch</AssemblyName>
-    <PackageId>APISwitch.Avalonia</PackageId>
-    <RootNamespace>APISwitch.Avalonia</RootNamespace>
+    <PackageId>APISwitch.UI</PackageId>
+    <RootNamespace>APISwitch.UI</RootNamespace>
     <ApplicationTitle>APISwitch</ApplicationTitle>
     <Product>APISwitch</Product>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>

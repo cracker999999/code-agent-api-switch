@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
-using APISwitch.Avalonia.Services;
-using APISwitch.Avalonia.Views;
+using APISwitch.UI.Services;
+using APISwitch.UI.Views;
 using APISwitch.Models;
 using APISwitch.Services;
 using Avalonia;
@@ -10,7 +10,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input;
 
-namespace APISwitch.Avalonia;
+namespace APISwitch.UI;
 
 public partial class MainWindow : Window
 {

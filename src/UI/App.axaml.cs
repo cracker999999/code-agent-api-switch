@@ -8,12 +8,12 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
 using Avalonia.Threading;
 
-namespace APISwitch.Avalonia;
+namespace APISwitch.UI;
 
 public partial class App : Application
 {
     private const int NotifyIconTextMaxLength = 63;
-    private const string SingleInstanceMutexName = "APISwitch.Avalonia.SingleInstance";
+    private const string SingleInstanceMutexName = "APISwitch.UI.SingleInstance";
 
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
@@ -231,8 +231,8 @@ public partial class App : Application
         {
             "avares://APISwitch/Assets/app-preview.png",
             "avares://APISwitch/Assets/app.ico",
-            "avares://APISwitch.Avalonia/Assets/app-preview.png",
-            "avares://APISwitch.Avalonia/Assets/app.ico"
+            "avares://APISwitch.UI/Assets/app-preview.png",
+            "avares://APISwitch.UI/Assets/app.ico"
         };
 
         foreach (var candidate in candidates)

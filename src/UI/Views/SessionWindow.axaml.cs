@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.IO;
-using APISwitch.Avalonia.Services;
+using APISwitch.UI.Services;
 using APISwitch.Models;
 using APISwitch.Services;
 using Avalonia;
@@ -11,7 +11,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 
-namespace APISwitch.Avalonia.Views;
+namespace APISwitch.UI.Views;
 
 public partial class SessionWindow : Window
 {
