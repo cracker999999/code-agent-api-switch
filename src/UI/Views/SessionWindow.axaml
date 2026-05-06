@@ -41,6 +41,55 @@
       <Setter Property="MaxWidth" Value="280" />
     </Style>
 
+    <Style Selector="ItemsControl#SessionGroupsItemsControl > ContentPresenter">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="#D1D5DB" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,10,10,10" />
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="BorderBrush" Value="#4B5563" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Margin" Value="10,0,0,0" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Path#ExpandCollapseChevron">
+      <Setter Property="Data" Value="M 1,2 L 6,7 L 11,2" />
+      <Setter Property="Stroke" Value="#374151" />
+      <Setter Property="StrokeThickness" Value="2" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="StrokeJoin" Value="Round" />
+      <Setter Property="Stretch" Value="None" />
+    </Style>
+
+    <Style Selector="TextBlock.session-group-title">
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="#6B7280" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
   </Window.Styles>
 
   <Grid Margin="16" Background="#F3F4F6" RowDefinitions="Auto,*">
@@ -66,14 +115,10 @@
               <ItemsControl x:Name="SessionGroupsItemsControl">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,8">
+                    <Expander Classes="session-group-expander" IsExpanded="{Binding IsExpanded}">
                       <Expander.Header>
-                        <TextBlock Text="{Binding GroupName}"
-                                   Margin="2,4,2,2"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   Foreground="#6B7280"
-                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="session-group-title"
+                                   Text="{Binding GroupName}" />
                       </Expander.Header>
                       <ListBox ItemsSource="{Binding Items}"
                                SelectionChanged="SessionGroupListBox_SelectionChanged">
