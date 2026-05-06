@@ -5,5 +5,19 @@
              RequestedThemeVariant="Default">
   <Application.Styles>
     <FluentTheme />
+
+    <Style Selector="ScrollViewer">
+      <Setter Property="AllowAutoHide" Value="False" />
+    </Style>
+
+    <Style Selector="ScrollBar:vertical">
+      <Setter Property="Width" Value="9.6" />
+      <Setter Property="MinWidth" Value="9.6" />
+    </Style>
+
+    <Style Selector="ScrollBar:horizontal">
+      <Setter Property="Height" Value="9.6" />
+      <Setter Property="MinHeight" Value="9.6" />
+    </Style>
   </Application.Styles>
 </Application>

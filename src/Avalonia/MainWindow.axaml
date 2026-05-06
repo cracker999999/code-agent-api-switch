@@ -64,8 +64,7 @@
     <Style Selector="Button.plus-action">
       <Setter Property="Width" Value="38" />
       <Setter Property="Height" Value="38" />
-      <Setter Property="FontSize" Value="26" />
-      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Padding" Value="0" />
       <Setter Property="Background" Value="#D1D5DB" />
       <Setter Property="BorderBrush" Value="#D1D5DB" />
       <Setter Property="BorderThickness" Value="1" />
@@ -84,7 +83,22 @@
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
         <Button x:Name="SessionManagerButton" Classes="header-action" Click="SessionManagerButton_Click" Content="会话管理" />
         <Button x:Name="OpenConfigDirectoryButton" Classes="header-action" Click="OpenConfigDirectoryButton_Click" Content="打开配置目录" />
-        <Button x:Name="AddProviderButton" Classes="plus-action" Click="AddProviderButton_Click" Content="+" />
+        <Button x:Name="AddProviderButton" Classes="plus-action" Click="AddProviderButton_Click">
+          <Grid Width="14" Height="14">
+            <Border Width="14"
+                    Height="2"
+                    Background="#111827"
+                    CornerRadius="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center" />
+            <Border Width="2"
+                    Height="14"
+                    Background="#111827"
+                    CornerRadius="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center" />
+          </Grid>
+        </Button>
       </StackPanel>
     </Grid>
 
