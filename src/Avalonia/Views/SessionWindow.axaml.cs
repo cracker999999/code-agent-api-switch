@@ -461,7 +461,7 @@ public partial class SessionWindow : Window
 
         var collapsedChevron = Geometry.Parse("M 1,2 L 6,7 L 11,2");
         var expandedChevron = Geometry.Parse("M 1,7 L 6,2 L 11,7");
-        var chevronPath = new Avalonia.Controls.Shapes.Path
+        var chevronPath = new global::Avalonia.Controls.Shapes.Path
         {
             Data = collapsedChevron,
             Stroke = CreateBrush("#374151"),
