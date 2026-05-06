@@ -114,7 +114,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          NOTES="$(printf 'Commit: %s\nBranch: %s\nRun: %s\n' \
+            '${{ github.sha }}' \
+            '${{ github.ref_name }}' \
+            '${{ github.run_id }}')"
+
           gh release create "${{ steps.meta.outputs.tag }}" \
             "out/${{ steps.meta.outputs.zip }}" \
             --title "APISwitch OSX Intel ${{ steps.meta.outputs.tag }}" \
-            --notes "Commit: ${{ github.sha }}\nBranch: ${{ github.ref_name }}\nRun: ${{ github.run_id }}"
+            --notes "$NOTES"
