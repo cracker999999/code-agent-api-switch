@@ -32,6 +32,15 @@
       <Setter Property="FontSize" Value="12" />
     </Style>
 
+    <Style Selector="SelectableTextBlock.session-id">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="#6B7280" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="MaxWidth" Value="280" />
+    </Style>
+
   </Window.Styles>
 
   <Grid Margin="16" Background="#F3F4F6" RowDefinitions="Auto,*">
@@ -53,57 +62,74 @@
                      Text="会话列表 (0)" />
 
           <Grid Grid.Row="1" Margin="10,0,10,10">
-            <ListBox x:Name="SessionListBox"
-                     SelectionChanged="SessionListBox_SelectionChanged"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto">
-              <ListBox.ItemContainerTheme>
-                <ControlTheme TargetType="ListBoxItem">
-                  <Setter Property="Margin" Value="0,0,0,8" />
-                  <Setter Property="Padding" Value="0" />
-                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                  <Setter Property="FocusAdorner" Value="{x:Null}" />
-                  <Setter Property="Template">
-                    <ControlTemplate>
-                      <Border x:Name="ItemBorder"
-                              Padding="10"
-                              Background="White"
-                              BorderBrush="#E5E7EB"
-                              BorderThickness="1"
-                              CornerRadius="8">
-                        <ContentPresenter Content="{TemplateBinding Content}"
-                                          ContentTemplate="{TemplateBinding ContentTemplate}" />
-                      </Border>
-                    </ControlTemplate>
-                  </Setter>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl x:Name="SessionGroupsItemsControl">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Expander IsExpanded="{Binding IsExpanded}" Margin="0,0,0,8">
+                      <Expander.Header>
+                        <TextBlock Text="{Binding GroupName}"
+                                   Margin="2,4,2,2"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="#6B7280"
+                                   TextTrimming="CharacterEllipsis" />
+                      </Expander.Header>
+                      <ListBox ItemsSource="{Binding Items}"
+                               SelectionChanged="SessionGroupListBox_SelectionChanged">
+                        <ListBox.ItemContainerTheme>
+                          <ControlTheme TargetType="ListBoxItem">
+                            <Setter Property="Margin" Value="0,0,0,8" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="FocusAdorner" Value="{x:Null}" />
+                            <Setter Property="Template">
+                              <ControlTemplate>
+                                <Border x:Name="ItemBorder"
+                                        Padding="10"
+                                        Background="White"
+                                        BorderBrush="#E5E7EB"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                  <ContentPresenter Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}" />
+                                </Border>
+                              </ControlTemplate>
+                            </Setter>
 
-                  <Style Selector="^:selected /template/ Border#ItemBorder">
-                    <Setter Property="BorderBrush" Value="#2563EB" />
-                    <Setter Property="BorderThickness" Value="2" />
-                  </Style>
-                </ControlTheme>
-              </ListBox.ItemContainerTheme>
-              <ListBox.ItemTemplate>
-                <DataTemplate>
-                  <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                    <TextBlock Text="{Binding Title}"
-                               FontSize="13"
-                               FontWeight="SemiBold"
-                               Foreground="#111827"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Column="1"
-                               Margin="8,0,0,0"
-                               Text="{Binding FileSize}"
-                               FontSize="11"
-                               Foreground="#6B7280" />
-                    <TextBlock Grid.Row="1"
-                               Margin="0,6,0,0"
-                               Text="{Binding RelativeTime}"
-                               FontSize="12"
-                               Foreground="#6B7280" />
-                  </Grid>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
+                            <Style Selector="^:selected /template/ Border#ItemBorder">
+                              <Setter Property="BorderBrush" Value="#2563EB" />
+                              <Setter Property="BorderThickness" Value="2" />
+                            </Style>
+                          </ControlTheme>
+                        </ListBox.ItemContainerTheme>
+                        <ListBox.ItemTemplate>
+                          <DataTemplate>
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                              <TextBlock Text="{Binding Title}"
+                                         FontSize="13"
+                                         FontWeight="SemiBold"
+                                         Foreground="#111827"
+                                         TextTrimming="CharacterEllipsis" />
+                              <TextBlock Grid.Column="1"
+                                         Margin="8,0,0,0"
+                                         Text="{Binding FileSize}"
+                                         FontSize="11"
+                                         Foreground="#6B7280" />
+                              <TextBlock Grid.Row="1"
+                                         Margin="0,6,0,0"
+                                         Text="{Binding RelativeTime}"
+                                         FontSize="12"
+                                         Foreground="#6B7280" />
+                            </Grid>
+                          </DataTemplate>
+                        </ListBox.ItemTemplate>
+                      </ListBox>
+                    </Expander>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
 
             <TextBlock x:Name="SessionEmptyTextBlock"
                        Text="暂无会话"
@@ -119,12 +145,20 @@
       <Border Grid.Column="2" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="10">
         <Grid RowDefinitions="Auto,*">
           <Grid Margin="14,12,14,10" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
-            <TextBlock x:Name="SessionTitleTextBlock"
-                       Text="请选择左侧会话"
-                       FontSize="14"
-                       FontWeight="SemiBold"
-                       Foreground="#111827"
-                       TextTrimming="CharacterEllipsis" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock x:Name="SessionTitleTextBlock"
+                         Text="请选择左侧会话"
+                         FontSize="14"
+                         FontWeight="SemiBold"
+                         Foreground="#111827"
+                         VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" />
+              <SelectableTextBlock x:Name="SessionIdTextBlock"
+                                   Grid.Column="1"
+                                   Margin="8,0,0,0"
+                                   Classes="session-id"
+                                   IsVisible="False" />
+            </Grid>
 
             <Button x:Name="DeleteSessionButton"
                     Grid.RowSpan="2"

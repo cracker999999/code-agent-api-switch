@@ -19,6 +19,7 @@ public partial class SessionWindow : Window
 
     private string _currentProviderId = SessionService.ProviderCodex;
     private SessionMeta? _selectedSession;
+    private List<SessionGroupItem> _sessionGroups = new();
     private int _loadMessagesVersion;
 
     public SessionWindow(string? initialProviderId = null)
@@ -78,17 +79,25 @@ public partial class SessionWindow : Window
         await ReloadSessionsAsync();
     }
 
-    private async void SessionListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private async void SessionGroupListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (SessionListBox.SelectedItem is not SessionListItem item)
+        if (sender is not ListBox listBox)
+        {
+            return;
+        }
+
+        if (listBox.SelectedItem is not SessionListItem item)
         {
             _selectedSession = null;
             ResetDetailPanel();
             return;
         }
 
+        DeselectOtherGroupLists(listBox);
+
         _selectedSession = item.Session;
         SessionTitleTextBlock.Text = item.Title;
+        UpdateSessionIdDisplay(_selectedSession.SessionId);
         SessionProjectPathButton.Content = _selectedSession.ProjectDir;
         SessionProjectPathButton.IsVisible = !string.IsNullOrWhiteSpace(_selectedSession.ProjectDir);
         DeleteSessionButton.IsVisible = true;
@@ -183,8 +192,8 @@ public partial class SessionWindow : Window
         _selectedSession = null;
         _loadMessagesVersion++;
 
-        SessionListBox.SelectedItem = null;
-        SessionListBox.ItemsSource = null;
+        _sessionGroups.Clear();
+        SessionGroupsItemsControl.ItemsSource = null;
         SessionCountTextBlock.Text = "会话列表（加载中...）";
         SessionEmptyTextBlock.IsVisible = false;
         ResetDetailPanel();
@@ -213,7 +222,8 @@ public partial class SessionWindow : Window
                 FormatFileSize(GetSessionFileLength(session.SourcePath))))
             .ToList();
 
-        SessionListBox.ItemsSource = items;
+        _sessionGroups = BuildSessionGroups(items);
+        SessionGroupsItemsControl.ItemsSource = _sessionGroups;
         SessionCountTextBlock.Text = $"会话列表 ({items.Count})";
         SessionEmptyTextBlock.IsVisible = items.Count == 0;
     }
@@ -286,10 +296,24 @@ public partial class SessionWindow : Window
     private void ResetDetailPanel()
     {
         SessionTitleTextBlock.Text = "请选择左侧会话";
+        UpdateSessionIdDisplay(null);
         SessionProjectPathButton.Content = string.Empty;
         SessionProjectPathButton.IsVisible = false;
         DeleteSessionButton.IsVisible = false;
         ShowMessagePlaceholder("选中会话后查看聊天详情");
+    }
+
+    private void UpdateSessionIdDisplay(string? sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            SessionIdTextBlock.Text = string.Empty;
+            SessionIdTextBlock.IsVisible = false;
+            return;
+        }
+
+        SessionIdTextBlock.Text = sessionId;
+        SessionIdTextBlock.IsVisible = true;
     }
 
     private void ShowMessagePlaceholder(string text)
@@ -360,7 +384,10 @@ public partial class SessionWindow : Window
             Spacing = 6
         };
 
-        var header = new Grid();
+        var header = new Grid
+        {
+            Margin = new Thickness(0, 0, 0, 2)
+        };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -404,7 +431,10 @@ public partial class SessionWindow : Window
 
     private static Control CreateCollapsedMessageElement(string title, string content, DateTime timestamp)
     {
-        var header = new Grid();
+        var header = new Grid
+        {
+            Margin = new Thickness(0, 0, 0, 2)
+        };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -512,6 +542,63 @@ public partial class SessionWindow : Window
         }
     }
 
+    private static List<SessionGroupItem> BuildSessionGroups(IReadOnlyList<SessionListItem> items)
+    {
+        var groups = items
+            .GroupBy(item => item.ProjectGroupName)
+            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new SessionGroupItem(group.Key, group.ToList()))
+            .ToList();
+
+        if (groups.Count > 0)
+        {
+            groups[0].IsExpanded = true;
+        }
+
+        return groups;
+    }
+
+    private void DeselectOtherGroupLists(ListBox selectedSource)
+    {
+        foreach (var listBox in FindDescendantListBoxes(SessionGroupsItemsControl))
+        {
+            if (ReferenceEquals(listBox, selectedSource))
+            {
+                continue;
+            }
+
+            if (listBox.SelectedItem is not null)
+            {
+                listBox.SelectedItem = null;
+            }
+        }
+    }
+
+    private static IEnumerable<ListBox> FindDescendantListBoxes(Control root)
+    {
+        var queue = new Queue<Control>();
+        queue.Enqueue(root);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            foreach (var child in current.GetVisualChildren())
+            {
+                if (child is not Control childControl)
+                {
+                    continue;
+                }
+
+                if (childControl is ListBox listBox)
+                {
+                    yield return listBox;
+                }
+
+                queue.Enqueue(childControl);
+            }
+        }
+    }
+
     private void UpdateTabButtons()
     {
         SetTabButtonSelectedState(CodexTabButton, string.Equals(_currentProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase));
@@ -602,6 +689,43 @@ public partial class SessionWindow : Window
     private static IBrush CreateBrush(string hexColor)
     {
         return new SolidColorBrush(Color.Parse(hexColor));
+    }
+
+    private sealed class SessionGroupItem
+    {
+        public SessionGroupItem(string groupName, List<SessionListItem> items)
+        {
+            GroupName = groupName;
+            Items = items;
+        }
+
+        public string GroupName { get; }
+
+        public List<SessionListItem> Items { get; }
+
+        public bool IsExpanded { get; set; }
+    }
+
+    private sealed class SessionListItem
+    {
+        public SessionListItem(SessionMeta session, string title, string projectGroupName, string relativeTime, string fileSize)
+        {
+            Session = session;
+            Title = title;
+            ProjectGroupName = projectGroupName;
+            RelativeTime = relativeTime;
+            FileSize = fileSize;
+        }
+
+        public SessionMeta Session { get; }
+
+        public string Title { get; }
+
+        public string ProjectGroupName { get; }
+
+        public string RelativeTime { get; }
+
+        public string FileSize { get; }
     }
 
 }
