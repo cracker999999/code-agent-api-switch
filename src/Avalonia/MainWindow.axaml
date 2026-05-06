@@ -5,10 +5,10 @@
         x:Class="APISwitch.Avalonia.MainWindow"
         Title="APISwitch"
         Icon="/Assets/app-preview.png"
-        Width="980"
-        Height="700"
-        MinWidth="760"
-        MinHeight="520"
+        Width="900"
+        Height="640"
+        MinWidth="720"
+        MinHeight="460"
         WindowStartupLocation="CenterScreen">
   <Window.Styles>
     <Style Selector="Button.tab">

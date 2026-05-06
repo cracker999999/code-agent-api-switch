@@ -2,8 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="APISwitch.Avalonia.Views.ProviderDialog"
         Title="供应商"
-        Icon="/Assets/app-preview.png"
-        Width="680"
+        Width="640"
         SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
@@ -13,43 +12,59 @@
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
   </Window.Styles>
-  <Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
     <Grid ColumnDefinitions="*,12,220">
       <TextBlock Text="名称" FontWeight="SemiBold" />
       <TextBlock Grid.Column="2" Text="备注" FontWeight="SemiBold" />
     </Grid>
 
     <Grid Grid.Row="1" ColumnDefinitions="*,12,220">
-      <TextBox x:Name="NameTextBox" Grid.Column="0" Height="32" VerticalContentAlignment="Center" />
-      <TextBox x:Name="RemarkTextBox" Grid.Column="2" Height="32" VerticalContentAlignment="Center" />
+      <TextBox x:Name="NameTextBox" Grid.Column="0" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
+      <TextBox x:Name="RemarkTextBox" Grid.Column="2" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
     </Grid>
 
-    <TextBlock Grid.Row="2" Text="BaseUrl" FontWeight="SemiBold" Margin="0,8,0,0" />
-    <TextBox x:Name="BaseUrlTextBox" Grid.Row="3" Height="32" VerticalContentAlignment="Center" Margin="0,4,0,0" />
+    <TextBlock Grid.Row="2" Text="BaseUrl" FontWeight="SemiBold" />
+    <TextBox x:Name="BaseUrlTextBox" Grid.Row="3" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
 
-    <TextBlock Grid.Row="4" Text="ApiKey" FontWeight="SemiBold" Margin="0,8,0,0" />
-    <TextBox x:Name="ApiKeyTextBox" Grid.Row="5" Height="32" VerticalContentAlignment="Center" Margin="0,4,0,0" />
+    <TextBlock Grid.Row="4" Text="ApiKey" FontWeight="SemiBold" />
+    <TextBox x:Name="ApiKeyTextBox" Grid.Row="5" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
 
-    <TextBlock Grid.Row="6" Text="测试模型" FontWeight="SemiBold" Margin="0,8,0,0" />
-    <TextBox x:Name="TestModelTextBox" Grid.Row="7" Height="32" VerticalContentAlignment="Center" Margin="0,4,0,0" />
+    <TextBlock Grid.Row="6" Text="测试模型" FontWeight="SemiBold" />
+    <TextBox x:Name="TestModelTextBox" Grid.Row="7" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
 
-    <Grid Grid.Row="8" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+    <Grid Grid.Row="8" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
       <TextBlock Text="可用模型" FontWeight="SemiBold" VerticalAlignment="Center" />
       <Button x:Name="FetchModelsButton" Grid.Column="1" Width="110" Height="30" Click="FetchModelsButton_Click" Content="获取模型" />
     </Grid>
 
-    <TextBox x:Name="ModelSearchTextBox" Grid.Row="9" Height="32" VerticalContentAlignment="Center" Watermark="输入关键字过滤模型" TextChanged="ModelSearchTextBox_TextChanged" Margin="0,8,0,0" />
+    <TextBox x:Name="ModelSearchTextBox" Grid.Row="9" Margin="0,0,0,10" Height="32" VerticalContentAlignment="Center" TextChanged="ModelSearchTextBox_TextChanged" />
 
-    <TextBlock x:Name="ModelErrorTextBlock" Grid.Row="10" Foreground="#DC2626" TextWrapping="Wrap" IsVisible="False" Margin="0,6,0,0" />
+    <TextBlock x:Name="ModelErrorTextBlock" Grid.Row="10" Margin="0,0,0,8" Foreground="#DC2626" TextWrapping="Wrap" IsVisible="False" />
 
-    <Border Grid.Row="11" Height="190" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="8" Background="White" Padding="8">
-      <Grid RowDefinitions="*,Auto">
-        <ListBox x:Name="ModelListBox" Grid.Row="0" BorderThickness="0" />
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
-          <Button Classes="dialog-action" Width="88" Height="32" Click="ConfirmButton_Click" Content="确认" />
-          <Button Classes="dialog-action" Width="88" Height="32" Click="CancelButton_Click" Content="取消" />
-        </StackPanel>
-      </Grid>
+    <Border Grid.Row="11" Height="180" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="8" Background="White" Padding="8">
+      <ListBox x:Name="ModelListBox" BorderThickness="0" />
     </Border>
+
+    <StackPanel Grid.Row="13" Margin="0,18,0,0" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Classes="dialog-action" Width="88" Height="32" Click="ConfirmButton_Click" Content="确认" />
+      <Button Classes="dialog-action" Width="88" Height="32" Click="CancelButton_Click" Content="取消" />
+    </StackPanel>
   </Grid>
 </Window>
