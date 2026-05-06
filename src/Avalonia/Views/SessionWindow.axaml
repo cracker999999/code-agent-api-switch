@@ -70,7 +70,8 @@
                               BorderBrush="#E5E7EB"
                               BorderThickness="1"
                               CornerRadius="8">
-                        <ContentPresenter />
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}" />
                       </Border>
                     </ControlTemplate>
                   </Setter>
@@ -82,7 +83,7 @@
                 </ControlTheme>
               </ListBox.ItemContainerTheme>
               <ListBox.ItemTemplate>
-                <DataTemplate DataType="views:SessionListItem">
+                <DataTemplate>
                   <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                     <TextBlock Text="{Binding Title}"
                                FontSize="13"
