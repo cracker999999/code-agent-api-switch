@@ -452,36 +452,84 @@ public partial class SessionWindow : Window
 
     private static Control CreateCollapsedMessageElement(string title, string content, DateTime timestamp)
     {
+        var root = new StackPanel
+        {
+            Margin = new Thickness(0, 0, 0, 10),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Spacing = 0
+        };
+
+        var chevronText = new TextBlock
+        {
+            Text = "⌄",
+            FontSize = 13,
+            Foreground = CreateBrush("#374151"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, -1, 0, 0)
+        };
+
+        var chevronCircle = new Border
+        {
+            Width = 22,
+            Height = 22,
+            CornerRadius = new CornerRadius(11),
+            BorderBrush = CreateBrush("#6B7280"),
+            BorderThickness = new Thickness(1),
+            Child = chevronText,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
         var header = new Grid
         {
             Margin = new Thickness(0, 0, 0, 2)
         };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        header.Children.Add(CreateSelectableTextElement(title, 12, CreateBrush("#1E3A8A"), FontWeight.SemiBold));
+        header.Children.Add(chevronCircle);
+
+        var titleText = CreateSelectableTextElement(title, 12, CreateBrush("#1E3A8A"), FontWeight.SemiBold);
+        titleText.Margin = new Thickness(8, 0, 0, 0);
+        Grid.SetColumn(titleText, 1);
+        header.Children.Add(titleText);
 
         var timeText = CreateSelectableTextElement(FormatMessageTime(timestamp), 12, CreateBrush("#6B7280"));
-        Grid.SetColumn(timeText, 1);
+        timeText.Margin = new Thickness(8, 0, 0, 0);
+        Grid.SetColumn(timeText, 2);
         header.Children.Add(timeText);
 
-        var expander = new Expander
+        var headerButton = new Button
         {
-            Header = header,
-            IsExpanded = false,
-            Margin = new Thickness(0, 0, 0, 10),
-            HorizontalAlignment = HorizontalAlignment.Left
+            Background = Brushes.Transparent,
+            BorderBrush = Brushes.Transparent,
+            Padding = new Thickness(0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Content = header
         };
 
-        expander.Content = new Border
+        var contentBorder = new Border
         {
             Background = CreateBrush("#EEF2FF"),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(10, 8, 10, 8),
-            Child = CreateSelectableTextElement(content, 12, CreateBrush("#1E3A8A"), textWrapping: TextWrapping.Wrap)
+            Child = CreateSelectableTextElement(content, 12, CreateBrush("#1E3A8A"), textWrapping: TextWrapping.Wrap),
+            IsVisible = false,
+            Margin = new Thickness(0, 4, 0, 0)
         };
 
-        return expander;
+        var isExpanded = false;
+        headerButton.Click += (_, _) =>
+        {
+            isExpanded = !isExpanded;
+            contentBorder.IsVisible = isExpanded;
+            chevronText.Text = isExpanded ? "⌃" : "⌄";
+        };
+
+        root.Children.Add(headerButton);
+        root.Children.Add(contentBorder);
+        return root;
     }
 
     private static Control CreateSelectableTextElement(
@@ -565,18 +613,11 @@ public partial class SessionWindow : Window
 
     private static List<SessionGroupItem> BuildSessionGroups(IReadOnlyList<SessionListItem> items)
     {
-        var groups = items
+        return items
             .GroupBy(item => item.ProjectGroupName)
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Select(group => new SessionGroupItem(group.Key, group.ToList()))
             .ToList();
-
-        if (groups.Count > 0)
-        {
-            groups[0].IsExpanded = true;
-        }
-
-        return groups;
     }
 
     private void UpdateTabButtons()
