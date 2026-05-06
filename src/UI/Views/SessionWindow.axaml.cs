@@ -15,15 +15,6 @@ namespace APISwitch.UI.Views;
 
 public partial class SessionWindow : Window
 {
-    private const string ChevronDownPathDataResourceKey = "SessionChevronDownPathData";
-    private const string ChevronUpPathDataResourceKey = "SessionChevronUpPathData";
-    private const string ChevronStrokeBrushResourceKey = "SessionChevronStrokeBrush";
-    private const string ChevronBorderBrushResourceKey = "SessionChevronBorderBrush";
-    private const string ChevronStrokeThicknessResourceKey = "SessionChevronStrokeThickness";
-    private const string ChevronBorderThicknessResourceKey = "SessionChevronBorderThickness";
-    private const string ChevronContainerSizeResourceKey = "SessionChevronContainerSize";
-    private const string ChevronCornerRadiusResourceKey = "SessionChevronCornerRadius";
-
     private readonly SessionService _sessionService = new();
 
     private string _currentProviderId = SessionService.ProviderCodex;
@@ -459,17 +450,8 @@ public partial class SessionWindow : Window
         return bubble;
     }
 
-    private Control CreateCollapsedMessageElement(string title, string content, DateTime timestamp)
+    private static Control CreateCollapsedMessageElement(string title, string content, DateTime timestamp)
     {
-        var downPathData = GetRequiredStringResource(ChevronDownPathDataResourceKey);
-        var upPathData = GetRequiredStringResource(ChevronUpPathDataResourceKey);
-        var chevronStrokeBrush = GetRequiredBrushResource(ChevronStrokeBrushResourceKey);
-        var chevronBorderBrush = GetRequiredBrushResource(ChevronBorderBrushResourceKey);
-        var chevronStrokeThickness = GetRequiredDoubleResource(ChevronStrokeThicknessResourceKey);
-        var chevronBorderThickness = GetRequiredThicknessResource(ChevronBorderThicknessResourceKey);
-        var chevronContainerSize = GetRequiredDoubleResource(ChevronContainerSizeResourceKey);
-        var chevronCornerRadius = GetRequiredCornerRadiusResource(ChevronCornerRadiusResourceKey);
-
         var root = new StackPanel
         {
             Margin = new Thickness(0, 0, 0, 10),
@@ -477,13 +459,13 @@ public partial class SessionWindow : Window
             Spacing = 0
         };
 
-        var collapsedChevron = Geometry.Parse(downPathData);
-        var expandedChevron = Geometry.Parse(upPathData);
+        var collapsedChevron = Geometry.Parse("M 1,2 L 6,7 L 11,2");
+        var expandedChevron = Geometry.Parse("M 1,7 L 6,2 L 11,7");
         var chevronPath = new global::Avalonia.Controls.Shapes.Path
         {
             Data = collapsedChevron,
-            Stroke = chevronStrokeBrush,
-            StrokeThickness = chevronStrokeThickness,
+            Stroke = CreateBrush("#374151"),
+            StrokeThickness = 2,
             StrokeLineCap = PenLineCap.Round,
             StrokeJoin = PenLineJoin.Round,
             Width = 12,
@@ -494,11 +476,11 @@ public partial class SessionWindow : Window
 
         var chevronCircle = new Border
         {
-            Width = chevronContainerSize,
-            Height = chevronContainerSize,
-            CornerRadius = chevronCornerRadius,
-            BorderBrush = chevronBorderBrush,
-            BorderThickness = chevronBorderThickness,
+            Width = 20,
+            Height = 20,
+            CornerRadius = new CornerRadius(10),
+            BorderBrush = CreateBrush("#4B5563"),
+            BorderThickness = new Thickness(2),
             Child = chevronPath,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -733,61 +715,6 @@ public partial class SessionWindow : Window
     private static IBrush CreateBrush(string hexColor)
     {
         return new SolidColorBrush(Color.Parse(hexColor));
-    }
-
-    private object GetRequiredResource(string key)
-    {
-        if (TryGetResource(key, ActualThemeVariant, out var resource) && resource is not null)
-        {
-            return resource;
-        }
-
-        throw new InvalidOperationException($"缺少必需资源：{key}");
-    }
-
-    private string GetRequiredStringResource(string key)
-    {
-        return GetRequiredResource(key) as string
-            ?? throw new InvalidOperationException($"资源类型不匹配：{key}，期望 String");
-    }
-
-    private IBrush GetRequiredBrushResource(string key)
-    {
-        return GetRequiredResource(key) as IBrush
-            ?? throw new InvalidOperationException($"资源类型不匹配：{key}，期望 IBrush");
-    }
-
-    private double GetRequiredDoubleResource(string key)
-    {
-        var value = GetRequiredResource(key);
-        if (value is double number)
-        {
-            return number;
-        }
-
-        throw new InvalidOperationException($"资源类型不匹配：{key}，期望 Double");
-    }
-
-    private Thickness GetRequiredThicknessResource(string key)
-    {
-        var value = GetRequiredResource(key);
-        if (value is Thickness thickness)
-        {
-            return thickness;
-        }
-
-        throw new InvalidOperationException($"资源类型不匹配：{key}，期望 Thickness");
-    }
-
-    private CornerRadius GetRequiredCornerRadiusResource(string key)
-    {
-        var value = GetRequiredResource(key);
-        if (value is CornerRadius cornerRadius)
-        {
-            return cornerRadius;
-        }
-
-        throw new InvalidOperationException($"资源类型不匹配：{key}，期望 CornerRadius");
     }
 
     private sealed class SessionGroupItem

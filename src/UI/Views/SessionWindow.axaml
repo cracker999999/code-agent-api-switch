@@ -9,17 +9,6 @@
         MinWidth="720"
         MinHeight="460"
         WindowStartupLocation="CenterOwner">
-  <Window.Resources>
-    <x:String x:Key="SessionChevronDownPathData">M 1,2 L 6,7 L 11,2</x:String>
-    <x:String x:Key="SessionChevronUpPathData">M 1,7 L 6,2 L 11,7</x:String>
-    <SolidColorBrush x:Key="SessionChevronStrokeBrush" Color="#374151" />
-    <SolidColorBrush x:Key="SessionChevronBorderBrush" Color="#4B5563" />
-    <x:Double x:Key="SessionChevronStrokeThickness">2</x:Double>
-    <Thickness x:Key="SessionChevronBorderThickness">2</Thickness>
-    <x:Double x:Key="SessionChevronContainerSize">20</x:Double>
-    <CornerRadius x:Key="SessionChevronCornerRadius">10</CornerRadius>
-  </Window.Resources>
-
   <Window.Styles>
     <Style Selector="Button.tab-btn">
       <Setter Property="Height" Value="36" />
@@ -75,19 +64,19 @@
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder">
-      <Setter Property="Width" Value="{StaticResource SessionChevronContainerSize}" />
-      <Setter Property="Height" Value="{StaticResource SessionChevronContainerSize}" />
-      <Setter Property="CornerRadius" Value="{StaticResource SessionChevronCornerRadius}" />
-      <Setter Property="BorderBrush" Value="{StaticResource SessionChevronBorderBrush}" />
-      <Setter Property="BorderThickness" Value="{StaticResource SessionChevronBorderThickness}" />
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="BorderBrush" Value="#4B5563" />
+      <Setter Property="BorderThickness" Value="2" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Margin" Value="10,0,0,0" />
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Path#ExpandCollapseChevron">
-      <Setter Property="Data" Value="{StaticResource SessionChevronDownPathData}" />
-      <Setter Property="Stroke" Value="{StaticResource SessionChevronStrokeBrush}" />
-      <Setter Property="StrokeThickness" Value="{StaticResource SessionChevronStrokeThickness}" />
+      <Setter Property="Data" Value="M 1,2 L 6,7 L 11,2" />
+      <Setter Property="Stroke" Value="#374151" />
+      <Setter Property="StrokeThickness" Value="2" />
       <Setter Property="StrokeLineCap" Value="Round" />
       <Setter Property="StrokeJoin" Value="Round" />
       <Setter Property="Stretch" Value="None" />
