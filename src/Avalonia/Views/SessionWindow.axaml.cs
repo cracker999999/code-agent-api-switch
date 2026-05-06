@@ -459,24 +459,29 @@ public partial class SessionWindow : Window
             Spacing = 0
         };
 
-        var chevronText = new TextBlock
+        var collapsedChevron = Geometry.Parse("M 1,2 L 6,7 L 11,2");
+        var expandedChevron = Geometry.Parse("M 1,7 L 6,2 L 11,7");
+        var chevronPath = new Avalonia.Controls.Shapes.Path
         {
-            Text = "⌄",
-            FontSize = 13,
-            Foreground = CreateBrush("#374151"),
+            Data = collapsedChevron,
+            Stroke = CreateBrush("#374151"),
+            StrokeThickness = 2,
+            StrokeLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Width = 12,
+            Height = 9,
             HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, -1, 0, 0)
+            VerticalAlignment = VerticalAlignment.Center
         };
 
         var chevronCircle = new Border
         {
-            Width = 22,
-            Height = 22,
-            CornerRadius = new CornerRadius(11),
-            BorderBrush = CreateBrush("#6B7280"),
-            BorderThickness = new Thickness(1),
-            Child = chevronText,
+            Width = 20,
+            Height = 20,
+            CornerRadius = new CornerRadius(10),
+            BorderBrush = CreateBrush("#4B5563"),
+            BorderThickness = new Thickness(2),
+            Child = chevronPath,
             VerticalAlignment = VerticalAlignment.Center
         };
 
@@ -491,7 +496,7 @@ public partial class SessionWindow : Window
         header.Children.Add(chevronCircle);
 
         var titleText = CreateSelectableTextElement(title, 12, CreateBrush("#1E3A8A"), FontWeight.SemiBold);
-        titleText.Margin = new Thickness(8, 0, 0, 0);
+        titleText.Margin = new Thickness(7, 0, 0, 0);
         Grid.SetColumn(titleText, 1);
         header.Children.Add(titleText);
 
@@ -524,7 +529,7 @@ public partial class SessionWindow : Window
         {
             isExpanded = !isExpanded;
             contentBorder.IsVisible = isExpanded;
-            chevronText.Text = isExpanded ? "⌃" : "⌄";
+            chevronPath.Data = isExpanded ? expandedChevron : collapsedChevron;
         };
 
         root.Children.Add(headerButton);
