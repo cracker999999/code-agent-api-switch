@@ -39,7 +39,7 @@ jobs:
         id: meta
         shell: bash
         run: |
-          TS="$(date -u +%Y%m%d-%H%M%S)"
+          TS="$(date -u +%Y%m%d)"
           TAG="${TS}-r${GITHUB_RUN_NUMBER}"
           ZIP="APISwitch-osx-intel-${TAG}.zip"
           echo "timestamp=${TS}" >> "$GITHUB_OUTPUT"
