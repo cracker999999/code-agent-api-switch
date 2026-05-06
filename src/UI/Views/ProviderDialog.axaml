@@ -68,6 +68,7 @@
     <Border Grid.Row="11" Height="180" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="8" Background="White" Padding="8">
       <ListBox x:Name="ModelListBox"
                BorderThickness="0"
+               ScrollViewer.AllowAutoHide="False"
                ScrollViewer.VerticalScrollBarVisibility="Auto"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
     </Border>
