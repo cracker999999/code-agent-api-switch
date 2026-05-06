@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Linq;
 using APISwitch.Services;
 using Avalonia;
 using Avalonia.Controls;
@@ -11,6 +12,7 @@ namespace APISwitch.Avalonia;
 
 public partial class App : Application
 {
+    private const int NotifyIconTextMaxLength = 63;
     private const string SingleInstanceMutexName = "APISwitch.Avalonia.SingleInstance";
 
     private Mutex? _singleInstanceMutex;
@@ -63,6 +65,7 @@ public partial class App : Application
             };
 
             InitializeTrayIcon(mainWindow, desktop);
+            RefreshTrayTooltip(databaseService);
             InitializeDockMenu(mainWindow, desktop);
         }
 
@@ -72,6 +75,16 @@ public partial class App : Application
     public void RequestExit()
     {
         IsExitRequested = true;
+    }
+
+    public void RefreshTrayTooltip(DatabaseService databaseService)
+    {
+        if (_trayIcon is null)
+        {
+            return;
+        }
+
+        _trayIcon.ToolTipText = BuildTrayTooltipText(databaseService);
     }
 
     private void InitializeTrayIcon(MainWindow mainWindow, IClassicDesktopStyleApplicationLifetime desktop)
@@ -123,6 +136,46 @@ public partial class App : Application
         catch
         {
             _trayIcon = null;
+        }
+    }
+
+    private static string BuildTrayTooltipText(DatabaseService databaseService)
+    {
+        var codexProvider = GetActiveProviderDisplayName(databaseService, 0);
+        var claudeProvider = GetActiveProviderDisplayName(databaseService, 1);
+        var tooltip = BuildTrayTooltipTextCore(codexProvider, claudeProvider);
+        if (tooltip.Length <= NotifyIconTextMaxLength)
+        {
+            return tooltip;
+        }
+
+        return tooltip[..(NotifyIconTextMaxLength - 3)] + "...";
+    }
+
+    private static string BuildTrayTooltipTextCore(string codexProvider, string claudeProvider)
+    {
+        return $"APISwitch{Environment.NewLine}Codex:{codexProvider}{Environment.NewLine}Claude Code:{claudeProvider}";
+    }
+
+    private static string GetActiveProviderDisplayName(DatabaseService databaseService, int toolType)
+    {
+        try
+        {
+            var activeName = databaseService
+                .GetProviders(toolType)
+                .FirstOrDefault(provider => provider.IsActive)?
+                .Name;
+
+            if (string.IsNullOrWhiteSpace(activeName))
+            {
+                return "未启用";
+            }
+
+            return activeName.Trim();
+        }
+        catch (Exception)
+        {
+            return "未知";
         }
     }
 

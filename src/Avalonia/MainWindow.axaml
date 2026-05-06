@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:APISwitch.Models;assembly=Core"
+        xmlns:shapes="clr-namespace:Avalonia.Controls.Shapes;assembly=Avalonia.Controls"
         x:Class="APISwitch.Avalonia.MainWindow"
         Title="APISwitch"
         Icon="/Assets/app-preview.png"
@@ -87,14 +88,20 @@
       </StackPanel>
     </Grid>
 
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Hidden">
       <ItemsControl x:Name="ProvidersItemsControl">
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="models:Provider">
-            <Border Classes="provider-card" Classes.active="{Binding IsActive}">
+            <Border Classes="provider-card"
+                    Classes.active="{Binding IsActive}"
+                    PointerPressed="ProviderCard_PointerPressed">
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel>
                   <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Grid Width="8" Height="8" VerticalAlignment="Center">
+                      <shapes:Ellipse Fill="#22C55E" IsVisible="{Binding IsTestSuccess}" />
+                      <shapes:Ellipse Fill="#EF4444" IsVisible="{Binding IsTestFailed}" />
+                    </Grid>
                     <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding Remark}" Foreground="#9CA3AF" FontSize="11" />
                     <TextBlock Text="使用中" IsVisible="{Binding IsActive}" Foreground="#1D4ED8" FontSize="11" />

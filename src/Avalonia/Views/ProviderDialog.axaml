@@ -28,7 +28,7 @@
     <TextBox x:Name="BaseUrlTextBox" Grid.Row="3" Height="32" VerticalContentAlignment="Center" Margin="0,4,0,0" />
 
     <TextBlock Grid.Row="4" Text="ApiKey" FontWeight="SemiBold" Margin="0,8,0,0" />
-    <TextBox x:Name="ApiKeyTextBox" Grid.Row="5" Height="32" VerticalContentAlignment="Center" PasswordChar="*" Margin="0,4,0,0" />
+    <TextBox x:Name="ApiKeyTextBox" Grid.Row="5" Height="32" VerticalContentAlignment="Center" Margin="0,4,0,0" />
 
     <TextBlock Grid.Row="6" Text="测试模型" FontWeight="SemiBold" Margin="0,8,0,0" />
     <TextBox x:Name="TestModelTextBox" Grid.Row="7" Height="32" VerticalContentAlignment="Center" Margin="0,4,0,0" />

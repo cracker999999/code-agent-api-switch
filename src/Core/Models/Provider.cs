@@ -18,6 +18,10 @@ public class Provider
 
     public int TestStatus { get; set; }
 
+    public bool IsTestSuccess => TestStatus == 1;
+
+    public bool IsTestFailed => TestStatus == 2;
+
     public string TestModel { get; set; } = string.Empty;
 
     public string Remark { get; set; } = string.Empty;

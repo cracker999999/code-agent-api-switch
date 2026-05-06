@@ -295,7 +295,7 @@ public partial class SessionWindow : Window
     private void ShowMessagePlaceholder(string text)
     {
         MessagesPanel.Children.Clear();
-        MessagesPanel.Children.Add(CreateTextBlock(text, 13, CreateBrush("#9CA3AF"), textWrapping: TextWrapping.Wrap));
+        MessagesPanel.Children.Add(CreateSelectableTextElement(text, 13, CreateBrush("#9CA3AF"), textWrapping: TextWrapping.Wrap));
     }
 
     private void RenderMessages(IReadOnlyList<SessionMessage> messages)
@@ -364,14 +364,14 @@ public partial class SessionWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        var roleText = CreateTextBlock(
+        var roleText = CreateSelectableTextElement(
             roleDisplayName,
             12,
             isUser ? Brushes.White : CreateBrush("#3B82F6"),
             FontWeight.SemiBold);
         header.Children.Add(roleText);
 
-        var timeText = CreateTextBlock(
+        var timeText = CreateSelectableTextElement(
             FormatMessageTime(timestamp),
             12,
             isUser ? CreateBrush("#DBEAFE") : CreateBrush("#6B7280"));
@@ -391,7 +391,7 @@ public partial class SessionWindow : Window
 
         if (!string.IsNullOrWhiteSpace(content))
         {
-            container.Children.Add(CreateTextBlock(
+            container.Children.Add(CreateSelectableTextElement(
                 content,
                 13,
                 isUser ? Brushes.White : CreateBrush("#111827"),
@@ -408,9 +408,9 @@ public partial class SessionWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        header.Children.Add(CreateTextBlock(title, 12, CreateBrush("#1E3A8A"), FontWeight.SemiBold));
+        header.Children.Add(CreateSelectableTextElement(title, 12, CreateBrush("#1E3A8A"), FontWeight.SemiBold));
 
-        var timeText = CreateTextBlock(FormatMessageTime(timestamp), 12, CreateBrush("#6B7280"));
+        var timeText = CreateSelectableTextElement(FormatMessageTime(timestamp), 12, CreateBrush("#6B7280"));
         Grid.SetColumn(timeText, 1);
         header.Children.Add(timeText);
 
@@ -427,26 +427,27 @@ public partial class SessionWindow : Window
             Background = CreateBrush("#EEF2FF"),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(10, 8, 10, 8),
-            Child = CreateTextBlock(content, 12, CreateBrush("#1E3A8A"), textWrapping: TextWrapping.Wrap)
+            Child = CreateSelectableTextElement(content, 12, CreateBrush("#1E3A8A"), textWrapping: TextWrapping.Wrap)
         };
 
         return expander;
     }
 
-    private static TextBlock CreateTextBlock(
+    private static Control CreateSelectableTextElement(
         string text,
         double fontSize,
         IBrush foreground,
         FontWeight? fontWeight = null,
         TextWrapping textWrapping = TextWrapping.NoWrap)
     {
-        var textBlock = new TextBlock
+        var textBlock = new SelectableTextBlock
         {
             Text = text,
             FontSize = fontSize,
             Foreground = foreground,
             TextWrapping = textWrapping,
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
         if (fontWeight.HasValue)

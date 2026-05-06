@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -6,8 +5,10 @@ using APISwitch.Avalonia.Services;
 using APISwitch.Avalonia.Views;
 using APISwitch.Models;
 using APISwitch.Services;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 
 namespace APISwitch.Avalonia;
 
@@ -316,6 +317,43 @@ public partial class MainWindow : Window
         }
 
         ProvidersItemsControl.ItemsSource = providers;
+
+        if (global::Avalonia.Application.Current is App app)
+        {
+            app.RefreshTrayTooltip(_databaseService);
+        }
+    }
+
+    private async void ProviderCard_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.ClickCount != 2 || sender is not Control { DataContext: Provider provider } card)
+        {
+            return;
+        }
+
+        if (IsClickFromInteractiveElement(e.Source as StyledElement, card))
+        {
+            return;
+        }
+
+        await OpenEditProviderDialogAsync(provider);
+        e.Handled = true;
+    }
+
+    private static bool IsClickFromInteractiveElement(StyledElement? source, StyledElement container)
+    {
+        var current = source;
+        while (current is not null && current != container)
+        {
+            if (current is Button)
+            {
+                return true;
+            }
+
+            current = current.VisualParent as StyledElement;
+        }
+
+        return false;
     }
 
     private int GetNextSortOrder()
