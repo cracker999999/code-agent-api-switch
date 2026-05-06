@@ -193,5 +193,6 @@ jobs:
           gh release create "${{ steps.meta.outputs.tag }}" \
             "out/osx/${{ steps.meta.outputs.osx_zip }}" \
             "out/win/${{ steps.meta.outputs.win_zip }}" \
+            --repo "${{ github.repository }}" \
             --title "APISwitch ${{ steps.meta.outputs.tag }}" \
             --notes "$NOTES"
