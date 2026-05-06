@@ -350,7 +350,7 @@ public partial class MainWindow : Window
                 return true;
             }
 
-            current = current.VisualParent as StyledElement;
+            current = current.Parent as StyledElement;
         }
 
         return false;
