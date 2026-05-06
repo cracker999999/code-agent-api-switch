@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:APISwitch.UI.Views"
+        xmlns:ui="clr-namespace:APISwitch.UI"
         x:Class="APISwitch.UI.Views.SessionWindow"
         Title="会话管理"
         Icon="/Assets/app-preview.png"
@@ -64,19 +65,19 @@
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder">
-      <Setter Property="Width" Value="20" />
-      <Setter Property="Height" Value="20" />
-      <Setter Property="CornerRadius" Value="10" />
-      <Setter Property="BorderBrush" Value="#4B5563" />
-      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Width" Value="{x:Static ui:SessionUiTokens.ChevronContainerSize}" />
+      <Setter Property="Height" Value="{x:Static ui:SessionUiTokens.ChevronContainerSize}" />
+      <Setter Property="CornerRadius" Value="{x:Static ui:SessionUiTokens.ChevronCornerRadius}" />
+      <Setter Property="BorderBrush" Value="{x:Static ui:SessionUiTokens.ChevronBorderColor}" />
+      <Setter Property="BorderThickness" Value="{x:Static ui:SessionUiTokens.ChevronBorderThickness}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Margin" Value="10,0,0,0" />
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Path#ExpandCollapseChevron">
-      <Setter Property="Data" Value="M 1,2 L 6,7 L 11,2" />
-      <Setter Property="Stroke" Value="#374151" />
-      <Setter Property="StrokeThickness" Value="2" />
+      <Setter Property="Data" Value="{x:Static ui:SessionUiTokens.ChevronDownData}" />
+      <Setter Property="Stroke" Value="{x:Static ui:SessionUiTokens.ChevronStrokeColor}" />
+      <Setter Property="StrokeThickness" Value="{x:Static ui:SessionUiTokens.ChevronStrokeThickness}" />
       <Setter Property="StrokeLineCap" Value="Round" />
       <Setter Property="StrokeJoin" Value="Round" />
       <Setter Property="Stretch" Value="None" />

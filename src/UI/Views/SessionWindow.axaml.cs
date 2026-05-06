@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using APISwitch.UI.Services;
 using APISwitch.Models;
@@ -459,13 +460,13 @@ public partial class SessionWindow : Window
             Spacing = 0
         };
 
-        var collapsedChevron = Geometry.Parse("M 1,2 L 6,7 L 11,2");
-        var expandedChevron = Geometry.Parse("M 1,7 L 6,2 L 11,7");
+        var collapsedChevron = Geometry.Parse(SessionUiTokens.ChevronDownData);
+        var expandedChevron = Geometry.Parse(SessionUiTokens.ChevronUpData);
         var chevronPath = new global::Avalonia.Controls.Shapes.Path
         {
             Data = collapsedChevron,
-            Stroke = CreateBrush("#374151"),
-            StrokeThickness = 2,
+            Stroke = CreateBrush(SessionUiTokens.ChevronStrokeColor),
+            StrokeThickness = ParseInvariantDouble(SessionUiTokens.ChevronStrokeThickness),
             StrokeLineCap = PenLineCap.Round,
             StrokeJoin = PenLineJoin.Round,
             Width = 12,
@@ -476,11 +477,11 @@ public partial class SessionWindow : Window
 
         var chevronCircle = new Border
         {
-            Width = 20,
-            Height = 20,
-            CornerRadius = new CornerRadius(10),
-            BorderBrush = CreateBrush("#4B5563"),
-            BorderThickness = new Thickness(2),
+            Width = ParseInvariantDouble(SessionUiTokens.ChevronContainerSize),
+            Height = ParseInvariantDouble(SessionUiTokens.ChevronContainerSize),
+            CornerRadius = new CornerRadius(ParseInvariantDouble(SessionUiTokens.ChevronCornerRadius)),
+            BorderBrush = CreateBrush(SessionUiTokens.ChevronBorderColor),
+            BorderThickness = new Thickness(ParseInvariantDouble(SessionUiTokens.ChevronBorderThickness)),
             Child = chevronPath,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -715,6 +716,11 @@ public partial class SessionWindow : Window
     private static IBrush CreateBrush(string hexColor)
     {
         return new SolidColorBrush(Color.Parse(hexColor));
+    }
+
+    private static double ParseInvariantDouble(string value)
+    {
+        return double.Parse(value, CultureInfo.InvariantCulture);
     }
 
     private sealed class SessionGroupItem
