@@ -24,11 +24,11 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore
-        run: dotnet restore src/Avalonia/Avalonia.csproj
+        run: dotnet restore src/UI/UI.csproj
 
       - name: Publish osx-x64
         run: |
-          dotnet publish src/Avalonia/Avalonia.csproj \
+          dotnet publish src/UI/UI.csproj \
             -c Release \
             -r osx-x64 \
             --self-contained true \
@@ -61,8 +61,8 @@ jobs:
 
           mkdir -p out/icon.iconset
           for size in 16 32 128 256 512; do
-            sips -z "${size}" "${size}" src/Avalonia/Assets/app-preview.png --out "out/icon.iconset/icon_${size}x${size}.png"
-            sips -z "$((size * 2))" "$((size * 2))" src/Avalonia/Assets/app-preview.png --out "out/icon.iconset/icon_${size}x${size}@2x.png"
+            sips -z "${size}" "${size}" src/UI/Assets/app-preview.png --out "out/icon.iconset/icon_${size}x${size}.png"
+            sips -z "$((size * 2))" "$((size * 2))" src/UI/Assets/app-preview.png --out "out/icon.iconset/icon_${size}x${size}@2x.png"
           done
           iconutil -c icns out/icon.iconset -o "${RESOURCES_DIR}/app.icns"
           rm -rf out/icon.iconset
