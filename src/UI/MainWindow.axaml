@@ -5,7 +5,7 @@
         x:Class="APISwitch.UI.MainWindow"
         Title="APISwitch"
         Icon="/Assets/app-preview.png"
-        Width="900"
+        Width="884"
         Height="640"
         MinWidth="720"
         MinHeight="460"
