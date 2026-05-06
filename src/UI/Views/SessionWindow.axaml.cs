@@ -19,7 +19,7 @@ public partial class SessionWindow : Window
 
     private string _currentProviderId = SessionService.ProviderCodex;
     private SessionMeta? _selectedSession;
-    private List<SessionGroupItem> _sessionGroups = new();
+    private int _reloadSessionsVersion;
     private int _loadMessagesVersion;
     private ListBox? _selectedGroupListBox;
     private bool _isSwitchingSelection;
@@ -209,12 +209,14 @@ public partial class SessionWindow : Window
 
     private async Task ReloadSessionsAsync()
     {
+        var reloadVersion = ++_reloadSessionsVersion;
+        var targetProviderId = _currentProviderId;
+
         _selectedSession = null;
         _loadMessagesVersion++;
         _selectedGroupListBox = null;
 
-        _sessionGroups.Clear();
-        SessionGroupsItemsControl.ItemsSource = null;
+        SessionGroupsItemsControl.ItemsSource = Array.Empty<SessionGroupItem>();
         SessionCountTextBlock.Text = "会话列表（加载中...）";
         SessionEmptyTextBlock.IsVisible = false;
         ResetDetailPanel();
@@ -224,14 +226,26 @@ public partial class SessionWindow : Window
         try
         {
             sessions = await Task.Run(() =>
-                string.Equals(_currentProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase)
+                string.Equals(targetProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase)
                     ? _sessionService.ScanCodexSessions()
                     : _sessionService.ScanClaudeSessions());
         }
         catch (Exception ex)
         {
+            if (reloadVersion != _reloadSessionsVersion ||
+                !string.Equals(_currentProviderId, targetProviderId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             await DialogService.ShowErrorAsync(this, "错误", $"扫描会话失败：{ex.Message}");
             sessions = new List<SessionMeta>();
+        }
+
+        if (reloadVersion != _reloadSessionsVersion ||
+            !string.Equals(_currentProviderId, targetProviderId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
         }
 
         var items = sessions
@@ -243,8 +257,7 @@ public partial class SessionWindow : Window
                 FormatFileSize(GetSessionFileLength(session.SourcePath))))
             .ToList();
 
-        _sessionGroups = BuildSessionGroups(items);
-        SessionGroupsItemsControl.ItemsSource = _sessionGroups;
+        SessionGroupsItemsControl.ItemsSource = BuildSessionGroups(items);
         SessionCountTextBlock.Text = $"会话列表 ({items.Count})";
         SessionEmptyTextBlock.IsVisible = items.Count == 0;
     }
@@ -620,7 +633,6 @@ public partial class SessionWindow : Window
     {
         return items
             .GroupBy(item => item.ProjectGroupName)
-            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Select(group => new SessionGroupItem(group.Key, group.ToList()))
             .ToList();
     }
@@ -730,28 +742,6 @@ public partial class SessionWindow : Window
         public List<SessionListItem> Items { get; }
 
         public bool IsExpanded { get; set; }
-    }
-
-    private sealed class SessionListItem
-    {
-        public SessionListItem(SessionMeta session, string title, string projectGroupName, string relativeTime, string fileSize)
-        {
-            Session = session;
-            Title = title;
-            ProjectGroupName = projectGroupName;
-            RelativeTime = relativeTime;
-            FileSize = fileSize;
-        }
-
-        public SessionMeta Session { get; }
-
-        public string Title { get; }
-
-        public string ProjectGroupName { get; }
-
-        public string RelativeTime { get; }
-
-        public string FileSize { get; }
     }
 
 }
