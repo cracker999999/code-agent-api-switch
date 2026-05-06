@@ -122,7 +122,7 @@ jobs:
             -r win-x64 `
             --self-contained false `
             -p:IncludeNativeLibrariesForSelfExtract=true `
-            -p:UseAppHost=true `
+            -p:PublishSingleFile=true `
             -o out/win-x64
 
       - name: Package win-x64 zip
