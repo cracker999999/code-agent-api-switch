@@ -5,7 +5,7 @@
         Title="会话管理"
         Icon="/Assets/app-preview.png"
         Width="884"
-        Height="640"
+        Height="600"
         MinWidth="720"
         MinHeight="460"
         WindowStartupLocation="CenterOwner">
