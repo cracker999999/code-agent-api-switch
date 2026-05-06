@@ -22,6 +22,8 @@ public class Provider
 
     public bool IsTestFailed => TestStatus == 2;
 
+    public string ActivateButtonText => IsActive ? "使用中" : "启用";
+
     public string TestModel { get; set; } = string.Empty;
 
     public string Remark { get; set; } = string.Empty;

@@ -110,7 +110,10 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                  <Button Classes="action-btn" Click="ActivateProviderButton_Click" Content="启用" />
+                  <Button Classes="action-btn"
+                          Click="ActivateProviderButton_Click"
+                          Content="{Binding ActivateButtonText}"
+                          IsEnabled="{Binding !IsActive}" />
                   <Button Classes="action-btn" Click="TestProviderButton_Click" Content="测试" />
                   <Button Classes="action-btn" Click="EditProviderButton_Click" Content="编辑" />
                   <Button Classes="action-btn" Click="DeleteProviderButton_Click" Content="删除" />
