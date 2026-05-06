@@ -1,4 +1,4 @@
-name: Publish macOS Intel
+name: Publish Cross Platform
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   publish-osx-x64:
-    name: Build and Release (osx-x64)
+    name: Build (osx-x64)
     runs-on: macos-15-intel
 
     steps:
@@ -34,17 +34,6 @@ jobs:
             --self-contained true \
             -p:UseAppHost=true \
             -o out/osx-x64
-
-      - name: Build metadata
-        id: meta
-        shell: bash
-        run: |
-          TS="$(date -u +%Y%m%d)"
-          TAG="${TS}-r${GITHUB_RUN_NUMBER}"
-          ZIP="APISwitch-osx-intel-${TAG}.zip"
-          echo "timestamp=${TS}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "zip=${ZIP}" >> "$GITHUB_OUTPUT"
 
       - name: Build .app bundle
         shell: bash
@@ -101,25 +90,108 @@ jobs:
       - name: Package .app zip
         run: |
           cd out
-          zip -r "${{ steps.meta.outputs.zip }}" APISwitch.app
+          zip -r APISwitch-osx-intel.zip APISwitch.app
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: APISwitch-osx-intel-${{ steps.meta.outputs.tag }}
-          path: out/${{ steps.meta.outputs.zip }}
+          name: APISwitch-osx-intel
+          path: out/APISwitch-osx-intel.zip
           retention-days: 30
 
-      - name: Create GitHub Release (new version per commit)
+  publish-win-x64:
+    name: Build (win-x64, single-file, non-self-contained)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore src/UI/UI.csproj
+
+      - name: Publish win-x64
+        run: |
+          dotnet publish src/UI/UI.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained false `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:UseAppHost=true `
+            -o out/win-x64
+
+      - name: Package win-x64 zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "out/win-x64/*" -DestinationPath "out/APISwitch-win-x64.zip" -Force
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: APISwitch-win-x64
+          path: out/APISwitch-win-x64.zip
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release (new version per commit)
+    runs-on: ubuntu-latest
+    needs:
+      - publish-osx-x64
+      - publish-win-x64
+
+    steps:
+      - name: Download osx artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: APISwitch-osx-intel
+          path: out/osx
+
+      - name: Download win artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: APISwitch-win-x64
+          path: out/win
+
+      - name: Build release metadata
+        id: meta
+        shell: bash
+        run: |
+          TS="$(date -u +%Y%m%d)"
+          TAG="${TS}-r${GITHUB_RUN_NUMBER}"
+          OSX_ZIP="APISwitch-osx-intel-${TAG}.zip"
+          WIN_ZIP="APISwitch-win-x64-${TAG}.zip"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "osx_zip=${OSX_ZIP}" >> "$GITHUB_OUTPUT"
+          echo "win_zip=${WIN_ZIP}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release with both assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           NOTES="$(printf 'Commit: %s\nBranch: %s\nRun: %s\n' \
             '${{ github.sha }}' \
             '${{ github.ref_name }}' \
             '${{ github.run_id }}')"
 
+          OSX_ZIP_PATH="out/osx/APISwitch-osx-intel.zip"
+          WIN_ZIP_PATH="out/win/APISwitch-win-x64.zip"
+
+          if [ ! -f "$OSX_ZIP_PATH" ] || [ ! -f "$WIN_ZIP_PATH" ]; then
+            echo "Release assets are missing."
+            exit 1
+          fi
+
+          mv "$OSX_ZIP_PATH" "out/osx/${{ steps.meta.outputs.osx_zip }}"
+          mv "$WIN_ZIP_PATH" "out/win/${{ steps.meta.outputs.win_zip }}"
+
           gh release create "${{ steps.meta.outputs.tag }}" \
-            "out/${{ steps.meta.outputs.zip }}" \
-            --title "APISwitch OSX Intel ${{ steps.meta.outputs.tag }}" \
+            "out/osx/${{ steps.meta.outputs.osx_zip }}" \
+            "out/win/${{ steps.meta.outputs.win_zip }}" \
+            --title "APISwitch ${{ steps.meta.outputs.tag }}" \
             --notes "$NOTES"
