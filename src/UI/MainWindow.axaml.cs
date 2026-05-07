@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly DatabaseService _databaseService;
     private readonly ConfigWriterService _configWriterService;
     private readonly ApiTestService _apiTestService;
+    private bool _initialProvidersLoaded;
 
     private SessionWindow? _sessionWindow;
     private int _currentToolType;
@@ -31,6 +32,17 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         UpdateTabButtons();
+        Opened += MainWindow_Opened;
+    }
+
+    private void MainWindow_Opened(object? sender, EventArgs e)
+    {
+        if (_initialProvidersLoaded)
+        {
+            return;
+        }
+
+        _initialProvidersLoaded = true;
         LoadProviders();
     }
 

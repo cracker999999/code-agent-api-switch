@@ -17,7 +17,6 @@ internal static class Program
             .With(new MacOSPlatformOptions
             {
                 ShowInDock = true
-            })
-            .LogToTrace();
+            });
     }
 }

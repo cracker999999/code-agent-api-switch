@@ -74,7 +74,9 @@ public partial class App : Application
             };
 
             InitializeTrayIcon(mainWindow, desktop);
-            RefreshTrayTooltip(databaseService);
+            Dispatcher.UIThread.Post(
+                () => RefreshTrayTooltip(databaseService),
+                DispatcherPriority.Background);
             InitializeDockMenu(mainWindow, desktop);
             InitializeMacDockVisibilityController(desktop);
         }

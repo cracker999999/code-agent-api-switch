@@ -123,6 +123,7 @@ jobs:
             --self-contained false `
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:PublishReadyToRun=true `
             -p:DebugType=None `
             -p:DebugSymbols=false `
             -o out/win-x64
