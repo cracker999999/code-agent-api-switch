@@ -41,6 +41,7 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="HorizontalAlignment" Value="Left" />
       <Setter Property="Foreground" Value="#2563EB" />
+      <Setter Property="FontSize" Value="12" />
     </Style>
     <Style Selector="Button.action-btn">
       <Setter Property="Margin" Value="8,0,0,0" />
@@ -118,7 +119,6 @@
                     </Grid>
                     <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding Remark}" Foreground="#9CA3AF" FontSize="11" />
-                    <TextBlock Text="使用中" IsVisible="{Binding IsActive}" Foreground="#1D4ED8" FontSize="11" />
                   </StackPanel>
                   <Button Classes="link-button" Click="BaseUrlButton_Click" Content="{Binding BaseUrl}" Margin="0,6,0,0" />
                 </StackPanel>
