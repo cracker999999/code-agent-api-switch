@@ -61,7 +61,13 @@
               Content="获取模型" />
     </Grid>
 
-    <TextBox x:Name="ModelSearchTextBox" Grid.Row="9" Margin="0,0,0,10" Height="32" VerticalContentAlignment="Center" TextChanged="ModelSearchTextBox_TextChanged" />
+    <TextBox x:Name="ModelSearchTextBox"
+             Grid.Row="9"
+             Margin="0,0,0,10"
+             Height="32"
+             VerticalContentAlignment="Center"
+             TextChanged="ModelSearchTextBox_TextChanged"
+             Watermark="输入关键字过滤模型" />
 
     <TextBlock x:Name="ModelErrorTextBlock" Grid.Row="10" Margin="0,0,0,8" Foreground="#DC2626" TextWrapping="Wrap" IsVisible="False" />
 

@@ -3,6 +3,9 @@
              x:Class="APISwitch.UI.App"
              Name="APISwitch"
              RequestedThemeVariant="Default">
+  <Application.Resources>
+    <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
 

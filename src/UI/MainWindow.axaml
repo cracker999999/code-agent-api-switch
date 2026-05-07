@@ -62,12 +62,12 @@
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="FontSize" Value="12" />
-      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Button.plus-action">
       <Setter Property="Width" Value="38" />
       <Setter Property="Height" Value="38" />
       <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Background" Value="#D1D5DB" />
       <Setter Property="BorderBrush" Value="#D1D5DB" />
       <Setter Property="BorderThickness" Value="1" />
@@ -115,7 +115,7 @@
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel>
                   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Grid Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                    <Grid Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
                       <shapes:Ellipse Fill="#22C55E" IsVisible="{Binding IsTestSuccess}" />
                       <shapes:Ellipse Fill="#EF4444" IsVisible="{Binding IsTestFailed}" />
                     </Grid>
