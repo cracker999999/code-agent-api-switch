@@ -29,11 +29,9 @@
       <Setter Property="HorizontalContentAlignment" Value="Left" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="Foreground" Value="#2563EB" />
-      <Setter Property="FontSize" Value="12" />
     </Style>
 
     <Style Selector="SelectableTextBlock.session-id">
-      <Setter Property="FontSize" Value="12" />
       <Setter Property="Foreground" Value="#6B7280" />
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="HorizontalAlignment" Value="Right" />
@@ -164,7 +162,6 @@
                               <TextBlock Grid.Row="1"
                                          Margin="0,6,0,0"
                                          Text="{Binding RelativeTime}"
-                                         FontSize="12"
                                          Foreground="#6B7280" />
                             </Grid>
                           </DataTemplate>
