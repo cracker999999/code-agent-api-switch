@@ -46,46 +46,100 @@
     <Style Selector="Expander.session-group-expander">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="MinHeight" Value="0" />
       <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ Border#ExpanderContent">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander:down /template/ Border#ExpanderContent">
+      <Setter Property="BorderThickness" Value="0" />
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader">
-      <Setter Property="Background" Value="White" />
-      <Setter Property="BorderBrush" Value="#D1D5DB" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="Padding" Value="12,10,10,10" />
-      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="2,4,2,2" />
+      <Setter Property="MinHeight" Value="0" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="FlowDirection" Value="RightToLeft" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="FlowDirection" Value="LeftToRight" />
+      <Setter Property="Margin" Value="0,0,0,0" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader:pointerover /template/ Border#ToggleButtonBackground">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Foreground" Value="#6B7280" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader:pointerover /template/ Path#ExpandCollapseChevron">
+      <Setter Property="Stroke" Value="#374151" />
+    </Style>
+
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader:pressed /template/ Border#ToggleButtonBackground">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder">
-      <Setter Property="Width" Value="20" />
-      <Setter Property="Height" Value="20" />
-      <Setter Property="CornerRadius" Value="10" />
-      <Setter Property="BorderBrush" Value="#4B5563" />
-      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="BorderBrush" Value="#6B7280" />
+      <Setter Property="BorderThickness" Value="1.5" />
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Margin" Value="10,0,0,0" />
+      <Setter Property="Margin" Value="0,0,6,0" />
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Path#ExpandCollapseChevron">
       <Setter Property="Data" Value="M 1,2 L 6,7 L 11,2" />
       <Setter Property="Stroke" Value="#374151" />
-      <Setter Property="StrokeThickness" Value="2" />
+      <Setter Property="StrokeThickness" Value="1.8" />
       <Setter Property="StrokeLineCap" Value="Round" />
       <Setter Property="StrokeJoin" Value="Round" />
       <Setter Property="Stretch" Value="None" />
     </Style>
 
     <Style Selector="TextBlock.session-group-title">
-      <Setter Property="FontSize" Value="17" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="#6B7280" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
       <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="ListBox.session-items">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+      <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    </Style>
+
+    <Style Selector="ListBox.session-items /template/ Border#border">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
     </Style>
 
   </Window.Styles>
@@ -113,12 +167,14 @@
               <ItemsControl x:Name="SessionGroupsItemsControl">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Expander Classes="session-group-expander" IsExpanded="{Binding IsExpanded}">
-                      <Expander.Header>
-                        <TextBlock Classes="session-group-title"
-                                   Text="{Binding GroupName}" />
-                      </Expander.Header>
+                      <Expander Classes="session-group-expander" IsExpanded="{Binding IsExpanded}">
+                        <Expander.Header>
+                          <TextBlock Classes="session-group-title"
+                                     Text="{Binding GroupName}" />
+                        </Expander.Header>
                       <ListBox ItemsSource="{Binding Items}"
+                               Classes="session-items"
+                               Margin="0,6,0,0"
                                SelectionChanged="SessionGroupListBox_SelectionChanged">
                         <ListBox.ItemContainerTheme>
                           <ControlTheme TargetType="ListBoxItem">
@@ -158,7 +214,9 @@
                                          Margin="8,0,0,0"
                                          Text="{Binding FileSize}"
                                          FontSize="11"
-                                         Foreground="#6B7280" />
+                                         Foreground="#6B7280"
+                                         VerticalAlignment="Center"
+                                         HorizontalAlignment="Right" />
                               <TextBlock Grid.Row="1"
                                          Margin="0,6,0,0"
                                          Text="{Binding RelativeTime}"
