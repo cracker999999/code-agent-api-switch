@@ -492,8 +492,6 @@ public partial class SessionWindow : Window
             Width = 24,
             Height = 24,
             CornerRadius = new CornerRadius(4),
-            BorderBrush = CreateBrush("#D1D5DB"),
-            BorderThickness = new Thickness(1),
             Background = Brushes.Transparent,
             Child = chevronPath,
             VerticalAlignment = VerticalAlignment.Center
@@ -519,14 +517,13 @@ public partial class SessionWindow : Window
         Grid.SetColumn(timeText, 2);
         header.Children.Add(timeText);
 
-        var headerButton = new Button
+        var headerButton = new Border
         {
             Background = Brushes.Transparent,
-            BorderBrush = Brushes.Transparent,
             Padding = new Thickness(0),
             HorizontalAlignment = HorizontalAlignment.Left,
             Cursor = new Cursor(StandardCursorType.Hand),
-            Content = header
+            Child = header
         };
 
         var contentBorder = new Border
@@ -540,8 +537,13 @@ public partial class SessionWindow : Window
         };
 
         var isExpanded = false;
-        headerButton.Click += (_, _) =>
+        headerButton.PointerPressed += (_, e) =>
         {
+            if (!e.GetCurrentPoint(headerButton).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+
             isExpanded = !isExpanded;
             contentBorder.IsVisible = isExpanded;
             chevronPath.Data = isExpanded ? expandedChevron : collapsedChevron;

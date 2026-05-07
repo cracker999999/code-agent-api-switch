@@ -73,7 +73,7 @@
     </Style>
   </Window.Styles>
 
-  <Grid Margin="16" RowDefinitions="Auto,*">
+  <Grid Margin="16" Background="#F3F4F6" RowDefinitions="Auto,*">
     <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button x:Name="CodexTabButton" Classes="tab" Click="CodexTabButton_Click" Content="Codex" />
