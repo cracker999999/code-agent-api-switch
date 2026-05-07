@@ -47,7 +47,7 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="MinHeight" Value="0" />
-      <Setter Property="Margin" Value="0,0,0,6" />
+      <Setter Property="Margin" Value="0,0,0,4" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
@@ -89,6 +89,10 @@
       <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
 
+    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader:pointerover">
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Foreground" Value="#6B7280" />
     </Style>
@@ -107,7 +111,7 @@
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder">
-      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="Margin" Value="0,0,4,0" />
       <Setter Property="RenderTransformOrigin" Value="50%,50%" />
       <Setter Property="RenderTransform" Value="scale(0.75)" />
     </Style>

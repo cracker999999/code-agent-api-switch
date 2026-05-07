@@ -6,6 +6,7 @@ using APISwitch.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -477,23 +478,23 @@ public partial class SessionWindow : Window
         var chevronPath = new global::Avalonia.Controls.Shapes.Path
         {
             Data = collapsedChevron,
-            Stroke = CreateBrush("#374151"),
-            StrokeThickness = 2,
-            StrokeLineCap = PenLineCap.Round,
-            StrokeJoin = PenLineJoin.Round,
-            Width = 12,
-            Height = 9,
+            Stroke = CreateBrush("#6B7280"),
+            StrokeThickness = 1,
+            Width = 14,
+            Height = 7,
             HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
+            VerticalAlignment = VerticalAlignment.Center,
+            Stretch = Stretch.None
         };
 
         var chevronCircle = new Border
         {
-            Width = 20,
-            Height = 20,
-            CornerRadius = new CornerRadius(10),
-            BorderBrush = CreateBrush("#4B5563"),
-            BorderThickness = new Thickness(2),
+            Width = 24,
+            Height = 24,
+            CornerRadius = new CornerRadius(4),
+            BorderBrush = CreateBrush("#D1D5DB"),
+            BorderThickness = new Thickness(1),
+            Background = Brushes.Transparent,
             Child = chevronPath,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -524,6 +525,7 @@ public partial class SessionWindow : Window
             BorderBrush = Brushes.Transparent,
             Padding = new Thickness(0),
             HorizontalAlignment = HorizontalAlignment.Left,
+            Cursor = new Cursor(StandardCursorType.Hand),
             Content = header
         };
 
