@@ -332,10 +332,10 @@ public partial class App : Application
     {
         var candidates = new[]
         {
-            "avares://APISwitch/Assets/app-preview.png",
             "avares://APISwitch/Assets/app.ico",
-            "avares://APISwitch.UI/Assets/app-preview.png",
-            "avares://APISwitch.UI/Assets/app.ico"
+            "avares://APISwitch.UI/Assets/app.ico",
+            "avares://APISwitch/Assets/app-preview.png",
+            "avares://APISwitch.UI/Assets/app-preview.png"
         };
 
         foreach (var candidate in candidates)

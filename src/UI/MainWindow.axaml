@@ -4,7 +4,7 @@
         xmlns:shapes="clr-namespace:Avalonia.Controls.Shapes;assembly=Avalonia.Controls"
         x:Class="APISwitch.UI.MainWindow"
         Title="APISwitch"
-        Icon="/Assets/app-preview.png"
+        Icon="/Assets/app.ico"
         Width="884"
         Height="600"
         MinWidth="720"
