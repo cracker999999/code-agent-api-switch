@@ -16,7 +16,7 @@ internal static class Program
             .UsePlatformDetect()
             .With(new MacOSPlatformOptions
             {
-                ShowInDock = false
+                ShowInDock = true
             })
             .LogToTrace();
     }

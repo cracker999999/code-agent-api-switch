@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Linq;
+using System.Runtime.InteropServices;
 using APISwitch.Services;
 using Avalonia;
 using Avalonia.Controls;
@@ -18,6 +19,8 @@ public partial class App : Application
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
     private TrayIcon? _trayIcon;
+    private DispatcherTimer? _macDockVisibilityTimer;
+    private bool? _isMacDockVisible;
 
     public bool IsExitRequested { get; private set; }
     public bool HasStatusIcon => _trayIcon is not null;
@@ -48,6 +51,12 @@ public partial class App : Application
 
             desktop.Exit += (_, _) =>
             {
+                if (_macDockVisibilityTimer is not null)
+                {
+                    _macDockVisibilityTimer.Stop();
+                    _macDockVisibilityTimer = null;
+                }
+
                 if (_trayIcon is not null)
                 {
                     _trayIcon.Dispose();
@@ -67,6 +76,7 @@ public partial class App : Application
             InitializeTrayIcon(mainWindow, desktop);
             RefreshTrayTooltip(databaseService);
             InitializeDockMenu(mainWindow, desktop);
+            InitializeMacDockVisibilityController(desktop);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -223,6 +233,99 @@ public partial class App : Application
         {
             // ignore dock menu failures to avoid startup crash
         }
+    }
+
+    private void InitializeMacDockVisibilityController(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        _macDockVisibilityTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250)
+        };
+
+        _macDockVisibilityTimer.Tick += (_, _) =>
+        {
+            RefreshMacDockVisibility(desktop);
+        };
+
+        _macDockVisibilityTimer.Start();
+    }
+
+    private void RefreshMacDockVisibility(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        var hasVisibleWindow = desktop.Windows.Any(window => window.IsVisible);
+        if (_isMacDockVisible == hasVisibleWindow)
+        {
+            return;
+        }
+
+        if (TrySetMacDockVisible(hasVisibleWindow))
+        {
+            _isMacDockVisible = hasVisibleWindow;
+        }
+    }
+
+    private static bool TrySetMacDockVisible(bool visible)
+    {
+        try
+        {
+            NativeMacDock.SetDockVisible(visible);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static class NativeMacDock
+    {
+        private const nint NSApplicationActivationPolicyRegular = 0;
+        private const nint NSApplicationActivationPolicyAccessory = 1;
+
+        private static readonly IntPtr NSApplicationClass = objc_getClass("NSApplication");
+        private static readonly IntPtr SharedApplicationSelector = sel_registerName("sharedApplication");
+        private static readonly IntPtr SetActivationPolicySelector = sel_registerName("setActivationPolicy:");
+
+        internal static void SetDockVisible(bool visible)
+        {
+            if (NSApplicationClass == IntPtr.Zero ||
+                SharedApplicationSelector == IntPtr.Zero ||
+                SetActivationPolicySelector == IntPtr.Zero)
+            {
+                throw new InvalidOperationException("无法访问 NSApplication 运行时。");
+            }
+
+            var nsApplication = IntPtr_objc_msgSend(NSApplicationClass, SharedApplicationSelector);
+            if (nsApplication == IntPtr.Zero)
+            {
+                throw new InvalidOperationException("无法获取 NSApplication 实例。");
+            }
+
+            var policy = visible ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory;
+            Void_objc_msgSend_nint(nsApplication, SetActivationPolicySelector, policy);
+        }
+
+        [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_getClass")]
+        private static extern IntPtr objc_getClass(string name);
+
+        [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "sel_registerName")]
+        private static extern IntPtr sel_registerName(string name);
+
+        [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+        private static extern IntPtr IntPtr_objc_msgSend(IntPtr receiver, IntPtr selector);
+
+        [DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")]
+        private static extern void Void_objc_msgSend_nint(IntPtr receiver, IntPtr selector, nint arg1);
     }
 
     private static WindowIcon LoadTrayIcon()
