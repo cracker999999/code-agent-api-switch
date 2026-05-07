@@ -116,7 +116,11 @@
                       <shapes:Ellipse Fill="#22C55E" IsVisible="{Binding IsTestSuccess}" />
                       <shapes:Ellipse Fill="#EF4444" IsVisible="{Binding IsTestFailed}" />
                     </Grid>
-                    <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" Foreground="#111827" />
+                    <TextBlock Text="{Binding Name}"
+                               FontSize="18"
+                               FontWeight="{OnPlatform Default=Bold, macOS=SemiBold}"
+                               FontFamily="{OnPlatform Default='Microsoft YaHei UI, Segoe UI', macOS='PingFang SC, Hiragino Sans GB, Noto Sans CJK SC'}"
+                               Foreground="#111827" />
                     <TextBlock Text="{Binding Remark}"
                                Margin="8,0,0,0"
                                Foreground="#9CA3AF"
