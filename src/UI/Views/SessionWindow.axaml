@@ -92,32 +92,9 @@
       <Setter Property="Foreground" Value="#6B7280" />
     </Style>
 
-    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader:pointerover /template/ Path#ExpandCollapseChevron">
-      <Setter Property="Stroke" Value="#374151" />
-    </Style>
-
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader:pressed /template/ Border#ToggleButtonBackground">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="Transparent" />
-    </Style>
-
-    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder">
-      <Setter Property="Width" Value="18" />
-      <Setter Property="Height" Value="18" />
-      <Setter Property="CornerRadius" Value="9" />
-      <Setter Property="BorderBrush" Value="#6B7280" />
-      <Setter Property="BorderThickness" Value="1.5" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Margin" Value="0,0,10,0" />
-    </Style>
-
-    <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Path#ExpandCollapseChevron">
-      <Setter Property="Data" Value="M 1,2 L 6,7 L 11,2" />
-      <Setter Property="Stroke" Value="#374151" />
-      <Setter Property="StrokeThickness" Value="1.8" />
-      <Setter Property="StrokeLineCap" Value="Round" />
-      <Setter Property="StrokeJoin" Value="Round" />
-      <Setter Property="Stretch" Value="None" />
     </Style>
 
     <Style Selector="TextBlock.session-group-title">
