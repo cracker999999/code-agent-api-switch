@@ -1,6 +1,11 @@
 ﻿# APISwitch
 
-APISwitch 是一个基于 .NET 8 + WPF 的 Windows 桌面应用，用于可视化管理 Codex 和 Claude Code 的 API 供应商，并支持一键切换激活配置。
+APISwitch 用于可视化管理 Codex 和 Claude Code 的 API 供应商，并支持一键切换激活配置。  
+当前仓库包含两套前端：
+
+- 新版：`src/UI`（Avalonia，跨平台）
+- 旧版：`src/APISwitch`（WPF/WinForms，仅 Windows）
+- 共享核心：`src/Core`
 
 ## 功能说明
 
@@ -16,23 +21,18 @@ APISwitch 是一个基于 .NET 8 + WPF 的 Windows 桌面应用，用于可视�
 
 ## 技术栈
 
-- .NET 8 (WPF, net8.0-windows)
-- Microsoft.Data.Sqlite
-- System.Text.Json
+- .NET 8
+- 新版 UI：Avalonia 11（`net8.0`）
+- 旧版 UI：WPF/WinForms（`net8.0-windows`）
+- Core：`Microsoft.Data.Sqlite`
 
 ## 项目结构
 
 ```text
-src/APISwitch/
-  App.xaml(.cs)
-  MainWindow.xaml(.cs)
-  Models/ApiTestResult.cs
-  Models/Provider.cs
-  Services/ApiTestService.cs
-  Services/DatabaseService.cs
-  Services/ConfigWriterService.cs
-  Views/ProviderDialog.xaml(.cs)
-  Assets/app.ico
+src/
+  Core/                  # 共享业务与数据访问
+  UI/                    # 新版 Avalonia 前端（跨平台）
+  APISwitch/             # 旧版 WPF 前端（Windows）
 ```
 
 ## 构建与运行
@@ -43,31 +43,58 @@ src/APISwitch/
 dotnet restore APISwitch.sln
 ```
 
-2. 构建
+2. 构建（会尝试构建新旧两版）
 
 ```powershell
 dotnet build APISwitch.sln
 ```
 
-3. 运行
+3. 运行新版（推荐）
+
+```powershell
+dotnet run --project src/UI/UI.csproj
+```
+
+4. 运行旧版（仅 Windows）
 
 ```powershell
 dotnet run --project src/APISwitch/APISwitch.csproj
 ```
 
-## 发布
+## Windows 本地发布脚本
 
-执行根目录脚本：
+1. 发布新版 UI（Avalonia）
+
+```bat
+repack-ui.bat
+```
+
+- 项目：`src\UI\UI.csproj`
+- 输出：`.\Release-UI\APISwitch.exe`
+- 参数：`win-x64`、`PublishSingleFile=true`、`--self-contained false`
+
+2. 发布旧版 UI（WPF）
 
 ```bat
 repack.bat
 ```
 
-发布结果：
+- 项目：`src\APISwitch\APISwitch.csproj`
+- 输出：`.\Release\APISwitch.exe`
+- 参数：`win-x64`、单文件、`--self-contained false`
 
-- 产物路径：`.\Release\APISwitch.exe`
-- 发布模式：单文件、`win-x64`、非自包含
-- 自动清理：脚本结束后会删除 `src\APISwitch\bin` 和 `src\APISwitch\obj`
+## CI 跨平台发布
+
+工作流：`.github/workflows/publish-cross-platform.yml`
+
+- 当前 CI 只构建新版 `src/UI/UI.csproj`
+- macOS：发布 `osx-x64` 自包含，并打包 `.app` + zip
+- Windows：发布 `win-x64` 单文件、非自包含，并打 zip
+
+## PublishSingleFile 说明
+
+- `PublishSingleFile=true`：输出以单个 `APISwitch.exe` 为主，便于分发
+- 不设置该参数：输出为多文件目录（exe + 多个 dll），部署时需整体拷贝目录
 
 ## 配置文件路径
 
@@ -80,4 +107,4 @@ repack.bat
 - 若激活 Codex 供应商时缺少 `config.toml`，应用会提示“请先安装 Codex”，且不会创建该文件。
 - `auth.json` 与 `settings.json` 在不存在时会自动创建。
 - 供应商配置被编辑后，测试状态会重置为未知（不显示状态点）。
-- 当前发布为非自包含，目标机器需安装 `.NET 8 Desktop Runtime`。
+- Windows 非自包含发布需要目标机安装 .NET 运行时。
