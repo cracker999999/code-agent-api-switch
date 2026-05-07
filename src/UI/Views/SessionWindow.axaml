@@ -47,7 +47,7 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="MinHeight" Value="0" />
-      <Setter Property="Margin" Value="0,0,0,10" />
+      <Setter Property="Margin" Value="0,0,0,12" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
@@ -108,7 +108,7 @@
       <Setter Property="BorderBrush" Value="#6B7280" />
       <Setter Property="BorderThickness" Value="1.5" />
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="Margin" Value="0,0,8,0" />
     </Style>
 
     <Style Selector="Expander.session-group-expander /template/ ToggleButton#ExpanderHeader /template/ Path#ExpandCollapseChevron">
@@ -178,7 +178,7 @@
                                SelectionChanged="SessionGroupListBox_SelectionChanged">
                         <ListBox.ItemContainerTheme>
                           <ControlTheme TargetType="ListBoxItem">
-                            <Setter Property="Margin" Value="0,0,0,10" />
+                            <Setter Property="Margin" Value="3,0,3,10" />
                             <Setter Property="Padding" Value="0" />
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                             <Setter Property="FocusAdorner" Value="{x:Null}" />
