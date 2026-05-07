@@ -47,6 +47,7 @@
       <Setter Property="Margin" Value="8,0,0,0" />
       <Setter Property="MinWidth" Value="56" />
       <Setter Property="Height" Value="30" />
+      <Setter Property="FontSize" Value="12" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
