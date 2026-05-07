@@ -117,7 +117,7 @@
                       <shapes:Ellipse Fill="#22C55E" IsVisible="{Binding IsTestSuccess}" />
                       <shapes:Ellipse Fill="#EF4444" IsVisible="{Binding IsTestFailed}" />
                     </Grid>
-                    <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" Foreground="#111827" />
+                    <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" Foreground="#111827" />
                     <TextBlock Text="{Binding Remark}"
                                Margin="8,0,0,0"
                                Foreground="#9CA3AF"
