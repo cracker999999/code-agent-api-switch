@@ -35,3 +35,13 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **WHEN** 用户双击系统托盘图标
 - **THEN** 主窗口显示并激活到前台
 
+### Requirement: macOS Dock 图标随窗口可见性切换
+系统 SHALL 在 macOS 下根据窗口可见状态动态切换 Dock 图标显示。
+
+#### Scenario: 至少一个窗口可见
+- **WHEN** 应用运行于 macOS 且任一窗口可见
+- **THEN** Dock 显示应用图标
+
+#### Scenario: 无任何窗口可见
+- **WHEN** 应用运行于 macOS 且所有窗口均不可见
+- **THEN** Dock 隐藏应用图标，仅保留菜单栏图标
