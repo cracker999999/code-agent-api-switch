@@ -33,7 +33,32 @@ jobs:
             -r osx-x64 \
             --self-contained true \
             -p:UseAppHost=true \
+            -p:DebugType=None \
+            -p:DebugSymbols=false \
             -o out/osx-x64
+
+      - name: Prune optional diagnostics files (size optimization)
+        shell: bash
+        run: |
+          # 这些文件仅用于诊断/调试，不影响应用正常启动和运行
+          rm -f out/osx-x64/*.pdb
+          rm -f out/osx-x64/createdump
+          rm -f out/osx-x64/libmscordaccore.dylib
+          rm -f out/osx-x64/libmscordbi.dylib
+
+      - name: Trim universal dylibs to intel-only (x86_64)
+        shell: bash
+        run: |
+          # 仅对包含 arm64 的 universal 库做裁剪，避免对已是 x86_64 单架构的文件误处理
+          for lib in \
+            out/osx-x64/libSkiaSharp.dylib \
+            out/osx-x64/libAvaloniaNative.dylib \
+            out/osx-x64/libHarfBuzzSharp.dylib; do
+            if [ -f "$lib" ] && file "$lib" | grep -q "universal binary"; then
+              lipo -thin x86_64 "$lib" -output "${lib}.x86_64"
+              mv -f "${lib}.x86_64" "$lib"
+            fi
+          done
 
       - name: Build .app bundle
         shell: bash
