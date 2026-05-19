@@ -25,12 +25,16 @@ public class SessionService
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly string _codexSessionsDirectory;
+    private readonly string _codexSessionIndexPath;
     private readonly string _claudeProjectsDirectory;
+    private Dictionary<string, string>? _codexSessionThreadNameIndex;
+    private bool _codexSessionThreadNameIndexLoaded;
 
     public SessionService(string? codexSessionsDirectory = null, string? claudeProjectsDirectory = null)
     {
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         _codexSessionsDirectory = codexSessionsDirectory ?? Path.Combine(userProfile, ".codex", "sessions");
+        _codexSessionIndexPath = Path.Combine(userProfile, ".codex", "session_index.jsonl");
         _claudeProjectsDirectory = claudeProjectsDirectory ?? Path.Combine(userProfile, ".claude", "projects");
     }
 
@@ -223,6 +227,12 @@ public class SessionService
         if (!hasMessage)
         {
             return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(customTitle))
+        {
+            // 只有当前会话文件没有 thread_name 时，才回查 Codex 全局索引。
+            customTitle = TryFindCodexThreadNameFromIndex(sessionId);
         }
 
         projectDir ??= string.Empty;
@@ -827,6 +837,66 @@ public class SessionService
         }
 
         return string.Empty;
+    }
+
+    private string TryFindCodexThreadNameFromIndex(string? sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            return string.Empty;
+        }
+
+        EnsureCodexSessionThreadNameIndexLoaded();
+        if (_codexSessionThreadNameIndex is null)
+        {
+            return string.Empty;
+        }
+
+        return _codexSessionThreadNameIndex.TryGetValue(sessionId, out var threadName)
+            ? threadName
+            : string.Empty;
+    }
+
+    private void EnsureCodexSessionThreadNameIndexLoaded()
+    {
+        if (_codexSessionThreadNameIndexLoaded)
+        {
+            return;
+        }
+
+        _codexSessionThreadNameIndexLoaded = true;
+        _codexSessionThreadNameIndex = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!File.Exists(_codexSessionIndexPath))
+        {
+            return;
+        }
+
+        foreach (var line in SessionFileUtils.ReadAllLinesShared(_codexSessionIndexPath))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                var root = document.RootElement;
+                if (!TryGetString(root, "id", out var id) ||
+                    !TryGetString(root, "thread_name", out var threadName))
+                {
+                    continue;
+                }
+
+                // 同一个 id 出现多次时保留最新一条（文件越靠后越新）。
+                _codexSessionThreadNameIndex[id] = threadName;
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+        }
     }
 
     private static string? ExtractUuidFromFileName(string filePath)

@@ -56,3 +56,4 @@ nunit-*.xml
 /.claude
 /.codex
 /promo-video
+/scripts
