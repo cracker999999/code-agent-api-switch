@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using APISwitch.Models;
 
 namespace APISwitch.Services;
@@ -49,19 +50,7 @@ public class ApiTestService
         var model = string.IsNullOrWhiteSpace(provider.TestModel)
             ? "gpt-5.3-codex"
             : provider.TestModel.Trim();
-        var body = JsonSerializer.Serialize(new
-        {
-            model,
-            input = new[]
-            {
-                new
-                {
-                    role = "user",
-                    content = "你是什么模型"
-                }
-            },
-            stream = true
-        });
+        var body = BuildCodexRequestBody(model);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -83,20 +72,7 @@ public class ApiTestService
         var model = string.IsNullOrWhiteSpace(provider.TestModel)
             ? "claude-opus-4-6"
             : provider.TestModel.Trim();
-        var body = JsonSerializer.Serialize(new
-        {
-            model,
-            max_tokens = 1,
-            messages = new[]
-            {
-                new
-                {
-                    role = "user",
-                    content = "你是什么模型"
-                }
-            },
-            stream = true
-        });
+        var body = BuildClaudeRequestBody(model);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -189,5 +165,44 @@ public class ApiTestService
                 Message = ex.Message
             };
         }
+    }
+
+    private static string BuildCodexRequestBody(string model)
+    {
+        var payload = new JsonObject
+        {
+            ["model"] = model,
+            ["stream"] = true,
+            ["input"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["role"] = "user",
+                    ["content"] = "你是什么模型"
+                }
+            }
+        };
+
+        return payload.ToJsonString();
+    }
+
+    private static string BuildClaudeRequestBody(string model)
+    {
+        var payload = new JsonObject
+        {
+            ["model"] = model,
+            ["max_tokens"] = 1,
+            ["stream"] = true,
+            ["messages"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["role"] = "user",
+                    ["content"] = "你是什么模型"
+                }
+            }
+        };
+
+        return payload.ToJsonString();
     }
 }

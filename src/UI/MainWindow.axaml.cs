@@ -236,6 +236,12 @@ public partial class MainWindow : Window
             LoadProviders();
             await DialogService.ShowErrorAsync(this, "测试失败", result.Message);
         }
+        catch (Exception ex)
+        {
+            _databaseService.UpdateTestStatus(provider.Id, 2);
+            LoadProviders();
+            await DialogService.ShowErrorAsync(this, "测试失败", $"测试过程异常：{ex.Message}");
+        }
         finally
         {
             button.Content = originalContent;
