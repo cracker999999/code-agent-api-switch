@@ -4,6 +4,7 @@ using APISwitch.Services;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace APISwitch.UI.Views;
 
@@ -115,10 +116,8 @@ public partial class ProviderDialog : Window
                 }
             };
 
-            var content = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            // Trim/AOT 发布会禁用反射序列化，这里显式使用源生成 TypeInfo 保证可用。
+            var content = JsonSerializer.Serialize(payload, ProviderClipboardJsonContext.Default.ProviderClipboardPayload);
 
             await clipboard.SetTextAsync(content);
         }
@@ -147,10 +146,7 @@ public partial class ProviderDialog : Window
         ProviderClipboardPayload? payload;
         try
         {
-            payload = JsonSerializer.Deserialize<ProviderClipboardPayload>(clipboardContent, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            payload = JsonSerializer.Deserialize(clipboardContent, ProviderClipboardJsonContext.Default.ProviderClipboardPayload);
         }
         catch (JsonException ex)
         {
@@ -249,5 +245,11 @@ public partial class ProviderDialog : Window
         public int Version { get; set; }
 
         public ProviderClipboardData? Provider { get; set; }
+    }
+
+    [JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true)]
+    [JsonSerializable(typeof(ProviderClipboardPayload))]
+    private partial class ProviderClipboardJsonContext : JsonSerializerContext
+    {
     }
 }
