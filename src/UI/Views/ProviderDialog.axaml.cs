@@ -3,11 +3,15 @@ using APISwitch.Models;
 using APISwitch.Services;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using System.Text.Json;
 
 namespace APISwitch.UI.Views;
 
 public partial class ProviderDialog : Window
 {
+    private const string ProviderClipboardType = "APISwitch.ProviderClipboard";
+    private const int ProviderClipboardVersion = 1;
+
     private readonly ModelDiscoveryService _modelDiscoveryService = new();
     private List<string> _allModels = new();
 
@@ -86,6 +90,91 @@ public partial class ProviderDialog : Window
         Close(null);
     }
 
+    private async void QuickCopyButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard is null)
+        {
+            await DialogService.ShowErrorAsync(this, "错误", "复制失败：无法访问剪贴板");
+            return;
+        }
+
+        try
+        {
+            var payload = new ProviderClipboardPayload
+            {
+                Type = ProviderClipboardType,
+                Version = ProviderClipboardVersion,
+                Provider = new ProviderClipboardData
+                {
+                    Name = NameTextBox.Text?.Trim() ?? string.Empty,
+                    BaseUrl = BaseUrlTextBox.Text?.Trim() ?? string.Empty,
+                    ApiKey = ApiKeyTextBox.Text?.Trim() ?? string.Empty,
+                    TestModel = TestModelTextBox.Text?.Trim() ?? string.Empty,
+                    Remark = RemarkTextBox.Text?.Trim() ?? string.Empty
+                }
+            };
+
+            var content = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            await clipboard.SetTextAsync(content);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(this, "错误", $"复制失败：{ex.Message}");
+        }
+    }
+
+    private async void QuickPasteButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard is null)
+        {
+            await DialogService.ShowErrorAsync(this, "错误", "粘贴失败：无法访问剪贴板");
+            return;
+        }
+
+        var clipboardContent = await clipboard.GetTextAsync();
+        if (string.IsNullOrWhiteSpace(clipboardContent))
+        {
+            await DialogService.ShowInfoAsync(this, "提示", "剪贴板为空");
+            return;
+        }
+
+        ProviderClipboardPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<ProviderClipboardPayload>(clipboardContent, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (JsonException ex)
+        {
+            await DialogService.ShowErrorAsync(this, "错误", $"粘贴失败：结构化内容格式错误。{ex.Message}");
+            return;
+        }
+
+        // Fail Fast: 只接受本功能写入的结构化数据，避免未知结构污染表单输入。
+        if (payload is null ||
+            payload.Provider is null ||
+            !string.Equals(payload.Type, ProviderClipboardType, StringComparison.Ordinal) ||
+            payload.Version != ProviderClipboardVersion)
+        {
+            await DialogService.ShowErrorAsync(this, "错误", "粘贴失败：剪贴板内容不是有效的供应商结构化数据");
+            return;
+        }
+
+        NameTextBox.Text = payload.Provider.Name ?? string.Empty;
+        BaseUrlTextBox.Text = payload.Provider.BaseUrl ?? string.Empty;
+        ApiKeyTextBox.Text = payload.Provider.ApiKey ?? string.Empty;
+        TestModelTextBox.Text = payload.Provider.TestModel ?? string.Empty;
+        RemarkTextBox.Text = payload.Provider.Remark ?? string.Empty;
+    }
+
     private async void FetchModelsButton_Click(object? sender, RoutedEventArgs e)
     {
         var originalContent = FetchModelsButton.Content;
@@ -151,5 +240,14 @@ public partial class ProviderDialog : Window
             .Where(model => model.Contains(keyword, StringComparison.OrdinalIgnoreCase))
             .ToList();
         ModelListBox.ItemsSource = filtered;
+    }
+
+    private sealed class ProviderClipboardPayload
+    {
+        public string Type { get; set; } = string.Empty;
+
+        public int Version { get; set; }
+
+        public ProviderClipboardData? Provider { get; set; }
     }
 }

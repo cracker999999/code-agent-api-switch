@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Windows;
 using APISwitch.Models;
 using APISwitch.Services;
@@ -6,6 +7,9 @@ namespace APISwitch.Views;
 
 public partial class ProviderDialog : Window
 {
+    private const string ProviderClipboardType = "APISwitch.ProviderClipboard";
+    private const int ProviderClipboardVersion = 1;
+
     private readonly ModelDiscoveryService _modelDiscoveryService = new();
     private List<string> _allModels = new();
 
@@ -87,6 +91,76 @@ public partial class ProviderDialog : Window
         Close();
     }
 
+    private void QuickCopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var payload = new ProviderClipboardPayload
+            {
+                Type = ProviderClipboardType,
+                Version = ProviderClipboardVersion,
+                Provider = new ProviderClipboardData
+                {
+                    Name = NameTextBox.Text.Trim(),
+                    BaseUrl = BaseUrlTextBox.Text.Trim(),
+                    ApiKey = ApiKeyTextBox.Text.Trim(),
+                    TestModel = TestModelTextBox.Text.Trim(),
+                    Remark = RemarkTextBox.Text.Trim()
+                }
+            };
+
+            var content = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            System.Windows.Clipboard.SetText(content);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(this, $"复制失败：{ex.Message}", "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    private void QuickPasteButton_Click(object sender, RoutedEventArgs e)
+    {
+        var clipboardContent = System.Windows.Clipboard.GetText();
+        if (string.IsNullOrWhiteSpace(clipboardContent))
+        {
+            System.Windows.MessageBox.Show(this, "剪贴板为空", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+
+        ProviderClipboardPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<ProviderClipboardPayload>(clipboardContent, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (JsonException ex)
+        {
+            System.Windows.MessageBox.Show(this, $"粘贴失败：结构化内容格式错误。{ex.Message}", "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            return;
+        }
+
+        // Fail Fast: 只接受本功能生成的结构化数据，避免把未知结构写入表单。
+        if (payload is null ||
+            payload.Provider is null ||
+            !string.Equals(payload.Type, ProviderClipboardType, StringComparison.Ordinal) ||
+            payload.Version != ProviderClipboardVersion)
+        {
+            System.Windows.MessageBox.Show(this, "粘贴失败：剪贴板内容不是有效的供应商结构化数据", "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            return;
+        }
+
+        NameTextBox.Text = payload.Provider.Name ?? string.Empty;
+        BaseUrlTextBox.Text = payload.Provider.BaseUrl ?? string.Empty;
+        ApiKeyTextBox.Text = payload.Provider.ApiKey ?? string.Empty;
+        TestModelTextBox.Text = payload.Provider.TestModel ?? string.Empty;
+        RemarkTextBox.Text = payload.Provider.Remark ?? string.Empty;
+    }
+
     private async void FetchModelsButton_Click(object sender, RoutedEventArgs e)
     {
         var originalContent = FetchModelsButton.Content;
@@ -152,5 +226,14 @@ public partial class ProviderDialog : Window
             .Where(model => model.Contains(keyword, StringComparison.OrdinalIgnoreCase))
             .ToList();
         ModelListBox.ItemsSource = filtered;
+    }
+
+    private sealed class ProviderClipboardPayload
+    {
+        public string Type { get; set; } = string.Empty;
+
+        public int Version { get; set; }
+
+        public ProviderClipboardData? Provider { get; set; }
     }
 }

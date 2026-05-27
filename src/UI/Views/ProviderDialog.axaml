@@ -80,6 +80,8 @@
     </Border>
 
     <StackPanel Grid.Row="13" Margin="0,18,0,0" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Classes="dialog-action" Width="88" Height="32" Click="QuickCopyButton_Click" Content="快速复制" />
+      <Button Classes="dialog-action" Width="88" Height="32" Click="QuickPasteButton_Click" Content="快速粘贴" />
       <Button Classes="dialog-action" Width="88" Height="32" Click="ConfirmButton_Click" Content="确认" />
       <Button Classes="dialog-action" Width="88" Height="32" Click="CancelButton_Click" Content="取消" />
     </StackPanel>

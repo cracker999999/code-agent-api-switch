@@ -114,6 +114,16 @@
                     Margin="0,18,0,0"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right">
+            <Button x:Name="QuickCopyButton"
+                    Width="88"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="QuickCopyButton_Click">快速复制</Button>
+            <Button x:Name="QuickPasteButton"
+                    Width="88"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="QuickPasteButton_Click">快速粘贴</Button>
             <Button Width="88" Height="32" Margin="0,0,8,0" IsDefault="True" Click="ConfirmButton_Click">确认</Button>
             <Button Width="88" Height="32" IsCancel="True" Click="CancelButton_Click">取消</Button>
         </StackPanel>
