@@ -213,6 +213,17 @@ public partial class ProviderDialog : Window
         ApplyModelFilter();
     }
 
+    private void ModelListBoxItem_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.ListBoxItem { DataContext: string model } ||
+            string.IsNullOrWhiteSpace(model))
+        {
+            return;
+        }
+
+        TestModelTextBox.Text = model;
+    }
+
     private void ApplyModelFilter()
     {
         var keyword = ModelSearchTextBox.Text.Trim();

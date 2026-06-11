@@ -2,6 +2,7 @@ using APISwitch.UI.Services;
 using APISwitch.Models;
 using APISwitch.Services;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -221,6 +222,17 @@ public partial class ProviderDialog : Window
     private void ModelSearchTextBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
         ApplyModelFilter();
+    }
+
+    private void ModelListBoxItem_DoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Control { DataContext: string model } ||
+            string.IsNullOrWhiteSpace(model))
+        {
+            return;
+        }
+
+        TestModelTextBox.Text = model;
     }
 
     private void ApplyModelFilter()

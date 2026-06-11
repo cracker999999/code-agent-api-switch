@@ -76,7 +76,13 @@
                BorderThickness="0"
                ScrollViewer.AllowAutoHide="False"
                ScrollViewer.VerticalScrollBarVisibility="Auto"
-               ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="13" DoubleTapped="ModelListBoxItem_DoubleTapped" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
     </Border>
 
     <StackPanel Grid.Row="13" Margin="0,18,0,0" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
