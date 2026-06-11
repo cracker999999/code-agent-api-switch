@@ -187,24 +187,32 @@ public partial class SessionWindow : Window
             return;
         }
 
-        var projectDir = _selectedSession.ProjectDir.Trim();
-        if (!Directory.Exists(projectDir))
+        await OpenDirectoryWithDialogAsync(_selectedSession.ProjectDir.Trim(), "目录不存在或无法访问", "打开目录失败");
+    }
+
+    private async void SessionIdTextBlock_Tapped(object? sender, TappedEventArgs e)
+    {
+        if (_selectedSession is null || string.IsNullOrWhiteSpace(_selectedSession.SourcePath))
         {
-            await DialogService.ShowInfoAsync(this, "提示", "目录不存在或无法访问");
             return;
         }
 
-        try
+        // 会话文件可能被删除或移动，只要父目录仍存在，就打开文件所在文件夹。
+        var sessionFileDirectory = Path.GetDirectoryName(_selectedSession.SourcePath.Trim());
+        await OpenDirectoryWithDialogAsync(sessionFileDirectory, "会话文件目录不存在或无法访问", "打开会话文件目录失败");
+    }
+
+    private async Task OpenDirectoryWithDialogAsync(string? directory, string notFoundMessage, string failurePrefix)
+    {
+        var result = ShellLauncher.OpenDirectory(directory);
+        switch (result.Status)
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = projectDir,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            await DialogService.ShowErrorAsync(this, "错误", $"打开目录失败：{ex.Message}");
+            case OpenDirectoryStatus.NotFound:
+                await DialogService.ShowInfoAsync(this, "提示", notFoundMessage);
+                break;
+            case OpenDirectoryStatus.Failed:
+                await DialogService.ShowErrorAsync(this, "错误", $"{failurePrefix}：{result.ErrorMessage}");
+                break;
         }
     }
 

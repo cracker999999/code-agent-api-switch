@@ -32,10 +32,12 @@
     </Style>
 
     <Style Selector="SelectableTextBlock.session-id">
-      <Setter Property="Foreground" Value="#6B7280" />
+      <Setter Property="Foreground" Value="#2563EB" />
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="HorizontalAlignment" Value="Right" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="TextDecorations" Value="Underline" />
+      <Setter Property="Cursor" Value="Hand" />
       <Setter Property="MaxWidth" Value="280" />
     </Style>
 
@@ -254,6 +256,7 @@
                                    Margin="8,0,0,0"
                                    RenderTransformOrigin="0,0.5"
                                    Classes="session-id"
+                                   Tapped="SessionIdTextBlock_Tapped"
                                    IsVisible="False">
                 <SelectableTextBlock.RenderTransform>
                   <TranslateTransform X="-10" />

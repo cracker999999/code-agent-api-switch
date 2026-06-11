@@ -288,15 +288,51 @@ public partial class SessionWindow : Window
     {
         if (string.IsNullOrWhiteSpace(sessionId))
         {
-            SessionIdTextBox.Text = string.Empty;
-            SessionIdTextBox.ToolTip = null;
-            SessionIdTextBox.Visibility = Visibility.Collapsed;
+            SessionIdTextBlock.Text = string.Empty;
+            SessionIdTextBlock.ToolTip = null;
+            SessionIdTextBlock.Visibility = Visibility.Collapsed;
             return;
         }
 
-        SessionIdTextBox.Text = sessionId;
-        SessionIdTextBox.ToolTip = sessionId;
-        SessionIdTextBox.Visibility = Visibility.Visible;
+        SessionIdTextBlock.Text = sessionId;
+        SessionIdTextBlock.ToolTip = sessionId;
+        SessionIdTextBlock.Visibility = Visibility.Visible;
+    }
+
+    private void SessionIdTextBlock_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_selectedSession is null || string.IsNullOrWhiteSpace(_selectedSession.SourcePath))
+        {
+            return;
+        }
+
+        // 会话文件可能被删除或移动，只要父目录仍存在，就打开文件所在文件夹。
+        var sessionFileDirectory = Path.GetDirectoryName(_selectedSession.SourcePath.Trim());
+        OpenDirectoryWithDialog(sessionFileDirectory, "会话文件目录不存在或无法访问", "打开会话文件目录失败");
+    }
+
+    private void OpenDirectoryWithDialog(string? directory, string notFoundMessage, string failurePrefix)
+    {
+        var result = ShellLauncher.OpenDirectory(directory);
+        switch (result.Status)
+        {
+            case OpenDirectoryStatus.NotFound:
+                System.Windows.MessageBox.Show(
+                    this,
+                    notFoundMessage,
+                    "提示",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                break;
+            case OpenDirectoryStatus.Failed:
+                System.Windows.MessageBox.Show(
+                    this,
+                    $"{failurePrefix}：{result.ErrorMessage}",
+                    "错误",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+                break;
+        }
     }
 
     private void UpdateProjectPathDisplay(string? projectDir)
@@ -321,35 +357,7 @@ public partial class SessionWindow : Window
             return;
         }
 
-        var projectDir = _selectedSession.ProjectDir.Trim();
-        if (!Directory.Exists(projectDir))
-        {
-            System.Windows.MessageBox.Show(
-                this,
-                "目录不存在或无法访问",
-                "提示",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Information);
-            return;
-        }
-
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = projectDir,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show(
-                this,
-                $"打开目录失败：{ex.Message}",
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
-        }
+        OpenDirectoryWithDialog(_selectedSession.ProjectDir.Trim(), "目录不存在或无法访问", "打开目录失败");
     }
 
     private void ShowMessagePlaceholder(string text)

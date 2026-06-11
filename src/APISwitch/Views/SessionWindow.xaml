@@ -238,21 +238,22 @@
                                        VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis" />
 
-                            <TextBox x:Name="SessionIdTextBox"
-                                     Grid.Column="1"
-                                     Margin="8,0,0,0"
-                                     FontSize="12"
-                                     Foreground="#6B7280"
-                                     Background="Transparent"
-                                     BorderThickness="0"
-                                     IsReadOnly="True"
-                                     RenderTransformOrigin="0,0.5"
-                                     VerticalAlignment="Center"
-                                     Visibility="Collapsed">
-                                <TextBox.RenderTransform>
+                            <TextBlock x:Name="SessionIdTextBlock"
+                                       Grid.Column="1"
+                                       Margin="8,0,0,0"
+                                       FontSize="12"
+                                       Foreground="#2563EB"
+                                       Cursor="Hand"
+                                       TextDecorations="Underline"
+                                       TextTrimming="CharacterEllipsis"
+                                       RenderTransformOrigin="0,0.5"
+                                       VerticalAlignment="Center"
+                                       Visibility="Collapsed"
+                                       MouseLeftButtonUp="SessionIdTextBlock_MouseLeftButtonUp">
+                                <TextBlock.RenderTransform>
                                     <TranslateTransform X="-10" />
-                                </TextBox.RenderTransform>
-                            </TextBox>
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
                         </Grid>
 
                         <TextBlock x:Name="SessionProjectPathTextBlock"
