@@ -128,6 +128,21 @@ public class ApiTestService
                 };
             }
 
+            // 成功的流式响应应当是 text/event-stream;有的中转站会返回 200 + application/json
+            // 但 body 实际是错误对象(例如 {"error":{"message":"Unsafe upstream URL"}}),
+            // 此时不能算成功,需要解析 JSON 把错误信息透出来。
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+            if (!contentType.Contains("event-stream", StringComparison.OrdinalIgnoreCase))
+            {
+                var jsonBody = await response.Content.ReadAsStringAsync();
+                var extracted = TryExtractErrorMessage(jsonBody);
+                return new ApiTestResult
+                {
+                    Success = false,
+                    Message = extracted ?? (string.IsNullOrWhiteSpace(jsonBody) ? "未收到有效流式数据" : jsonBody)
+                };
+            }
+
             using var stream = await response.Content.ReadAsStreamAsync();
             var buffer = new byte[1];
             var readCount = await stream.ReadAsync(buffer, 0, buffer.Length);
@@ -260,5 +275,28 @@ public class ApiTestService
         };
 
         return payload.ToJsonString();
+    }
+
+    // 从中转站常见的错误 JSON 中提取人类可读的 message。
+    // 兼容 {"error":{"message":"..."}} 和 {"message":"..."} 两种结构。
+    private static string? TryExtractErrorMessage(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            var node = JsonNode.Parse(json);
+            if (node is null) return null;
+
+            var errorMessage = node["error"]?["message"]?.GetValue<string>();
+            if (!string.IsNullOrWhiteSpace(errorMessage)) return errorMessage;
+
+            var topMessage = node["message"]?.GetValue<string>();
+            if (!string.IsNullOrWhiteSpace(topMessage)) return topMessage;
+        }
+        catch (JsonException)
+        {
+            // 不是合法 JSON,交给上层用原文兜底
+        }
+        return null;
     }
 }
