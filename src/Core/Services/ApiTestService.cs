@@ -50,16 +50,24 @@ public class ApiTestService
         var model = string.IsNullOrWhiteSpace(provider.TestModel)
             ? "gpt-5.3-codex"
             : provider.TestModel.Trim();
-        var body = BuildCodexRequestBody(model);
+
+        // 每次请求生成新的会话标识,避免硬编码值被服务端识别为"重放/伪造"
+        var sessionId = Guid.NewGuid().ToString();
+        var turnId = Guid.NewGuid().ToString();
+        var body = BuildCodexRequestBody(model, sessionId);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json")
         };
 
+        var turnMetadata = $@"{{""session_id"":""{sessionId}"",""turn_id"":""{turnId}"",""sandbox"":""none""}}";
+        request.Headers.TryAddWithoutValidation("x-codex-turn-metadata", turnMetadata);
+        request.Headers.TryAddWithoutValidation("x-codex-window-id", $"{sessionId}:0");
+        request.Headers.TryAddWithoutValidation("x-client-request-id", sessionId);
+        request.Headers.TryAddWithoutValidation("session_id", sessionId);
         request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
         request.Headers.TryAddWithoutValidation("accept", "text/event-stream");
-        // request.Headers.TryAddWithoutValidation("accept-encoding", "identity");
         request.Headers.TryAddWithoutValidation("user-agent", "codex-tui/0.120.0 (Windows 10.0.19045; x86_64) WindowsTerminal (codex-tui; 0.120.0)");
         request.Headers.TryAddWithoutValidation("originator", "codex_tui");
 
@@ -167,19 +175,67 @@ public class ApiTestService
         }
     }
 
-    private static string BuildCodexRequestBody(string model)
+    private static string BuildCodexRequestBody(string model, string sessionId)
     {
+        // 模拟真实 codex 请求体的关键顶层字段。中转站常以"是否包含 instructions / tools / reasoning 等
+        // codex 特有字段"作为指纹判定客户端,缺一就被拒。这里给出最小够用的形态:
+        // - instructions / tools / input 内容尽量短,够通过校验即可
+        // - 其余顶层字段(reasoning/text/include/store/tool_choice/parallel_tool_calls)都补齐
         var payload = new JsonObject
         {
             ["model"] = model,
-            ["stream"] = true,
+            ["instructions"] = "You are Codex, a coding agent based on GPT-5.",
             ["input"] = new JsonArray
             {
                 new JsonObject
                 {
+                    ["type"] = "message",
                     ["role"] = "user",
-                    ["content"] = "你是什么模型"
+                    ["content"] = new JsonArray
+                    {
+                        new JsonObject
+                        {
+                            ["type"] = "input_text",
+                            ["text"] = "你是什么模型"
+                        }
+                    }
                 }
+            },
+            ["tools"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["type"] = "function",
+                    ["name"] = "shell_command",
+                    ["description"] = "Execute a shell command.",
+                    ["strict"] = false,
+                    ["parameters"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["command"] = new JsonObject
+                            {
+                                ["type"] = "array",
+                                ["items"] = new JsonObject { ["type"] = "string" }
+                            }
+                        },
+                        ["required"] = new JsonArray { "command" },
+                        ["additionalProperties"] = false
+                    }
+                }
+            },
+            ["tool_choice"] = "auto",
+            ["parallel_tool_calls"] = true,
+            ["reasoning"] = new JsonObject { ["effort"] = "medium" },
+            ["store"] = false,
+            ["stream"] = true,
+            ["include"] = new JsonArray { "reasoning.encrypted_content" },
+            ["prompt_cache_key"] = sessionId,
+            ["text"] = new JsonObject { ["verbosity"] = "low" },
+            ["client_metadata"] = new JsonObject
+            {
+                ["x-codex-installation-id"] = "017b29c7-8457-4137-803e-bc6df3830f11"
             }
         };
 
