@@ -62,7 +62,7 @@ internal static class DialogService
             Margin = new Thickness(20),
             Children =
             {
-                new TextBlock
+                new SelectableTextBlock
                 {
                     Text = message,
                     TextWrapping = global::Avalonia.Media.TextWrapping.Wrap,

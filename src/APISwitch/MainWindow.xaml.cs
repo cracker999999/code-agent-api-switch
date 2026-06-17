@@ -216,23 +216,13 @@ public partial class MainWindow : Window
             {
                 _databaseService.UpdateTestStatus(provider.Id, 1);
                 LoadProviders();
-                System.Windows.MessageBox.Show(
-                    this,
-                    $"响应时间：{result.ResponseTimeMs ?? 0} ms",
-                    "测试成功",
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Information);
+                DialogService.ShowInfo(this, "测试成功", $"响应时间：{result.ResponseTimeMs ?? 0} ms");
             }
             else
             {
                 _databaseService.UpdateTestStatus(provider.Id, 2);
                 LoadProviders();
-                System.Windows.MessageBox.Show(
-                    this,
-                    result.Message,
-                    "测试失败",
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Error);
+                DialogService.ShowError(this, "测试失败", result.Message);
             }
         }
         finally
