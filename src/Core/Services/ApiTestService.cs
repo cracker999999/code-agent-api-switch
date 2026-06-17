@@ -76,11 +76,13 @@ public class ApiTestService
 
     private async Task<ApiTestResult> TestClaudeAsync(Provider provider)
     {
-        var url = $"{provider.BaseUrl.TrimEnd('/')}/v1/messages";
+        // 真实 Claude Code 调用的是 /v1/messages?beta=true,部分中转站会校验该查询参数
+        var url = $"{provider.BaseUrl.TrimEnd('/')}/v1/messages?beta=true";
         var model = string.IsNullOrWhiteSpace(provider.TestModel)
             ? "claude-opus-4-6"
             : provider.TestModel.Trim();
-        var body = BuildClaudeRequestBody(model);
+        var sessionId = Guid.NewGuid().ToString();
+        var body = BuildClaudeRequestBody(model, sessionId);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -88,15 +90,23 @@ public class ApiTestService
         };
 
         request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
-        request.Headers.TryAddWithoutValidation("x-api-key", provider.ApiKey);
         request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
-        request.Headers.TryAddWithoutValidation("anthropic-beta", "claude-code-20250219,interleaved-thinking-2025-05-14");
+        // 与真实 Claude Code 2.1.145 完全一致的 beta 列表(顺序也保持一致)
+        request.Headers.TryAddWithoutValidation("anthropic-beta", "claude-code-20250219,interleaved-thinking-2025-05-14,context-1m-2025-08-07,effort-2025-11-24");
         request.Headers.TryAddWithoutValidation("anthropic-dangerous-direct-browser-access", "true");
         request.Headers.TryAddWithoutValidation("accept", "application/json");
-        request.Headers.TryAddWithoutValidation("accept-encoding", "identity");
-        request.Headers.TryAddWithoutValidation("accept-language", "*");
-        request.Headers.TryAddWithoutValidation("user-agent", "claude-cli/2.1.77 (external, cli)");
+        request.Headers.TryAddWithoutValidation("user-agent", "claude-cli/2.1.145 (external, cli)");
         request.Headers.TryAddWithoutValidation("x-app", "cli");
+        request.Headers.TryAddWithoutValidation("x-claude-code-session-id", sessionId);
+        // Stainless SDK 系列指纹 header(Claude Code 走官方 @anthropic-ai/sdk 时自动注入)
+        request.Headers.TryAddWithoutValidation("x-stainless-lang", "js");
+        request.Headers.TryAddWithoutValidation("x-stainless-package-version", "0.94.0");
+        request.Headers.TryAddWithoutValidation("x-stainless-os", "Windows");
+        request.Headers.TryAddWithoutValidation("x-stainless-arch", "x64");
+        request.Headers.TryAddWithoutValidation("x-stainless-runtime", "node");
+        request.Headers.TryAddWithoutValidation("x-stainless-runtime-version", "v24.3.0");
+        request.Headers.TryAddWithoutValidation("x-stainless-retry-count", "0");
+        request.Headers.TryAddWithoutValidation("x-stainless-timeout", "60");
 
         return await SendAndReadFirstChunkAsync(request);
     }
@@ -257,20 +267,51 @@ public class ApiTestService
         return payload.ToJsonString();
     }
 
-    private static string BuildClaudeRequestBody(string model)
+    private static string BuildClaudeRequestBody(string model, string sessionId)
     {
+        // 中转站普遍以 system[0].text 中是否含 Claude Code 客户端特征字符串作为指纹判定。
+        // 以下精确字符串与真实 Claude Code 2.1.145 发出的内容一致,改动会触发"only allows Claude Code clients"。
+        const string ClaudeCodeIdentitySystem = "You are a Claude agent, built on Anthropic's Claude Agent SDK.";
+        // metadata.user_id 是 Claude Code 的设备/会话标识,值是 JSON 字符串而非裸 ID
+        var userIdJson = new JsonObject
+        {
+            ["device_id"] = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
+            ["account_uuid"] = string.Empty,
+            ["session_id"] = sessionId
+        }.ToJsonString();
+
         var payload = new JsonObject
         {
             ["model"] = model,
             ["max_tokens"] = 1,
             ["stream"] = true,
+            ["system"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["type"] = "text",
+                    ["text"] = ClaudeCodeIdentitySystem,
+                    ["cache_control"] = new JsonObject { ["type"] = "ephemeral" }
+                }
+            },
             ["messages"] = new JsonArray
             {
                 new JsonObject
                 {
                     ["role"] = "user",
-                    ["content"] = "你是什么模型"
+                    ["content"] = new JsonArray
+                    {
+                        new JsonObject
+                        {
+                            ["type"] = "text",
+                            ["text"] = "你是什么模型"
+                        }
+                    }
                 }
+            },
+            ["metadata"] = new JsonObject
+            {
+                ["user_id"] = userIdJson
             }
         };
 
