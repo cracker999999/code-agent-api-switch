@@ -356,27 +356,49 @@ public class SessionService
                 using var document = JsonDocument.Parse(line);
                 var root = document.RootElement;
                 if (!TryGetString(root, "type", out var eventType) ||
-                    !string.Equals(eventType, "response_item", StringComparison.OrdinalIgnoreCase))
+                    !TryGetObject(root, "payload", out var payload))
                 {
                     continue;
                 }
 
-                if (!TryGetObject(root, "payload", out var payload) ||
-                    !TryExtractCodexMessage(payload, out var role, out var content, out var imageDataUrls))
+                if (string.Equals(eventType, "response_item", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!TryExtractCodexMessage(payload, out var role, out var content, out var imageDataUrls))
+                    {
+                        continue;
+                    }
+
+                    var timestamp = TryGetDateTime(payload, "timestamp")
+                        ?? TryGetDateTime(root, "timestamp")
+                        ?? File.GetLastWriteTime(sourcePath);
+
+                    messages.Add(new SessionMessage
+                    {
+                        Role = NormalizeRole(role),
+                        Content = content,
+                        ImageDataUrls = imageDataUrls,
+                        Timestamp = timestamp
+                    });
+
+                    continue;
+                }
+
+                if (!string.Equals(eventType, "event_msg", StringComparison.OrdinalIgnoreCase) ||
+                    !TryExtractCodexScreenshotToolMessage(payload, out var screenshotContent, out var screenshotImageDataUrls))
                 {
                     continue;
                 }
 
-                var timestamp = TryGetDateTime(payload, "timestamp")
+                var screenshotTimestamp = TryGetDateTime(payload, "timestamp")
                     ?? TryGetDateTime(root, "timestamp")
                     ?? File.GetLastWriteTime(sourcePath);
 
                 messages.Add(new SessionMessage
                 {
-                    Role = NormalizeRole(role),
-                    Content = content,
-                    ImageDataUrls = imageDataUrls,
-                    Timestamp = timestamp
+                    Role = "tool",
+                    Content = screenshotContent,
+                    ImageDataUrls = screenshotImageDataUrls,
+                    Timestamp = screenshotTimestamp
                 });
             }
         }
@@ -580,6 +602,75 @@ public class SessionService
         }
 
         return imageDataUrls;
+    }
+
+    private static bool TryExtractCodexScreenshotToolMessage(
+        JsonElement payload,
+        out string content,
+        out List<string> imageDataUrls)
+    {
+        content = string.Empty;
+        imageDataUrls = new List<string>();
+
+        if (!TryGetString(payload, "type", out var payloadType) ||
+            !string.Equals(payloadType, "mcp_tool_call_end", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!TryGetObject(payload, "invocation", out var invocation) ||
+            !TryGetString(invocation, "tool", out var toolName) ||
+            !string.Equals(toolName, "take_screenshot", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!TryGetObject(payload, "result", out var result) ||
+            !TryGetObject(result, "Ok", out var okResult) ||
+            !TryGetProperty(okResult, "content", out var contentElement) ||
+            contentElement.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        content = ExtractJsonText(contentElement).Trim();
+        foreach (var item in contentElement.EnumerateArray())
+        {
+            if (TryExtractCodexToolResultImageDataUrl(item, out var imageDataUrl))
+            {
+                imageDataUrls.Add(imageDataUrl);
+            }
+        }
+
+        return imageDataUrls.Count > 0;
+    }
+
+    private static bool TryExtractCodexToolResultImageDataUrl(JsonElement item, out string imageDataUrl)
+    {
+        imageDataUrl = string.Empty;
+        if (item.ValueKind != JsonValueKind.Object ||
+            !TryGetString(item, "type", out var itemType) ||
+            !string.Equals(itemType, "image", StringComparison.OrdinalIgnoreCase) ||
+            !TryGetString(item, "data", out var imageData))
+        {
+            return false;
+        }
+
+        imageData = imageData.Trim();
+        if (imageData.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            imageDataUrl = imageData;
+            return true;
+        }
+
+        // take_screenshot 工具结果只给原始 base64，这里补成现有图片渲染逻辑可直接复用的 data URL。
+        var mimeType = FirstNonEmpty(
+            TryGetString(item, "mimeType", out var camelCaseMimeType) ? camelCaseMimeType : string.Empty,
+            TryGetString(item, "mime_type", out var snakeCaseMimeType) ? snakeCaseMimeType : string.Empty,
+            "image/png");
+
+        imageDataUrl = $"data:{mimeType};base64,{imageData}";
+        return true;
     }
 
     private static bool TryExtractClaudeMessage(JsonElement root, out SessionMessage message)

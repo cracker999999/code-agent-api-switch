@@ -15,6 +15,7 @@
 ## Build, Test, and Development Commands
 - `dotnet restore APISwitch.sln` - restore NuGet packages.
 - `dotnet build APISwitch.sln` - build all projects.
+- `dotnet build APISwitch.sln --no-restore` - use this for quick verification when restore already ran or NuGet source access is flaky, to avoid unnecessary restore retries.
 - `dotnet run --project src/APISwitch/APISwitch.csproj` - run locally.
 - `repack.bat` - production repack: restore, publish (`win-x64`, single-file, non-self-contained), output to `./Release`, then clean `src/APISwitch/bin` and `obj`.
 

@@ -389,6 +389,17 @@ public partial class SessionWindow : Window
             var message = messages[index];
             if (string.Equals(message.Role, "tool", StringComparison.OrdinalIgnoreCase))
             {
+                if (message.ImageDataUrls.Count > 0)
+                {
+                    MessagesPanel.Children.Add(CreateBubbleMessageElement(
+                        message.Content,
+                        false,
+                        GetRoleDisplayName(message.Role),
+                        message.Timestamp,
+                        message.ImageDataUrls));
+                    continue;
+                }
+
                 MessagesPanel.Children.Add(CreateToolMessageElement(message.Content, message.Timestamp));
                 continue;
             }
@@ -571,19 +582,78 @@ public partial class SessionWindow : Window
             return null;
         }
 
+        var imageControl = new System.Windows.Controls.Image
+        {
+            Source = imageSource,
+            Stretch = Media.Stretch.Uniform,
+            MaxWidth = 420,
+            MaxHeight = 320,
+            Cursor = System.Windows.Input.Cursors.Hand,
+            ToolTip = "双击查看原图"
+        };
+
+        imageControl.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount != 2)
+            {
+                return;
+            }
+
+            ShowOriginalImageWindow(imageSource, imageControl);
+            e.Handled = true;
+        };
+
         return new Border
         {
             Margin = new Thickness(0, 0, 0, 8),
             CornerRadius = new CornerRadius(6),
             ClipToBounds = true,
-            Child = new System.Windows.Controls.Image
-            {
-                Source = imageSource,
-                Stretch = Media.Stretch.Uniform,
-                MaxWidth = 420,
-                MaxHeight = 320
-            }
+            Child = imageControl
         };
+    }
+
+    private static void ShowOriginalImageWindow(Media.ImageSource imageSource, DependencyObject sourceElement)
+    {
+        var previewImage = new System.Windows.Controls.Image
+        {
+            Source = imageSource,
+            Stretch = Media.Stretch.None,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+
+        var scrollViewer = new ScrollViewer
+        {
+            Content = previewImage,
+            Background = CreateBrush("#111827"),
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+
+        var windowSize = GetOriginalImageWindowSize(imageSource);
+        var owner = Window.GetWindow(sourceElement);
+        var window = new Window
+        {
+            Title = "图片预览",
+            Width = windowSize.Width,
+            Height = windowSize.Height,
+            MinWidth = 320,
+            MinHeight = 240,
+            Content = scrollViewer,
+            Owner = owner,
+            WindowStartupLocation = owner is null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner
+        };
+
+        window.Show();
+    }
+
+    private static System.Windows.Size GetOriginalImageWindowSize(Media.ImageSource imageSource)
+    {
+        var imageWidth = imageSource.Width;
+        var imageHeight = imageSource.Height;
+        var windowWidth = Math.Clamp(imageWidth + 40, 320, SystemParameters.PrimaryScreenWidth * 0.9);
+        var windowHeight = Math.Clamp(imageHeight + 70, 240, SystemParameters.PrimaryScreenHeight * 0.9);
+        return new System.Windows.Size(windowWidth, windowHeight);
     }
 
     private static Media.ImageSource? DecodeDataUrlImage(string imageDataUrl)

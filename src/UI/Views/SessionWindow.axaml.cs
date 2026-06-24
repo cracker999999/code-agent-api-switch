@@ -382,6 +382,17 @@ public partial class SessionWindow : Window
             var message = messages[index];
             if (string.Equals(message.Role, "tool", StringComparison.OrdinalIgnoreCase))
             {
+                if (message.ImageDataUrls.Count > 0)
+                {
+                    MessagesPanel.Children.Add(CreateBubbleMessageElement(
+                        message.Content,
+                        false,
+                        GetRoleDisplayName(message.Role),
+                        message.Timestamp,
+                        message.ImageDataUrls));
+                    continue;
+                }
+
                 MessagesPanel.Children.Add(CreateCollapsedMessageElement("工具", message.Content, message.Timestamp));
                 continue;
             }
@@ -594,19 +605,81 @@ public partial class SessionWindow : Window
             return null;
         }
 
+        var imageControl = new Image
+        {
+            Source = image,
+            Stretch = Stretch.Uniform,
+            MaxWidth = 420,
+            MaxHeight = 320,
+            Cursor = new Cursor(StandardCursorType.Hand)
+        };
+        ToolTip.SetTip(imageControl, "双击查看原图");
+
+        imageControl.PointerPressed += (_, e) =>
+        {
+            if (e.ClickCount != 2)
+            {
+                return;
+            }
+
+            ShowOriginalImageWindow(image, imageControl);
+            e.Handled = true;
+        };
+
         return new Border
         {
             Margin = new Thickness(0, 0, 0, 8),
             CornerRadius = new CornerRadius(6),
             ClipToBounds = true,
-            Child = new Image
-            {
-                Source = image,
-                Stretch = Stretch.Uniform,
-                MaxWidth = 420,
-                MaxHeight = 320
-            }
+            Child = imageControl
         };
+    }
+
+    private static void ShowOriginalImageWindow(Bitmap image, Control sourceElement)
+    {
+        var previewImage = new Image
+        {
+            Source = image,
+            Stretch = Stretch.None,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+
+        var scrollViewer = new ScrollViewer
+        {
+            Content = previewImage,
+            Background = CreateBrush("#111827"),
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+
+        var windowSize = GetOriginalImageWindowSize(image);
+        var owner = TopLevel.GetTopLevel(sourceElement) as Window;
+        var window = new Window
+        {
+            Title = "图片预览",
+            Width = windowSize.Width,
+            Height = windowSize.Height,
+            MinWidth = 320,
+            MinHeight = 240,
+            Content = scrollViewer,
+            WindowStartupLocation = owner is null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner
+        };
+
+        if (owner is null)
+        {
+            window.Show();
+            return;
+        }
+
+        window.Show(owner);
+    }
+
+    private static Size GetOriginalImageWindowSize(Bitmap image)
+    {
+        var windowWidth = Math.Clamp(image.PixelSize.Width + 40, 320, 1200);
+        var windowHeight = Math.Clamp(image.PixelSize.Height + 70, 240, 800);
+        return new Size(windowWidth, windowHeight);
     }
 
     private static Bitmap? DecodeDataUrlImage(string imageDataUrl)
