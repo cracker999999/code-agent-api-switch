@@ -61,19 +61,17 @@ dotnet run --project src/UI/UI.csproj
 dotnet run --project src/APISwitch/APISwitch.csproj
 ```
 
-## Windows 本地发布脚本
+## 发布
 
-1. 发布新版 UI（Avalonia）
+新版 Avalonia 发布以 CI 为准
 
-```bat
-repack-ui.bat
-```
+- 工作流：`.github/workflows/publish-cross-platform.yml`
+- 触发方式：推送分支，或在 GitHub Actions 页面手动运行 `Publish Cross Platform`
+- macOS：发布 `osx-x64` 自包含，并打包 `.app` + zip
+- Windows：发布 `win-x64` 单文件、非自包含，并打 zip
+- 产物：workflow artifact 与 GitHub Release 附件
 
-- 项目：`src\UI\UI.csproj`
-- 输出：`.\Release-UI\APISwitch.exe`
-- 参数：`win-x64`、`PublishSingleFile=true`、`--self-contained false`
-
-2. 发布旧版 UI（WPF）
+旧版 UI（WPF）如需本地发布：
 
 ```bat
 repack.bat
@@ -83,18 +81,19 @@ repack.bat
 - 输出：`.\Release\APISwitch.exe`
 - 参数：`win-x64`、单文件、`--self-contained false`
 
-## CI 跨平台发布
-
-工作流：`.github/workflows/publish-cross-platform.yml`
-
-- 当前 CI 只构建新版 `src/UI/UI.csproj`
-- macOS：发布 `osx-x64` 自包含，并打包 `.app` + zip
-- Windows：发布 `win-x64` 单文件、非自包含，并打 zip
-
 ## PublishSingleFile 说明
 
 - `PublishSingleFile=true`：输出以单个 `APISwitch.exe` 为主，便于分发
 - 不设置该参数：输出为多文件目录（exe + 多个 dll），部署时需整体拷贝目录
+
+## JSON 序列化约束
+
+Avalonia 版存在裁剪/AOT 发布场景，默认反射序列化可能被禁用。新增或修改 JSON 代码时必须遵守：
+
+- 不要在 `src/UI` 或 `src/Core` 的 Avalonia 运行路径中使用依赖默认反射的 `JsonSerializer.Serialize(obj)`、`JsonSerializer.Deserialize<T>(json)`、无参 `JsonNode.ToJsonString()`。
+- 优先使用 `JsonSerializerContext` 源生成，并显式传入 `JsonTypeInfo` 或 `JsonSerializerContext.Default.Options`。
+- `JsonNode` / `JsonObject` 生成字符串时，也必须传入包含相关值类型的源生成 options，例如字符串、布尔值、整数等。
+- 否则裁剪/AOT 环境可能出现 `EmptyJsonTypeInfoResolver` 元数据缺失异常。
 
 ## 配置文件路径
 

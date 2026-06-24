@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using APISwitch.Models;
 
 namespace APISwitch.Services;
@@ -11,6 +12,8 @@ namespace APISwitch.Services;
 public class ApiTestService
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+    // Avalonia 裁剪/AOT 发布可能禁用反射序列化，JsonNode 写出时必须使用源生成 TypeInfo。
+    private static readonly JsonSerializerOptions JsonNodeSerializerOptions = ApiTestJsonContext.Default.Options;
 
     public async Task<ApiTestResult> TestProviderAsync(Provider provider)
     {
@@ -95,7 +98,7 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("anthropic-beta", "claude-code-20250219,interleaved-thinking-2025-05-14,context-1m-2025-08-07,effort-2025-11-24");
         request.Headers.TryAddWithoutValidation("anthropic-dangerous-direct-browser-access", "true");
         request.Headers.TryAddWithoutValidation("accept", "application/json");
-        request.Headers.TryAddWithoutValidation("user-agent", "claude-cli/2.1.145 (external, cli)");
+        request.Headers.TryAddWithoutValidation("user-agent", "claude-cli/2.1.151 (external, cli)");
         request.Headers.TryAddWithoutValidation("x-app", "cli");
         request.Headers.TryAddWithoutValidation("x-claude-code-session-id", sessionId);
         // Stainless SDK 系列指纹 header(Claude Code 走官方 @anthropic-ai/sdk 时自动注入)
@@ -252,7 +255,7 @@ public class ApiTestService
             },
             ["tool_choice"] = "auto",
             ["parallel_tool_calls"] = true,
-            ["reasoning"] = new JsonObject { ["effort"] = "medium" },
+            ["reasoning"] = new JsonObject { ["effort"] = "xhigh" },
             ["store"] = false,
             ["stream"] = true,
             ["include"] = new JsonArray { "reasoning.encrypted_content" },
@@ -264,7 +267,7 @@ public class ApiTestService
             }
         };
 
-        return payload.ToJsonString();
+        return payload.ToJsonString(JsonNodeSerializerOptions);
     }
 
     private static string BuildClaudeRequestBody(string model, string sessionId)
@@ -278,7 +281,7 @@ public class ApiTestService
             ["device_id"] = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
             ["account_uuid"] = string.Empty,
             ["session_id"] = sessionId
-        }.ToJsonString();
+        }.ToJsonString(JsonNodeSerializerOptions);
 
         var payload = new JsonObject
         {
@@ -315,7 +318,7 @@ public class ApiTestService
             }
         };
 
-        return payload.ToJsonString();
+        return payload.ToJsonString(JsonNodeSerializerOptions);
     }
 
     // 从中转站常见的错误 JSON 中提取人类可读的 message。
@@ -340,4 +343,12 @@ public class ApiTestService
         }
         return null;
     }
+}
+
+[JsonSourceGenerationOptions]
+[JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(bool))]
+[JsonSerializable(typeof(int))]
+internal partial class ApiTestJsonContext : JsonSerializerContext
+{
 }
