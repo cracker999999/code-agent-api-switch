@@ -154,25 +154,7 @@ public class ApiTestService
             }
 
             using var stream = await response.Content.ReadAsStreamAsync();
-            var buffer = new byte[1];
-            var readCount = await stream.ReadAsync(buffer, 0, buffer.Length);
-
-            if (readCount > 0)
-            {
-                stopwatch.Stop();
-                return new ApiTestResult
-                {
-                    Success = true,
-                    Message = string.Empty,
-                    ResponseTimeMs = stopwatch.ElapsedMilliseconds
-                };
-            }
-
-            return new ApiTestResult
-            {
-                Success = false,
-                Message = "未收到有效流式数据"
-            };
+            return await InspectSseHeadAsync(stream, stopwatch);
         }
         catch (TaskCanceledException)
         {
@@ -198,6 +180,152 @@ public class ApiTestService
                 Message = ex.Message
             };
         }
+    }
+
+    // 读取 SSE 流头部若干行用于判定真实结果。
+    // 有的中转站会返回 200 + text/event-stream,但实际内容是:
+    //   {"id":"chatcmpl-dummy",...,"choices":[{"delta":{"content":""}}]}  ← 占位空 chunk
+    //   {"type":"error","error":{...},"status_code":429,...}              ← 真正的错误
+    // 仅凭"读到第一个字节"判成功会被这种伪流欺骗,因此需要解析前 N 行 JSON,
+    // 命中 error 才能返回失败。
+    private static async Task<ApiTestResult> InspectSseHeadAsync(Stream stream, Stopwatch stopwatch)
+    {
+        const int MaxBytes = 16 * 1024;
+        const int MaxLines = 50;
+
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 4096, leaveOpen: true);
+
+        var totalBytes = 0;
+        var linesRead = 0;
+        var hasAnyPayload = false;
+
+        while (linesRead < MaxLines && totalBytes < MaxBytes)
+        {
+            var line = await reader.ReadLineAsync();
+            if (line is null)
+            {
+                // 流提前结束
+                break;
+            }
+
+            linesRead++;
+            totalBytes += line.Length + 1;
+
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0) continue;
+            // SSE 注释行
+            if (trimmed.StartsWith(':')) continue;
+            // event: / id: / retry: 这些字段行不携带 JSON 负载
+            if (trimmed.StartsWith("event:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("id:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("retry:", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // 兼容标准 SSE 的 "data: {...}" 和裸 JSON 行两种情况
+            var payload = trimmed.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                ? trimmed.Substring(5).TrimStart()
+                : trimmed;
+
+            if (payload.Length == 0 || payload == "[DONE]") continue;
+            if (payload[0] != '{' && payload[0] != '[') continue;
+
+            JsonNode? node;
+            try
+            {
+                node = JsonNode.Parse(payload);
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+            if (node is null) continue;
+
+            hasAnyPayload = true;
+
+            var errorMessage = TryExtractSseErrorMessage(node);
+            if (errorMessage is not null)
+            {
+                return new ApiTestResult
+                {
+                    Success = false,
+                    Message = errorMessage
+                };
+            }
+        }
+
+        if (hasAnyPayload)
+        {
+            stopwatch.Stop();
+            return new ApiTestResult
+            {
+                Success = true,
+                Message = string.Empty,
+                ResponseTimeMs = stopwatch.ElapsedMilliseconds
+            };
+        }
+
+        return new ApiTestResult
+        {
+            Success = false,
+            Message = "未收到有效流式数据"
+        };
+    }
+
+    // 识别 SSE 中的错误事件。命中规则:
+    // 1) 顶层 type == "error"
+    // 2) 顶层存在 error 对象,且含 message / type 字段
+    // 3) 顶层存在 status_code 且为非 2xx
+    private static string? TryExtractSseErrorMessage(JsonNode node)
+    {
+        var typeValue = node["type"]?.GetValue<string>();
+        var isErrorType = string.Equals(typeValue, "error", StringComparison.OrdinalIgnoreCase);
+
+        var errorNode = node["error"];
+        var hasErrorObject = errorNode is JsonObject;
+
+        int? statusCode = null;
+        var statusNode = node["status_code"];
+        if (statusNode is not null)
+        {
+            try { statusCode = statusNode.GetValue<int>(); }
+            catch { /* 容错:status_code 可能是字符串或缺失 */ }
+        }
+        var hasBadStatus = statusCode.HasValue && (statusCode.Value < 200 || statusCode.Value >= 300);
+
+        if (!isErrorType && !hasErrorObject && !hasBadStatus) return null;
+
+        // 优先取 error.message
+        var message = errorNode?["message"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            message = node["message"]?.GetValue<string>();
+        }
+
+        var errorSubType = errorNode?["type"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(message) && !string.IsNullOrWhiteSpace(errorSubType))
+        {
+            message = errorSubType;
+        }
+
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            // 兜底返回原始 JSON 片段,避免吞掉服务端信息
+            message = node.ToJsonString();
+        }
+
+        if (statusCode.HasValue)
+        {
+            message = $"HTTP {statusCode.Value}: {message}";
+        }
+        else if (!string.IsNullOrWhiteSpace(errorSubType) &&
+                 message!.IndexOf(errorSubType, StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            message = $"{errorSubType}: {message}";
+        }
+
+        return message;
     }
 
     private static string BuildCodexRequestBody(string model, string sessionId)

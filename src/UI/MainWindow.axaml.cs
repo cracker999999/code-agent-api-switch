@@ -228,19 +228,19 @@ public partial class MainWindow : Window
             {
                 _databaseService.UpdateTestStatus(provider.Id, 1);
                 LoadProviders();
-                await DialogService.ShowInfoAsync(this, "测试成功", $"响应时间：{result.ResponseTimeMs ?? 0} ms");
+                await DialogService.ShowInfoAsync(this, "测试成功", $"供应商：{provider.Name}\n响应时间：{result.ResponseTimeMs ?? 0} ms");
                 return;
             }
 
             _databaseService.UpdateTestStatus(provider.Id, 2);
             LoadProviders();
-            await DialogService.ShowErrorAsync(this, "测试失败", result.Message);
+            await DialogService.ShowErrorAsync(this, "测试失败", $"供应商：{provider.Name}\n{result.Message}");
         }
         catch (Exception ex)
         {
             _databaseService.UpdateTestStatus(provider.Id, 2);
             LoadProviders();
-            await DialogService.ShowErrorAsync(this, "测试失败", $"测试过程异常：{ex.Message}");
+            await DialogService.ShowErrorAsync(this, "测试失败", $"供应商：{provider.Name}\n测试过程异常：{ex.Message}");
         }
         finally
         {

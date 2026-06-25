@@ -216,13 +216,13 @@ public partial class MainWindow : Window
             {
                 _databaseService.UpdateTestStatus(provider.Id, 1);
                 LoadProviders();
-                DialogService.ShowInfo(this, "测试成功", $"响应时间：{result.ResponseTimeMs ?? 0} ms");
+                DialogService.ShowInfo(this, "测试成功", $"供应商：{provider.Name}\n响应时间：{result.ResponseTimeMs ?? 0} ms");
             }
             else
             {
                 _databaseService.UpdateTestStatus(provider.Id, 2);
                 LoadProviders();
-                DialogService.ShowError(this, "测试失败", result.Message);
+                DialogService.ShowError(this, "测试失败", $"供应商：{provider.Name}\n{result.Message}");
             }
         }
         finally
