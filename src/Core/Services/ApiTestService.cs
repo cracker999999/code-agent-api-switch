@@ -13,7 +13,10 @@ public class ApiTestService
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
     // Avalonia 裁剪/AOT 发布可能禁用反射序列化，JsonNode 写出时必须使用源生成 TypeInfo。
-    private static readonly JsonSerializerOptions JsonNodeSerializerOptions = ApiTestJsonContext.Default.Options;
+    private static readonly JsonSerializerOptions JsonNodeSerializerOptions = new()
+    {
+        TypeInfoResolver = ApiTestJsonContext.Default
+    };
 
     public async Task<ApiTestResult> TestProviderAsync(Provider provider)
     {
