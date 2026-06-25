@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using APISwitch.Models;
 
 namespace APISwitch.Services;
@@ -12,11 +11,6 @@ namespace APISwitch.Services;
 public class ApiTestService
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
-    // Avalonia 裁剪/AOT 发布可能禁用反射序列化，JsonNode 写出时必须使用源生成 TypeInfo。
-    private static readonly JsonSerializerOptions JsonNodeSerializerOptions = new()
-    {
-        TypeInfoResolver = ApiTestJsonContext.Default
-    };
 
     public async Task<ApiTestResult> TestProviderAsync(Provider provider)
     {
@@ -270,7 +264,7 @@ public class ApiTestService
             }
         };
 
-        return payload.ToJsonString(JsonNodeSerializerOptions);
+        return payload.ToJsonString();
     }
 
     private static string BuildClaudeRequestBody(string model, string sessionId)
@@ -284,7 +278,7 @@ public class ApiTestService
             ["device_id"] = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
             ["account_uuid"] = string.Empty,
             ["session_id"] = sessionId
-        }.ToJsonString(JsonNodeSerializerOptions);
+        }.ToJsonString();
 
         var payload = new JsonObject
         {
@@ -321,7 +315,7 @@ public class ApiTestService
             }
         };
 
-        return payload.ToJsonString(JsonNodeSerializerOptions);
+        return payload.ToJsonString();
     }
 
     // 从中转站常见的错误 JSON 中提取人类可读的 message。
@@ -346,12 +340,4 @@ public class ApiTestService
         }
         return null;
     }
-}
-
-[JsonSourceGenerationOptions]
-[JsonSerializable(typeof(string))]
-[JsonSerializable(typeof(bool))]
-[JsonSerializable(typeof(int))]
-internal partial class ApiTestJsonContext : JsonSerializerContext
-{
 }
