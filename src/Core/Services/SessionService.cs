@@ -11,6 +11,26 @@ public class SessionService
     public const string ProviderCodex = "codex";
     public const string ProviderClaude = "claude";
 
+    public static bool IsClaude(string? providerId) =>
+        string.Equals(providerId, ProviderClaude, StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsCodex(string? providerId) =>
+        string.Equals(providerId, ProviderCodex, StringComparison.OrdinalIgnoreCase);
+
+    // 不同 CLI 的恢复子命令格式不同：Claude 用 `claude --resume <id>`，Codex 用 `codex resume <id>`。
+    public static (string Command, string? WorkingDirectory) BuildResumeCommand(SessionMeta session)
+    {
+        var command = IsClaude(session.ProviderId)
+            ? $"claude --resume {session.SessionId}"
+            : $"codex resume {session.SessionId}";
+
+        var workingDirectory = string.IsNullOrWhiteSpace(session.ProjectDir)
+            ? null
+            : session.ProjectDir;
+
+        return (command, workingDirectory);
+    }
+
     private const int HeadLineCount = 10;
     private const int TailLineCount = 30;
 
@@ -109,12 +129,12 @@ public class SessionService
             return new List<SessionMessage>();
         }
 
-        if (string.Equals(providerId, ProviderCodex, StringComparison.OrdinalIgnoreCase))
+        if (IsCodex(providerId))
         {
             return ParseCodexMessages(sourcePath);
         }
 
-        if (string.Equals(providerId, ProviderClaude, StringComparison.OrdinalIgnoreCase))
+        if (IsClaude(providerId))
         {
             return ParseClaudeMessages(sourcePath);
         }
@@ -134,7 +154,7 @@ public class SessionService
             File.Delete(sourcePath);
         }
 
-        if (!string.Equals(providerId, ProviderClaude, StringComparison.OrdinalIgnoreCase))
+        if (!IsClaude(providerId))
         {
             return;
         }

@@ -59,7 +59,7 @@ public partial class SessionWindow : Window
 
     private async void CodexTabButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (string.Equals(_currentProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase))
+        if (SessionService.IsCodex(_currentProviderId))
         {
             return;
         }
@@ -71,7 +71,7 @@ public partial class SessionWindow : Window
 
     private async void ClaudeTabButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (string.Equals(_currentProviderId, SessionService.ProviderClaude, StringComparison.OrdinalIgnoreCase))
+        if (SessionService.IsClaude(_currentProviderId))
         {
             return;
         }
@@ -120,7 +120,7 @@ public partial class SessionWindow : Window
         UpdateSessionIdDisplay(_selectedSession.SessionId);
         SessionProjectPathButton.Content = _selectedSession.ProjectDir;
         SessionProjectPathButton.IsVisible = !string.IsNullOrWhiteSpace(_selectedSession.ProjectDir);
-        DeleteSessionButton.IsVisible = true;
+        SessionActionPanel.IsVisible = true;
         ShowMessagePlaceholder("加载中...");
 
         var currentVersion = ++_loadMessagesVersion;
@@ -179,6 +179,30 @@ public partial class SessionWindow : Window
         ResetDetailPanel();
     }
 
+    private async void ResumeSessionButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selectedSession is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_selectedSession.SessionId))
+        {
+            await DialogService.ShowErrorAsync(this, "错误", "当前会话没有可用的 Session ID，无法恢复。");
+            return;
+        }
+
+        // 交互式 CLI 必须在独立终端里运行，否则用户看不到输入输出。
+        var (command, workingDirectory) = SessionService.BuildResumeCommand(_selectedSession);
+        var result = ShellLauncher.OpenTerminalCommand(command, workingDirectory);
+        if (result.Status == OpenTerminalStatus.Ok)
+        {
+            return;
+        }
+
+        await DialogService.ShowErrorAsync(this, "错误", $"恢复会话失败：{result.ErrorMessage}");
+    }
+
     private async void SessionProjectPathButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_selectedSession is null || string.IsNullOrWhiteSpace(_selectedSession.ProjectDir))
@@ -234,7 +258,7 @@ public partial class SessionWindow : Window
         try
         {
             sessions = await Task.Run(() =>
-                string.Equals(targetProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase)
+                SessionService.IsCodex(targetProviderId)
                     ? _sessionService.ScanCodexSessions()
                     : _sessionService.ScanClaudeSessions());
         }
@@ -341,7 +365,7 @@ public partial class SessionWindow : Window
         UpdateSessionIdDisplay(null);
         SessionProjectPathButton.Content = string.Empty;
         SessionProjectPathButton.IsVisible = false;
-        DeleteSessionButton.IsVisible = false;
+        SessionActionPanel.IsVisible = false;
         ShowMessagePlaceholder("选中会话后查看聊天详情");
     }
 
@@ -375,7 +399,7 @@ public partial class SessionWindow : Window
         }
 
         var isCodexSession = _selectedSession is not null &&
-            string.Equals(_selectedSession.ProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase);
+            SessionService.IsCodex(_selectedSession.ProviderId);
 
         for (var index = 0; index < messages.Count; index++)
         {
@@ -723,8 +747,8 @@ public partial class SessionWindow : Window
 
     private void UpdateTabButtons()
     {
-        SetTabButtonSelectedState(CodexTabButton, string.Equals(_currentProviderId, SessionService.ProviderCodex, StringComparison.OrdinalIgnoreCase));
-        SetTabButtonSelectedState(ClaudeTabButton, string.Equals(_currentProviderId, SessionService.ProviderClaude, StringComparison.OrdinalIgnoreCase));
+        SetTabButtonSelectedState(CodexTabButton, SessionService.IsCodex(_currentProviderId));
+        SetTabButtonSelectedState(ClaudeTabButton, SessionService.IsClaude(_currentProviderId));
     }
 
     private static string FormatRelativeTime(DateTime timestamp)
@@ -781,7 +805,7 @@ public partial class SessionWindow : Window
 
     private static string NormalizeProviderId(string? providerId)
     {
-        return string.Equals(providerId, SessionService.ProviderClaude, StringComparison.OrdinalIgnoreCase)
+        return SessionService.IsClaude(providerId)
             ? SessionService.ProviderClaude
             : SessionService.ProviderCodex;
     }
