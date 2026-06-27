@@ -35,7 +35,7 @@
 
 ## 6. 验证与收尾
 
-- [ ] 6.1 执行 `dotnet build APISwitch.sln`，确保新旧项目可同时构建
+- [x] 6.1 执行 `dotnet build APISwitch.sln`，确保新旧项目可同时构建
 - [x] 6.2 在 macOS Intel 执行 `osx-x64` 发布并完成启动验证
-- [ ] 6.3 完成最小 smoke 测试：供应商增删改、启用写配置、会话窗口入口、关闭行为
+- [x] 6.3 完成最小 smoke 测试：供应商增删改、启用写配置、会话窗口入口、关闭行为
 - [x] 6.4 更新 Readme.md
