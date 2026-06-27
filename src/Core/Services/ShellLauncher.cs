@@ -79,15 +79,14 @@ public static class ShellLauncher
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
+                var terminalCommand = $"cd {ShellQuote(normalizedWorkingDirectory)}; clear; exec {command}";
                 var startInfo = new ProcessStartInfo
                 {
-                    FileName = "osascript",
+                    FileName = "/usr/bin/osascript",
                     UseShellExecute = false,
                 };
                 startInfo.ArgumentList.Add("-e");
-                startInfo.ArgumentList.Add("tell application \"Terminal\" to activate");
-                startInfo.ArgumentList.Add("-e");
-                startInfo.ArgumentList.Add($"tell application \"Terminal\" to do script \"{EscapeAppleScriptString(command)}\"");
+                startInfo.ArgumentList.Add($"tell application id \"com.apple.Terminal\" to do script \"{EscapeAppleScriptString(terminalCommand)}\"");
 
                 Process.Start(startInfo);
                 return new OpenTerminalResult(OpenTerminalStatus.Ok, null);
@@ -111,5 +110,10 @@ public static class ShellLauncher
     private static string EscapeAppleScriptString(string value)
     {
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    private static string ShellQuote(string value)
+    {
+        return "'" + value.Replace("'", "'\"'\"'") + "'";
     }
 }
