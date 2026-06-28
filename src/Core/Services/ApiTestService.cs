@@ -95,7 +95,7 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("anthropic-beta", "claude-code-20250219,interleaved-thinking-2025-05-14,context-1m-2025-08-07,effort-2025-11-24");
         request.Headers.TryAddWithoutValidation("anthropic-dangerous-direct-browser-access", "true");
         request.Headers.TryAddWithoutValidation("accept", "application/json");
-        request.Headers.TryAddWithoutValidation("user-agent", "claude-cli/2.1.151 (external, cli)");
+        request.Headers.TryAddWithoutValidation("user-agent", "claude-cli/2.1.152 (external, cli)");
         request.Headers.TryAddWithoutValidation("x-app", "cli");
         request.Headers.TryAddWithoutValidation("x-claude-code-session-id", sessionId);
         // Stainless SDK 系列指纹 header(Claude Code 走官方 @anthropic-ai/sdk 时自动注入)

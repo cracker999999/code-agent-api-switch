@@ -9,9 +9,10 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using APISwitch.Models;
 using APISwitch.Services;
-using APISwitch.Views;
+using WPF.Services;
+using WPF.Views;
 
-namespace APISwitch;
+namespace WPF;
 
 public partial class MainWindow : Window
 {

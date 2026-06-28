@@ -14,7 +14,7 @@ if errorlevel 1 (
 )
 
 echo [3/5] Restoring packages ...
-dotnet restore "src\APISwitch\APISwitch.csproj" -r win-x64
+dotnet restore "src\WPF\WPF.csproj" -r win-x64
 if errorlevel 1 (
   echo [ERROR] dotnet restore failed.
   goto :error
@@ -22,15 +22,15 @@ if errorlevel 1 (
 
 echo [4/5] Publishing single-file executable to root Release ...
 if exist "%~dp0Release" rmdir /s /q "%~dp0Release"
-dotnet publish "src\APISwitch\APISwitch.csproj" -c Release -r win-x64 --self-contained false -p:IncludeNativeLibrariesForSelfExtract=true -o "%~dp0Release"
+dotnet publish "src\WPF\WPF.csproj" -c Release -r win-x64 --self-contained false -p:IncludeNativeLibrariesForSelfExtract=true -o "%~dp0Release"
 if errorlevel 1 (
   echo [ERROR] dotnet publish failed.
   goto :error
 )
 
 echo [5/5] Cleaning build artifacts ...
-if exist "%~dp0src\APISwitch\bin" rmdir /s /q "%~dp0src\APISwitch\bin"
-if exist "%~dp0src\APISwitch\obj" rmdir /s /q "%~dp0src\APISwitch\obj"
+if exist "%~dp0src\WPF\bin" rmdir /s /q "%~dp0src\WPF\bin"
+if exist "%~dp0src\WPF\obj" rmdir /s /q "%~dp0src\WPF\obj"
 
 echo.
 echo [OK] Repack complete.

@@ -2,8 +2,9 @@ using System.Text.Json;
 using System.Windows;
 using APISwitch.Models;
 using APISwitch.Services;
+using WPF.Services;
 
-namespace APISwitch.Views;
+namespace WPF.Views;
 
 public partial class ProviderDialog : Window
 {

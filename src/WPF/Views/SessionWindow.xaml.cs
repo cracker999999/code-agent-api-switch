@@ -5,9 +5,10 @@ using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using APISwitch.Models;
 using APISwitch.Services;
+using WPF.Services;
 using Media = System.Windows.Media;
 
-namespace APISwitch.Views;
+namespace WPF.Views;
 
 public partial class SessionWindow : Window
 {

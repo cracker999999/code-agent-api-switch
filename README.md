@@ -4,7 +4,7 @@ APISwitch 用于可视化管理 Codex 和 Claude Code 的 API 供应商，并支
 当前仓库包含两套前端：
 
 - 新版：`src/UI`（Avalonia，跨平台）
-- 旧版：`src/APISwitch`（WPF/WinForms，仅 Windows）
+- 旧版：`src/WPF`（WPF/WinForms，仅 Windows）
 - 共享核心：`src/Core`
 
 ## 功能说明
@@ -32,7 +32,7 @@ APISwitch 用于可视化管理 Codex 和 Claude Code 的 API 供应商，并支
 src/
   Core/                  # 共享业务与数据访问
   UI/                    # 新版 Avalonia 前端（跨平台）
-  APISwitch/             # 旧版 WPF 前端（Windows）
+  WPF/                   # 旧版 WPF 前端（Windows）
 ```
 
 ## 构建与运行
@@ -58,7 +58,7 @@ dotnet run --project src/UI/UI.csproj
 4. 运行旧版（仅 Windows）
 
 ```powershell
-dotnet run --project src/APISwitch/APISwitch.csproj
+dotnet run --project src/WPF/WPF.csproj
 ```
 
 ## 发布
@@ -77,7 +77,7 @@ dotnet run --project src/APISwitch/APISwitch.csproj
 repack.bat
 ```
 
-- 项目：`src\APISwitch\APISwitch.csproj`
+- 项目：`src\WPF\WPF.csproj`
 - 输出：`.\Release\APISwitch.exe`
 - 参数：`win-x64`、单文件、`--self-contained false`
 

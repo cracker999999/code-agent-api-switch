@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace APISwitch.Services;
+namespace WPF.Services;
 
 // WPF 系统 MessageBox 的文字不可选中,这里用一个最小自定义 Window 替代。
 // 仅供需要复制错误信息的场景使用(如 API 测试结果)。

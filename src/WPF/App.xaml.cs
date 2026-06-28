@@ -6,7 +6,7 @@ using System.Windows;
 using APISwitch.Services;
 using Forms = System.Windows.Forms;
 
-namespace APISwitch;
+namespace WPF;
 
 public partial class App : System.Windows.Application
 {

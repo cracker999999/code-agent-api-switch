@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 - Solution entry: `APISwitch.sln`.
-- App source lives in `src/APISwitch/`:
+- App source lives in `src/WPF/`:
   - `App.xaml(.cs)`: startup and tray lifecycle.
   - `MainWindow.xaml(.cs)`: main UI, tab switching, provider actions.
   - `Views/ProviderDialog.xaml(.cs)`: add/edit provider dialog.
@@ -16,8 +16,8 @@
 - `dotnet restore APISwitch.sln` - restore NuGet packages.
 - `dotnet build APISwitch.sln` - build all projects.
 - `dotnet build APISwitch.sln --no-restore` - use this for quick verification when restore already ran or NuGet source access is flaky, to avoid unnecessary restore retries.
-- `dotnet run --project src/APISwitch/APISwitch.csproj` - run locally.
-- `repack.bat` - production repack: restore, publish (`win-x64`, single-file, non-self-contained), output to `./Release`, then clean `src/APISwitch/bin` and `obj`.
+- `dotnet run --project src/WPF/WPF.csproj` - run locally.
+- `repack.bat` - production repack: restore, publish (`win-x64`, single-file, non-self-contained), output to `./Release`, then clean `src/WPF/bin` and `obj`.
 
 ## Coding Style & Naming Conventions
 - Language: C# (.NET 8, WPF), 4-space indentation, UTF-8 files.
