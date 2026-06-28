@@ -11,6 +11,7 @@ public partial class ProviderDialog : Window
     private const int ProviderClipboardVersion = 1;
 
     private readonly ModelDiscoveryService _modelDiscoveryService = new();
+    private readonly ApiTestService _apiTestService = new();
     private List<string> _allModels = new();
 
     public Provider Provider { get; }
@@ -169,13 +170,7 @@ public partial class ProviderDialog : Window
 
         try
         {
-            var probeProvider = new Provider
-            {
-                ToolType = Provider.ToolType,
-                Name = NameTextBox.Text.Trim(),
-                BaseUrl = BaseUrlTextBox.Text.Trim(),
-                ApiKey = ApiKeyTextBox.Text.Trim()
-            };
+            var probeProvider = BuildProbeProvider(includeTestModel: false);
 
             var result = await _modelDiscoveryService.GetModelsAsync(probeProvider);
             if (!result.Success)
@@ -208,6 +203,36 @@ public partial class ProviderDialog : Window
         }
     }
 
+    private async void TestModelButton_Click(object sender, RoutedEventArgs e)
+    {
+        var originalContent = TestModelButton.Content;
+        TestModelButton.IsEnabled = false;
+        TestModelButton.Content = "测试中...";
+
+        try
+        {
+            var probeProvider = BuildProbeProvider(includeTestModel: true);
+
+            var result = await _apiTestService.TestProviderAsync(probeProvider);
+            if (result.Success)
+            {
+                DialogService.ShowInfo(this, "测试成功", $"供应商：{probeProvider.Name}\n响应时间：{result.ResponseTimeMs ?? 0} ms");
+                return;
+            }
+
+            DialogService.ShowError(this, "测试失败", $"供应商：{probeProvider.Name}\n{result.Message}");
+        }
+        catch (Exception ex)
+        {
+            DialogService.ShowError(this, "测试失败", $"测试过程异常：{ex.Message}");
+        }
+        finally
+        {
+            TestModelButton.Content = originalContent;
+            TestModelButton.IsEnabled = true;
+        }
+    }
+
     private void ModelSearchTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
         ApplyModelFilter();
@@ -222,6 +247,18 @@ public partial class ProviderDialog : Window
         }
 
         TestModelTextBox.Text = model;
+    }
+
+    private Provider BuildProbeProvider(bool includeTestModel)
+    {
+        return new Provider
+        {
+            ToolType = Provider.ToolType,
+            Name = NameTextBox.Text.Trim(),
+            BaseUrl = BaseUrlTextBox.Text.Trim(),
+            ApiKey = ApiKeyTextBox.Text.Trim(),
+            TestModel = includeTestModel ? TestModelTextBox.Text.Trim() : string.Empty
+        };
     }
 
     private void ApplyModelFilter()

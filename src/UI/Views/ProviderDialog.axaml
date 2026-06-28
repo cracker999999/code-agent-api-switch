@@ -46,7 +46,17 @@
     <TextBlock Grid.Row="4" Text="ApiKey" FontWeight="SemiBold" />
     <TextBox x:Name="ApiKeyTextBox" Grid.Row="5" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
 
-    <TextBlock Grid.Row="6" Text="测试模型" FontWeight="SemiBold" />
+    <Grid Grid.Row="6" ColumnDefinitions="*,Auto">
+      <TextBlock Text="测试模型" FontWeight="SemiBold" VerticalAlignment="Center" />
+      <Button x:Name="TestModelButton"
+              Grid.Column="1"
+              Width="110"
+              Height="30"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              Click="TestModelButton_Click"
+              Content="测试模型" />
+    </Grid>
     <TextBox x:Name="TestModelTextBox" Grid.Row="7" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
 
     <Grid Grid.Row="8" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
