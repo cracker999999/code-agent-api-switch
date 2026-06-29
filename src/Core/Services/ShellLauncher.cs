@@ -71,7 +71,7 @@ public static class ShellLauncher
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
-                    Arguments = $"/c wt -w 0 new-tab -d \"{normalizedWorkingDirectory}\" cmd /k {command}",
+                    Arguments = $"/c wt -w 0 new-tab -d \"{normalizedWorkingDirectory}\" pwsh -NoExit -Command {command}",
                     UseShellExecute = true,
                 });
                 return new OpenTerminalResult(OpenTerminalStatus.Ok, null);
