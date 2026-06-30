@@ -14,14 +14,15 @@ public partial class ProviderDialog : Window
     private const int ProviderClipboardVersion = 1;
 
     private readonly ModelDiscoveryService _modelDiscoveryService = new();
-    private readonly ApiTestService _apiTestService = new();
+    private readonly ApiTestService _apiTestService;
     private List<string> _allModels = new();
 
     private readonly Provider _provider;
 
-    public ProviderDialog(int toolType)
+    public ProviderDialog(int toolType, AppSettingsService appSettingsService)
     {
         InitializeComponent();
+        _apiTestService = new ApiTestService(appSettingsService);
 
         _provider = new Provider
         {
@@ -37,9 +38,10 @@ public partial class ProviderDialog : Window
         };
     }
 
-    public ProviderDialog(Provider provider)
+    public ProviderDialog(Provider provider, AppSettingsService appSettingsService)
     {
         InitializeComponent();
+        _apiTestService = new ApiTestService(appSettingsService);
 
         _provider = new Provider
         {

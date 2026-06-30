@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS Providers (
     IsActive INTEGER NOT NULL DEFAULT 0,
     SortOrder INTEGER NOT NULL DEFAULT 0,
     TestStatus INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS Settings (
+    Key TEXT PRIMARY KEY,
+    Value TEXT NOT NULL
 );";
 
         using var command = connection.CreateCommand();
@@ -43,6 +47,69 @@ CREATE TABLE IF NOT EXISTS Providers (
         command.ExecuteNonQuery();
 
         EnsureProviderColumns(connection);
+    }
+
+    // Settings 批量读取:单连接、单 SELECT。未命中的键不出现在结果中,由上层兜底默认值。
+    public Dictionary<string, string> GetSettings(IReadOnlyCollection<string> keys)
+    {
+        var result = new Dictionary<string, string>(keys.Count);
+        if (keys.Count == 0) return result;
+
+        lock (_syncRoot)
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            var paramNames = new List<string>(keys.Count);
+            var index = 0;
+            foreach (var key in keys)
+            {
+                var name = $"$k{index++}";
+                paramNames.Add(name);
+                command.Parameters.AddWithValue(name, key);
+            }
+            command.CommandText = $"SELECT Key, Value FROM Settings WHERE Key IN ({string.Join(",", paramNames)});";
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                result[reader.GetString(0)] = reader.GetString(1);
+            }
+        }
+
+        return result;
+    }
+
+    // Settings 批量写入:单连接、单事务,保证多键更新的原子性。
+    public void SetSettings(IReadOnlyDictionary<string, string> updates)
+    {
+        if (updates.Count == 0) return;
+
+        lock (_syncRoot)
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+
+            using var transaction = connection.BeginTransaction();
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+INSERT INTO Settings (Key, Value) VALUES ($key, $value)
+ON CONFLICT(Key) DO UPDATE SET Value = excluded.Value;";
+
+            var keyParam = command.Parameters.Add("$key", Microsoft.Data.Sqlite.SqliteType.Text);
+            var valueParam = command.Parameters.Add("$value", Microsoft.Data.Sqlite.SqliteType.Text);
+
+            foreach (var (key, value) in updates)
+            {
+                keyParam.Value = key;
+                valueParam.Value = value;
+                command.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
     }
 
     public List<Provider> GetProviders(int toolType)

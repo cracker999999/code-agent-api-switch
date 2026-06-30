@@ -12,14 +12,15 @@ public partial class ProviderDialog : Window
     private const int ProviderClipboardVersion = 1;
 
     private readonly ModelDiscoveryService _modelDiscoveryService = new();
-    private readonly ApiTestService _apiTestService = new();
+    private readonly ApiTestService _apiTestService;
     private List<string> _allModels = new();
 
     public Provider Provider { get; }
 
-    public ProviderDialog(int toolType)
+    public ProviderDialog(int toolType, AppSettingsService appSettingsService)
     {
         InitializeComponent();
+        _apiTestService = new ApiTestService(appSettingsService);
         Provider = new Provider
         {
             ToolType = toolType,
@@ -35,9 +36,10 @@ public partial class ProviderDialog : Window
         ModelSearchTextBox.Text = string.Empty;
     }
 
-    public ProviderDialog(Provider provider)
+    public ProviderDialog(Provider provider, AppSettingsService appSettingsService)
     {
         InitializeComponent();
+        _apiTestService = new ApiTestService(appSettingsService);
         Provider = new Provider
         {
             Id = provider.Id,

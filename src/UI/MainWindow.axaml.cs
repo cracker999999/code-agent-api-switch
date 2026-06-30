@@ -16,17 +16,19 @@ public partial class MainWindow : Window
 {
     private readonly DatabaseService _databaseService;
     private readonly ConfigWriterService _configWriterService;
+    private readonly AppSettingsService _appSettingsService;
     private readonly ApiTestService _apiTestService;
     private bool _initialProvidersLoaded;
 
     private SessionWindow? _sessionWindow;
     private int _currentToolType;
 
-    public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService)
+    public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService, AppSettingsService appSettingsService)
     {
         _databaseService = databaseService;
         _configWriterService = configWriterService;
-        _apiTestService = new ApiTestService();
+        _appSettingsService = appSettingsService;
+        _apiTestService = new ApiTestService(_appSettingsService);
 
         _currentToolType = 0;
         InitializeComponent();
@@ -119,7 +121,7 @@ public partial class MainWindow : Window
 
     private async void AddProviderButton_Click(object? sender, RoutedEventArgs e)
     {
-        var dialog = new ProviderDialog(_currentToolType);
+        var dialog = new ProviderDialog(_currentToolType, _appSettingsService);
         var provider = await dialog.ShowDialog<Provider?>(this);
         if (provider is null)
         {
@@ -134,6 +136,12 @@ public partial class MainWindow : Window
     private void SessionManagerButton_Click(object? sender, RoutedEventArgs e)
     {
         OpenSessionManagerWindow();
+    }
+
+    private async void SettingsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new SettingsDialog(_appSettingsService);
+        await dialog.ShowDialog<bool>(this);
     }
 
     private void OpenConfigDirectoryButton_Click(object? sender, RoutedEventArgs e)
@@ -261,7 +269,7 @@ public partial class MainWindow : Window
 
     private async Task OpenEditProviderDialogAsync(Provider provider)
     {
-        var dialog = new ProviderDialog(provider);
+        var dialog = new ProviderDialog(provider, _appSettingsService);
         var updatedProvider = await dialog.ShowDialog<Provider?>(this);
         if (updatedProvider is null)
         {

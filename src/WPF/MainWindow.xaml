@@ -124,6 +124,14 @@
                         Margin="0,0,8,0"
                         FontSize="12"
                         Click="OpenConfigDirectoryButton_Click">打开配置目录</Button>
+                <Button x:Name="SettingsButton"
+                        Style="{StaticResource RoundedAddButtonStyle}"
+                        Width="38"
+                        Height="38"
+                        Margin="0,0,8,0"
+                        FontSize="16"
+                        ToolTip="设置"
+                        Click="SettingsButton_Click">⚙</Button>
                 <Button x:Name="AddProviderButton"
                         Style="{StaticResource RoundedAddButtonStyle}"
                         Width="38"

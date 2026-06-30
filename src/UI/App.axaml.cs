@@ -45,8 +45,9 @@ public partial class App : Application
             var databaseService = new DatabaseService();
             databaseService.Initialize();
             var configWriterService = new ConfigWriterService();
+            var appSettingsService = new AppSettingsService(databaseService);
 
-            var mainWindow = new MainWindow(databaseService, configWriterService);
+            var mainWindow = new MainWindow(databaseService, configWriterService, appSettingsService);
             desktop.MainWindow = mainWindow;
 
             desktop.Exit += (_, _) =>

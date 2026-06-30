@@ -12,6 +12,13 @@ public class ApiTestService
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
+    private readonly AppSettingsService _settingsService;
+
+    public ApiTestService(AppSettingsService settingsService)
+    {
+        _settingsService = settingsService;
+    }
+
     public async Task<ApiTestResult> TestProviderAsync(Provider provider)
     {
         if (provider is null)
@@ -46,15 +53,16 @@ public class ApiTestService
 
     private async Task<ApiTestResult> TestCodexAsync(Provider provider)
     {
-        var url = $"{provider.BaseUrl.TrimEnd('/')}/responses";
+        var settings = _settingsService.Load();
+        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.CodexEndpointPath}";
         var model = string.IsNullOrWhiteSpace(provider.TestModel)
-            ? "gpt-5.3-codex"
+            ? settings.CodexTestModel
             : provider.TestModel.Trim();
 
         // 每次请求生成新的会话标识,避免硬编码值被服务端识别为"重放/伪造"
         var sessionId = Guid.NewGuid().ToString();
         var turnId = Guid.NewGuid().ToString();
-        var body = BuildCodexRequestBody(model, sessionId);
+        var body = BuildCodexRequestBody(model, sessionId, settings.CodexPromptText);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -76,13 +84,14 @@ public class ApiTestService
 
     private async Task<ApiTestResult> TestClaudeAsync(Provider provider)
     {
+        var settings = _settingsService.Load();
         // 真实 Claude Code 调用的是 /v1/messages?beta=true,部分中转站会校验该查询参数
-        var url = $"{provider.BaseUrl.TrimEnd('/')}/v1/messages?beta=true";
+        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.ClaudeEndpointPath}";
         var model = string.IsNullOrWhiteSpace(provider.TestModel)
-            ? "claude-opus-4-6"
+            ? settings.ClaudeTestModel
             : provider.TestModel.Trim();
         var sessionId = Guid.NewGuid().ToString();
-        var body = BuildClaudeRequestBody(model, sessionId);
+        var body = BuildClaudeRequestBody(model, sessionId, settings.ClaudePromptText);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -328,7 +337,7 @@ public class ApiTestService
         return message;
     }
 
-    private static string BuildCodexRequestBody(string model, string sessionId)
+    private static string BuildCodexRequestBody(string model, string sessionId, string promptText)
     {
         // 模拟真实 codex 请求体的关键顶层字段。中转站常以"是否包含 instructions / tools / reasoning 等
         // codex 特有字段"作为指纹判定客户端,缺一就被拒。这里给出最小够用的形态:
@@ -349,7 +358,7 @@ public class ApiTestService
                         new JsonObject
                         {
                             ["type"] = "input_text",
-                            ["text"] = "你是什么模型"
+                            ["text"] = promptText
                         }
                     }
                 }
@@ -395,7 +404,7 @@ public class ApiTestService
         return payload.ToJsonString();
     }
 
-    private static string BuildClaudeRequestBody(string model, string sessionId)
+    private static string BuildClaudeRequestBody(string model, string sessionId, string promptText)
     {
         // 中转站普遍以 system[0].text 中是否含 Claude Code 客户端特征字符串作为指纹判定。
         // 以下精确字符串与真实 Claude Code 2.1.145 发出的内容一致,改动会触发"only allows Claude Code clients"。
@@ -432,7 +441,7 @@ public class ApiTestService
                         new JsonObject
                         {
                             ["type"] = "text",
-                            ["text"] = "你是什么模型"
+                            ["text"] = promptText
                         }
                     }
                 }

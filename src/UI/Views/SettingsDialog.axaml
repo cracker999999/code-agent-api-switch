@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="APISwitch.UI.Views.SettingsDialog"
+        Title="设置"
+        Width="720"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,Auto">
+    <Grid Grid.Row="0" ColumnDefinitions="*,20,*">
+      <StackPanel Grid.Column="0" Spacing="0">
+        <TextBlock Text="Codex"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="#111827"
+                   Margin="0,0,0,10" />
+
+        <TextBlock Text="默认测试模型" FontWeight="SemiBold" />
+        <TextBox x:Name="CodexTestModelTextBox"
+                 Margin="0,8,0,14"
+                 Height="32"
+                 VerticalContentAlignment="Center" />
+
+        <TextBlock Text="测试端点路径" FontWeight="SemiBold" />
+        <TextBox x:Name="CodexEndpointPathTextBox"
+                 Margin="0,8,0,4"
+                 Height="32"
+                 VerticalContentAlignment="Center" />
+        <TextBlock Text="拼接在 BaseUrl 之后,以 / 开头"
+                   FontSize="11"
+                   Foreground="#9CA3AF"
+                   Margin="0,0,0,14" />
+
+        <TextBlock Text="Prompt 文本" FontWeight="SemiBold" />
+        <TextBox x:Name="CodexPromptTextBox"
+                 Margin="0,8,0,14"
+                 Height="64"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="2" Spacing="0">
+        <TextBlock Text="Claude Code"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="#111827"
+                   Margin="0,0,0,10" />
+
+        <TextBlock Text="默认测试模型" FontWeight="SemiBold" />
+        <TextBox x:Name="ClaudeTestModelTextBox"
+                 Margin="0,8,0,14"
+                 Height="32"
+                 VerticalContentAlignment="Center" />
+
+        <TextBlock Text="测试端点路径" FontWeight="SemiBold" />
+        <TextBox x:Name="ClaudeEndpointPathTextBox"
+                 Margin="0,8,0,4"
+                 Height="32"
+                 VerticalContentAlignment="Center" />
+        <TextBlock Text="拼接在 BaseUrl 之后,以 / 开头,可带 query string"
+                   FontSize="11"
+                   Foreground="#9CA3AF"
+                   Margin="0,0,0,14" />
+
+        <TextBlock Text="Prompt 文本" FontWeight="SemiBold" />
+        <TextBox x:Name="ClaudePromptTextBox"
+                 Margin="0,8,0,14"
+                 Height="64"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap" />
+      </StackPanel>
+    </Grid>
+
+    <TextBlock Grid.Row="1"
+               Text="留空将自动回退为内置默认值"
+               FontSize="11"
+               Foreground="#9CA3AF"
+               Margin="0,4,0,0" />
+
+    <StackPanel Grid.Row="2"
+                Margin="0,18,0,0"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Spacing="8">
+      <Button x:Name="RestoreDefaultsButton" Width="100" Height="32" Click="RestoreDefaultsButton_Click" Content="恢复默认" />
+      <Button x:Name="ConfirmButton" Width="88" Height="32" Click="ConfirmButton_Click" IsDefault="True" Content="确认" />
+      <Button x:Name="CancelButton" Width="88" Height="32" Click="CancelButton_Click" IsCancel="True" Content="取消" />
+    </StackPanel>
+  </Grid>
+</Window>

@@ -18,15 +18,17 @@ public partial class MainWindow : Window
 {
     private readonly DatabaseService _databaseService;
     private readonly ConfigWriterService _configWriterService;
+    private readonly AppSettingsService _appSettingsService;
     private readonly ApiTestService _apiTestService;
     private SessionWindow? _sessionWindow;
     private int _currentToolType;
 
-    public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService)
+    public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService, AppSettingsService appSettingsService)
     {
         _databaseService = databaseService;
         _configWriterService = configWriterService;
-        _apiTestService = new ApiTestService();
+        _appSettingsService = appSettingsService;
+        _apiTestService = new ApiTestService(_appSettingsService);
         _currentToolType = 0;
 
         InitializeComponent();
@@ -63,7 +65,7 @@ public partial class MainWindow : Window
 
     private void AddProviderButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ProviderDialog(_currentToolType)
+        var dialog = new ProviderDialog(_currentToolType, _appSettingsService)
         {
             Owner = this
         };
@@ -82,6 +84,15 @@ public partial class MainWindow : Window
     private void SessionManagerButton_Click(object sender, RoutedEventArgs e)
     {
         OpenSessionManagerWindow();
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SettingsDialog(_appSettingsService)
+        {
+            Owner = this
+        };
+        dialog.ShowDialog();
     }
 
     internal void OpenSessionManagerWindow()
@@ -266,7 +277,7 @@ public partial class MainWindow : Window
 
     private void OpenEditProviderDialog(Provider provider)
     {
-        var dialog = new ProviderDialog(provider)
+        var dialog = new ProviderDialog(provider, _appSettingsService)
         {
             Owner = this
         };

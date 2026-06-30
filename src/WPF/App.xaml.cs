@@ -43,7 +43,8 @@ public partial class App : System.Windows.Application
             _databaseService.Initialize();
 
             var configWriterService = new ConfigWriterService();
-            _mainWindow = new MainWindow(_databaseService, configWriterService);
+            var appSettingsService = new AppSettingsService(_databaseService);
+            _mainWindow = new MainWindow(_databaseService, configWriterService, appSettingsService);
             MainWindow = _mainWindow;
             StartShowMainWindowSignalListener();
             InitializeTrayIcon();
