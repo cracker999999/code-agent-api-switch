@@ -411,13 +411,19 @@ public partial class SessionWindow : Window
                     MessagesPanel.Children.Add(CreateBubbleMessageElement(
                         message.Content,
                         false,
-                        GetRoleDisplayName(message.Role),
+                        SessionService.GetRoleDisplayName(message.Role),
                         message.Timestamp,
                         message.ImageDataUrls));
                     continue;
                 }
 
                 MessagesPanel.Children.Add(CreateCollapsedMessageElement("工具", message.Content, message.Timestamp));
+                continue;
+            }
+
+            if (string.Equals(message.Role, "error", StringComparison.OrdinalIgnoreCase))
+            {
+                MessagesPanel.Children.Add(CreateErrorMessageElement(message.Content, message.Timestamp));
                 continue;
             }
 
@@ -433,7 +439,7 @@ public partial class SessionWindow : Window
             MessagesPanel.Children.Add(CreateBubbleMessageElement(
                 message.Content,
                 isUser,
-                GetRoleDisplayName(message.Role),
+                SessionService.GetRoleDisplayName(message.Role),
                 message.Timestamp,
                 message.ImageDataUrls));
         }
@@ -501,6 +507,56 @@ public partial class SessionWindow : Window
                 isUser ? Brushes.White : CreateBrush("#111827"),
                 textWrapping: TextWrapping.Wrap));
         }
+
+        bubble.Child = container;
+        return bubble;
+    }
+
+    private static Control CreateErrorMessageElement(string content, DateTime timestamp)
+    {
+        var bubble = new Border
+        {
+            Background = CreateBrush("#FEF2F2"),
+            BorderBrush = CreateBrush("#FCA5A5"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 0, 10),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            MaxWidth = 520
+        };
+
+        var container = new StackPanel
+        {
+            Spacing = 6
+        };
+
+        var header = new Grid
+        {
+            Margin = new Thickness(0, 0, 0, 2)
+        };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        header.Children.Add(CreateSelectableTextElement(
+            "错误",
+            12,
+            CreateBrush("#B91C1C"),
+            FontWeight.SemiBold));
+
+        var timeText = CreateSelectableTextElement(
+            FormatMessageTime(timestamp),
+            12,
+            CreateBrush("#B91C1C"));
+        Grid.SetColumn(timeText, 1);
+        header.Children.Add(timeText);
+
+        container.Children.Add(header);
+        container.Children.Add(CreateSelectableTextElement(
+            content,
+            13,
+            CreateBrush("#7F1D1D"),
+            textWrapping: TextWrapping.Wrap));
 
         bubble.Child = container;
         return bubble;
@@ -781,26 +837,6 @@ public partial class SessionWindow : Window
         }
 
         return timestamp.ToString("yyyy/MM/dd");
-    }
-
-    private static string GetRoleDisplayName(string role)
-    {
-        if (string.Equals(role, "user", StringComparison.OrdinalIgnoreCase))
-        {
-            return "用户";
-        }
-
-        if (string.Equals(role, "developer", StringComparison.OrdinalIgnoreCase))
-        {
-            return "developer";
-        }
-
-        if (string.Equals(role, "tool", StringComparison.OrdinalIgnoreCase))
-        {
-            return "工具";
-        }
-
-        return "AI";
     }
 
     private static string NormalizeProviderId(string? providerId)

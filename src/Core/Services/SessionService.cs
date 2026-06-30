@@ -17,6 +17,32 @@ public class SessionService
     public static bool IsCodex(string? providerId) =>
         string.Equals(providerId, ProviderCodex, StringComparison.OrdinalIgnoreCase);
 
+    // 角色显示名两端共用，避免 WPF/Avalonia 各维护一份。
+    public static string GetRoleDisplayName(string role)
+    {
+        if (string.Equals(role, "user", StringComparison.OrdinalIgnoreCase))
+        {
+            return "用户";
+        }
+
+        if (string.Equals(role, "developer", StringComparison.OrdinalIgnoreCase))
+        {
+            return "developer";
+        }
+
+        if (string.Equals(role, "tool", StringComparison.OrdinalIgnoreCase))
+        {
+            return "工具";
+        }
+
+        if (string.Equals(role, "error", StringComparison.OrdinalIgnoreCase))
+        {
+            return "错误";
+        }
+
+        return "AI";
+    }
+
     // 不同 CLI 的恢复子命令格式不同：Claude 用 `claude --resume <id>`，Codex 用 `codex resume <id>`。
     public static (string Command, string? WorkingDirectory) BuildResumeCommand(SessionMeta session)
     {
@@ -403,23 +429,42 @@ public class SessionService
                     continue;
                 }
 
-                if (!string.Equals(eventType, "event_msg", StringComparison.OrdinalIgnoreCase) ||
-                    !TryExtractCodexScreenshotToolMessage(payload, out var screenshotContent, out var screenshotImageDataUrls))
+                if (!string.Equals(eventType, "event_msg", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
-                var screenshotTimestamp = TryGetDateTime(payload, "timestamp")
-                    ?? TryGetDateTime(root, "timestamp")
-                    ?? File.GetLastWriteTime(sourcePath);
-
-                messages.Add(new SessionMessage
+                // 截图工具的 mcp_tool_call_end 事件：作为带图片的工具消息渲染。
+                if (TryExtractCodexScreenshotToolMessage(payload, out var screenshotContent, out var screenshotImageDataUrls))
                 {
-                    Role = "tool",
-                    Content = screenshotContent,
-                    ImageDataUrls = screenshotImageDataUrls,
-                    Timestamp = screenshotTimestamp
-                });
+                    var screenshotTimestamp = TryGetDateTime(payload, "timestamp")
+                        ?? TryGetDateTime(root, "timestamp")
+                        ?? File.GetLastWriteTime(sourcePath);
+
+                    messages.Add(new SessionMessage
+                    {
+                        Role = "tool",
+                        Content = screenshotContent,
+                        ImageDataUrls = screenshotImageDataUrls,
+                        Timestamp = screenshotTimestamp
+                    });
+                    continue;
+                }
+
+                // Codex 上游返回的错误事件（例如 403、限流等），原本被静默丢弃，这里转为可见的错误消息。
+                if (TryExtractCodexErrorEvent(payload, out var errorContent))
+                {
+                    var errorTimestamp = TryGetDateTime(payload, "timestamp")
+                        ?? TryGetDateTime(root, "timestamp")
+                        ?? File.GetLastWriteTime(sourcePath);
+
+                    messages.Add(new SessionMessage
+                    {
+                        Role = "error",
+                        Content = errorContent,
+                        Timestamp = errorTimestamp
+                    });
+                }
             }
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
@@ -663,6 +708,39 @@ public class SessionService
         }
 
         return imageDataUrls.Count > 0;
+    }
+
+    // payload 形如 {"type":"error","message":"...","codex_error_info":"..."}
+    private static bool TryExtractCodexErrorEvent(JsonElement payload, out string content)
+    {
+        content = string.Empty;
+
+        if (!TryGetString(payload, "type", out var payloadType) ||
+            !string.Equals(payloadType, "error", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var hasMessage = TryGetString(payload, "message", out var parsedMessage);
+        var hasInfo = TryGetString(payload, "codex_error_info", out var parsedInfo);
+        if (!hasMessage && !hasInfo)
+        {
+            return false;
+        }
+
+        var message = hasMessage ? parsedMessage.Trim() : string.Empty;
+        var errorInfo = hasInfo ? parsedInfo.Trim() : string.Empty;
+
+        // codex_error_info 经常是占位符 "other"，对用户没有价值，跳过它避免噪声。
+        var hideInfo = errorInfo.Length == 0 ||
+                       string.Equals(errorInfo, "other", StringComparison.OrdinalIgnoreCase);
+
+        content = message.Length == 0
+            ? $"[{errorInfo}]"
+            : hideInfo
+                ? message
+                : $"{message}{Environment.NewLine}[{errorInfo}]";
+        return true;
     }
 
     private static bool TryExtractCodexToolResultImageDataUrl(JsonElement item, out string imageDataUrl)
@@ -1265,6 +1343,11 @@ public class SessionService
         if (string.Equals(role, "tool", StringComparison.OrdinalIgnoreCase))
         {
             return "tool";
+        }
+
+        if (string.Equals(role, "error", StringComparison.OrdinalIgnoreCase))
+        {
+            return "error";
         }
 
         return "assistant";
