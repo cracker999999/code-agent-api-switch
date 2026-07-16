@@ -76,7 +76,7 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("session_id", sessionId);
         request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
         request.Headers.TryAddWithoutValidation("accept", "text/event-stream");
-        request.Headers.TryAddWithoutValidation("user-agent", "codex-tui/0.120.0 (Windows 10.0.19045; x86_64) WindowsTerminal (codex-tui; 0.120.0)");
+        request.Headers.TryAddWithoutValidation("user-agent", "codex-tui/0.144.0 (Windows 10.0.19045; x86_64) WindowsTerminal (codex-tui; 0.120.0)");
         request.Headers.TryAddWithoutValidation("originator", "codex_tui");
 
         return await SendAndReadFirstChunkAsync(request);
