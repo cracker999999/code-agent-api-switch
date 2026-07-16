@@ -118,6 +118,7 @@
                                Text="会话列表 (0)" />
 
                     <Grid Grid.Row="1" Margin="10,0,10,10">
+                        <!-- 分组高度差异较大，使用物理像素滚动以固定滚动范围，避免滑块尺寸随容器实现过程变化。 -->
                         <ListBox x:Name="SessionListBox"
                                  Background="Transparent"
                                  BorderThickness="0"
@@ -125,7 +126,7 @@
                                  SelectionChanged="SessionListBox_SelectionChanged"
                                  PreviewMouseWheel="SessionListBox_PreviewMouseWheel"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                 ScrollViewer.CanContentScroll="True"
+                                 ScrollViewer.CanContentScroll="False"
                                  VirtualizingPanel.IsVirtualizing="True"
                                  VirtualizingPanel.VirtualizationMode="Recycling">
                             <ListBox.GroupStyle>
