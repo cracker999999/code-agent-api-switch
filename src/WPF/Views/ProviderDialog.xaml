@@ -70,11 +70,28 @@
                     Height="30"
                     Click="TestModelButton_Click">测试模型</Button>
         </Grid>
-        <TextBox x:Name="TestModelTextBox"
-                 Grid.Row="7"
-                 Margin="0,8,0,14"
-                 Height="32"
-                 VerticalContentAlignment="Center" />
+        <Grid Grid.Row="7"
+              Margin="0,8,0,14"
+              Height="32">
+            <TextBox x:Name="TestModelTextBox"
+                     VerticalContentAlignment="Center" />
+            <TextBlock x:Name="TestModelPlaceholderTextBlock"
+                       Margin="3,0,0,0"
+                       VerticalAlignment="Center"
+                       Foreground="#9CA3AF"
+                       IsHitTestVisible="False">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=TestModelTextBox}" Value="">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
 
         <Grid Grid.Row="8" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>

@@ -64,6 +64,13 @@ public partial class ProviderDialog : Window
         BaseUrlTextBox.Text = _provider.BaseUrl;
         ApiKeyTextBox.Text = _provider.ApiKey;
         TestModelTextBox.Text = _provider.TestModel;
+        var settings = appSettingsService.Load();
+        TestModelTextBox.Watermark = _provider.ToolType switch
+        {
+            0 => settings.CodexTestModel,
+            1 => settings.ClaudeTestModel,
+            _ => string.Empty
+        };
     }
 
     private async void ConfirmButton_Click(object? sender, RoutedEventArgs e)

@@ -60,6 +60,13 @@ public partial class ProviderDialog : Window
         BaseUrlTextBox.Text = Provider.BaseUrl;
         ApiKeyTextBox.Text = Provider.ApiKey;
         TestModelTextBox.Text = Provider.TestModel;
+        var settings = appSettingsService.Load();
+        TestModelPlaceholderTextBlock.Text = Provider.ToolType switch
+        {
+            0 => settings.CodexTestModel,
+            1 => settings.ClaudeTestModel,
+            _ => string.Empty
+        };
         ModelSearchTextBox.Text = string.Empty;
     }
 
