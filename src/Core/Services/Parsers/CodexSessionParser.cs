@@ -177,7 +177,10 @@ public class CodexSessionParser : ISessionParser
                 {
                     Role = role,
                     Content = content,
-                    ImageDataUrls = imageDataUrls
+                    ImageDataUrls = imageDataUrls,
+                    Timestamp = TryGetDateTime(root, "timestamp")
+                        ?? TryGetDateTime(payload, "timestamp")
+                        ?? File.GetLastWriteTime(filePath)
                 });
             }
         }
