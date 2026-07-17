@@ -27,9 +27,11 @@ public partial class SettingsDialog : Window
             CodexTestModel = CodexTestModelTextBox.Text ?? string.Empty,
             CodexEndpointPath = CodexEndpointPathTextBox.Text ?? string.Empty,
             CodexPromptText = CodexPromptTextBox.Text ?? string.Empty,
+            CodexVersion = CodexVersionTextBox.Text ?? string.Empty,
             ClaudeTestModel = ClaudeTestModelTextBox.Text ?? string.Empty,
             ClaudeEndpointPath = ClaudeEndpointPathTextBox.Text ?? string.Empty,
-            ClaudePromptText = ClaudePromptTextBox.Text ?? string.Empty
+            ClaudePromptText = ClaudePromptTextBox.Text ?? string.Empty,
+            ClaudeVersion = ClaudeVersionTextBox.Text ?? string.Empty
         };
 
         try
@@ -59,8 +61,10 @@ public partial class SettingsDialog : Window
         CodexTestModelTextBox.Text = settings.CodexTestModel;
         CodexEndpointPathTextBox.Text = settings.CodexEndpointPath;
         CodexPromptTextBox.Text = settings.CodexPromptText;
+        CodexVersionTextBox.Text = settings.CodexVersion;
         ClaudeTestModelTextBox.Text = settings.ClaudeTestModel;
         ClaudeEndpointPathTextBox.Text = settings.ClaudeEndpointPath;
         ClaudePromptTextBox.Text = settings.ClaudePromptText;
+        ClaudeVersionTextBox.Text = settings.ClaudeVersion;
     }
 }

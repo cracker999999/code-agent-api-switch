@@ -50,6 +50,12 @@
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto" />
+
+                <TextBlock Text="客户端版本号" FontWeight="SemiBold" />
+                <TextBox x:Name="CodexVersionTextBox"
+                         Margin="0,8,0,14"
+                         Height="32"
+                         VerticalContentAlignment="Center" />
             </StackPanel>
 
             <StackPanel Grid.Column="2">
@@ -82,6 +88,12 @@
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto" />
+
+                <TextBlock Text="客户端版本号" FontWeight="SemiBold" />
+                <TextBox x:Name="ClaudeVersionTextBox"
+                         Margin="0,8,0,14"
+                         Height="32"
+                         VerticalContentAlignment="Center" />
             </StackPanel>
         </Grid>
 

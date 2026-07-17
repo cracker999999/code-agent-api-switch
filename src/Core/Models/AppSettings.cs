@@ -6,9 +6,11 @@ public class AppSettings
     public string CodexTestModel { get; set; } = string.Empty;
     public string CodexEndpointPath { get; set; } = string.Empty;
     public string CodexPromptText { get; set; } = string.Empty;
+    public string CodexVersion { get; set; } = string.Empty;
     public string ClaudeTestModel { get; set; } = string.Empty;
     public string ClaudeEndpointPath { get; set; } = string.Empty;
     public string ClaudePromptText { get; set; } = string.Empty;
+    public string ClaudeVersion { get; set; } = string.Empty;
 
     // 内置默认值:与历史硬编码完全一致,保证未配置时行为不变。
     public static AppSettings CreateDefault() => new()
@@ -16,8 +18,10 @@ public class AppSettings
         CodexTestModel = "gpt-5.3-codex",
         CodexEndpointPath = "/responses",
         CodexPromptText = "你是什么模型",
+        CodexVersion = "0.144.0",
         ClaudeTestModel = "claude-opus-4-6",
         ClaudeEndpointPath = "/v1/messages?beta=true",
-        ClaudePromptText = "你是什么模型"
+        ClaudePromptText = "你是什么模型",
+        ClaudeVersion = "2.1.152"
     };
 }

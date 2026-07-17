@@ -76,7 +76,7 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("session_id", sessionId);
         request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
         request.Headers.TryAddWithoutValidation("accept", "text/event-stream");
-        request.Headers.TryAddWithoutValidation("user-agent", "codex-tui/0.144.0 (Windows 10.0.19045; x86_64) WindowsTerminal (codex-tui; 0.120.0)");
+        request.Headers.TryAddWithoutValidation("user-agent", $"codex-tui/{settings.CodexVersion} (Windows 10.0.19045; x86_64) WindowsTerminal (codex-tui; {settings.CodexVersion})");
         request.Headers.TryAddWithoutValidation("originator", "codex_tui");
 
         return await SendAndReadFirstChunkAsync(request);
@@ -104,7 +104,7 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("anthropic-beta", "claude-code-20250219,interleaved-thinking-2025-05-14,context-1m-2025-08-07,effort-2025-11-24");
         request.Headers.TryAddWithoutValidation("anthropic-dangerous-direct-browser-access", "true");
         request.Headers.TryAddWithoutValidation("accept", "application/json");
-        request.Headers.TryAddWithoutValidation("user-agent", "claude-cli/2.1.152 (external, cli)");
+        request.Headers.TryAddWithoutValidation("user-agent", $"claude-cli/{settings.ClaudeVersion} (external, cli)");
         request.Headers.TryAddWithoutValidation("x-app", "cli");
         request.Headers.TryAddWithoutValidation("x-claude-code-session-id", sessionId);
         // Stainless SDK 系列指纹 header(Claude Code 走官方 @anthropic-ai/sdk 时自动注入)
