@@ -26,6 +26,11 @@
                            FontWeight="SemiBold"
                            Foreground="#111827"
                            Margin="0,0,0,10" />
+                <Button x:Name="OpenCodexConfigDirectoryButton"
+                        Width="120"
+                        Height="30"
+                        Margin="0,0,0,14"
+                        Click="OpenCodexConfigDirectoryButton_Click">打开配置目录</Button>
 
                 <TextBlock Text="默认测试模型" FontWeight="SemiBold" />
                 <TextBox x:Name="CodexTestModelTextBox"
@@ -64,6 +69,11 @@
                            FontWeight="SemiBold"
                            Foreground="#111827"
                            Margin="0,0,0,10" />
+                <Button x:Name="OpenClaudeConfigDirectoryButton"
+                        Width="120"
+                        Height="30"
+                        Margin="0,0,0,14"
+                        Click="OpenClaudeConfigDirectoryButton_Click">打开配置目录</Button>
 
                 <TextBlock Text="默认测试模型" FontWeight="SemiBold" />
                 <TextBox x:Name="ClaudeTestModelTextBox"

@@ -1,3 +1,4 @@
+using System.IO;
 using APISwitch.Models;
 using APISwitch.Services;
 using APISwitch.UI.Services;
@@ -54,6 +55,41 @@ public partial class SettingsDialog : Window
     {
         // 只覆盖输入框,不写库;用户需点"确认"才生效。
         ApplyToInputs(AppSettings.CreateDefault());
+    }
+
+    private void OpenCodexConfigDirectoryButton_Click(object? sender, RoutedEventArgs e)
+    {
+        OpenConfigDirectory(".codex");
+    }
+
+    private void OpenClaudeConfigDirectoryButton_Click(object? sender, RoutedEventArgs e)
+    {
+        OpenConfigDirectory(".claude");
+    }
+
+    private async void OpenConfigDirectory(string directoryName)
+    {
+        try
+        {
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var targetDirectory = Path.Combine(userProfile, directoryName);
+            Directory.CreateDirectory(targetDirectory);
+
+            var result = ShellLauncher.OpenDirectory(targetDirectory);
+            if (result.Status == OpenDirectoryStatus.Ok)
+            {
+                return;
+            }
+
+            var message = result.Status == OpenDirectoryStatus.NotFound
+                ? "目录不存在或无法访问"
+                : $"打开目录失败：{result.ErrorMessage}";
+            await DialogService.ShowErrorAsync(this, "错误", message);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(this, "错误", $"打开目录失败：{ex.Message}");
+        }
     }
 
     private void ApplyToInputs(AppSettings settings)

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 using System.Text.RegularExpressions;
 using APISwitch.UI.Services;
 using APISwitch.UI.Views;
@@ -142,28 +141,6 @@ public partial class MainWindow : Window
     {
         var dialog = new SettingsDialog(_appSettingsService);
         await dialog.ShowDialog<bool>(this);
-    }
-
-    private void OpenConfigDirectoryButton_Click(object? sender, RoutedEventArgs e)
-    {
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var targetDirectory = _currentToolType == 0
-            ? Path.Combine(userProfile, ".codex")
-            : Path.Combine(userProfile, ".claude");
-
-        try
-        {
-            Directory.CreateDirectory(targetDirectory);
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = targetDirectory,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            _ = DialogService.ShowErrorAsync(this, "错误", $"打开目录失败：{ex.Message}");
-        }
     }
 
     private void BaseUrlButton_Click(object? sender, RoutedEventArgs e)

@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Documents;
@@ -129,33 +128,6 @@ public partial class MainWindow : Window
         return _currentToolType == 1
             ? SessionService.ProviderClaude
             : SessionService.ProviderCodex;
-    }
-
-    private void OpenConfigDirectoryButton_Click(object sender, RoutedEventArgs e)
-    {
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var targetDirectory = _currentToolType == 0
-            ? Path.Combine(userProfile, ".codex")
-            : Path.Combine(userProfile, ".claude");
-
-        try
-        {
-            Directory.CreateDirectory(targetDirectory);
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = targetDirectory,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show(
-                this,
-                $"打开目录失败：{ex.Message}",
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
-        }
     }
 
     private void BaseUrlHyperlink_Click(object sender, RoutedEventArgs e)
