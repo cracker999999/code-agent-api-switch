@@ -30,10 +30,19 @@ public partial class ProviderDialog : Window
         {
             0 => "新增供应商（Codex）",
             1 => "新增供应商（Claude Code）",
+            2 => "新增供应商（Grok）",
             _ => "新增供应商"
         };
 
         ModelSearchTextBox.Text = string.Empty;
+        var settings = appSettingsService.Load();
+        TestModelPlaceholderTextBlock.Text = toolType switch
+        {
+            0 => settings.CodexTestModel,
+            1 => settings.ClaudeTestModel,
+            2 => settings.GrokTestModel,
+            _ => string.Empty
+        };
     }
 
     public ProviderDialog(Provider provider, AppSettingsService appSettingsService)
@@ -65,6 +74,7 @@ public partial class ProviderDialog : Window
         {
             0 => settings.CodexTestModel,
             1 => settings.ClaudeTestModel,
+            2 => settings.GrokTestModel,
             _ => string.Empty
         };
         ModelSearchTextBox.Text = string.Empty;

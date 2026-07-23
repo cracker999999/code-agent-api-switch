@@ -88,8 +88,12 @@
                         Click="CodexTabButton_Click">Codex</Button>
                 <Button x:Name="ClaudeTabButton"
                         Style="{StaticResource TabButtonStyle}"
-                        Margin="0"
+                        Margin="0,0,8,0"
                         Click="ClaudeTabButton_Click">Claude Code</Button>
+                <Button x:Name="GrokTabButton"
+                        Style="{StaticResource TabButtonStyle}"
+                        Margin="0"
+                        Click="GrokTabButton_Click">Grok</Button>
             </StackPanel>
         </Grid>
 

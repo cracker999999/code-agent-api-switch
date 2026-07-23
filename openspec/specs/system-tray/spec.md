@@ -58,3 +58,10 @@
 #### Scenario: 无任何窗口可见
 - **WHEN** 应用运行于 macOS 且所有窗口均不可见
 - **THEN** Dock 隐藏应用图标，仅保留菜单栏图标
+
+### Requirement: 托盘提示展示 Grok 激活供应商
+托盘提示 SHALL 同时展示 Codex、Claude Code 和 Grok 的当前激活供应商名称。
+
+#### Scenario: 刷新托盘提示
+- **WHEN** 任一工具分类的供应商列表刷新
+- **THEN** 托盘提示包含 Grok 当前激活供应商；若未启用则显示"未启用"

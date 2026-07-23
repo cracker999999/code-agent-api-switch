@@ -4,11 +4,11 @@
 TBD - created by archiving change session-management. Update Purpose after archive.
 ## Requirements
 ### Requirement: 窗口基本属性
-SessionWindow SHALL 为 ~900x640 尺寸，CenterOwner 定位，顶栏包含标题和 Codex/Claude 选项卡。
+SessionWindow SHALL 为 ~900x640 尺寸，CenterOwner 定位，顶栏包含标题和 Codex/Claude/Grok 选项卡。
 
-#### Scenario: 窗口打开
-- **WHEN** 用户从 MainWindow 打开 SessionWindow
-- **THEN** 窗口以 ~900x640 尺寸居中于 MainWindow 显示，顶栏显示"会话管理"标题和 Codex/Claude 选项卡
+#### Scenario: 打开会话管理窗口
+- **WHEN** 用户点击主窗口“会话管理”按钮
+- **THEN** 窗口以 ~900x640 尺寸居中于 MainWindow 显示，顶栏显示"会话管理"标题和 Codex/Claude/Grok 选项卡
 
 ### Requirement: 左右分栏布局
 SessionWindow SHALL 采用左右分栏布局，左侧 ~300px 显示会话列表，右侧显示聊天详情。
@@ -101,4 +101,11 @@ SessionWindow SHALL 采用左右分栏布局，左侧 ~300px 显示会话列表�
 #### Scenario: 关闭会话管理窗口
 - **WHEN** 用户关闭 SessionWindow
 - **THEN** 窗口关闭，MainWindow 保持正常运行
+
+### Requirement: Grok 会话标签切换
+切换 Grok 选项卡 SHALL 重新扫描 Grok 会话目录并刷新列表。
+
+#### Scenario: 切换到 Grok 选项卡
+- **WHEN** 用户点击 Grok 选项卡
+- **THEN** 系统调用 ScanGrokSessions() 并刷新左侧会话列表
 

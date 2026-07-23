@@ -118,6 +118,13 @@ public partial class MainWindow : Window
         LoadProviders();
     }
 
+    private void GrokTabButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _currentToolType = 2;
+        UpdateTabButtons();
+        LoadProviders();
+    }
+
     private async void AddProviderButton_Click(object? sender, RoutedEventArgs e)
     {
         var dialog = new ProviderDialog(_currentToolType, _appSettingsService);
@@ -372,15 +379,14 @@ public partial class MainWindow : Window
 
     private string GetCurrentProviderId()
     {
-        return _currentToolType == 1
-            ? SessionService.ProviderClaude
-            : SessionService.ProviderCodex;
+        return SessionService.GetProviderIdForToolType(_currentToolType);
     }
 
     private void UpdateTabButtons()
     {
         SetTabButtonSelectedState(CodexTabButton, _currentToolType == 0);
         SetTabButtonSelectedState(ClaudeTabButton, _currentToolType == 1);
+        SetTabButtonSelectedState(GrokTabButton, _currentToolType == 2);
     }
 
     private static string BuildOpenUrl(string input)

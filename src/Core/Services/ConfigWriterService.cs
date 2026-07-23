@@ -17,6 +17,7 @@ public class ConfigWriterService
     private readonly string _codexConfigPath;
     private readonly string _codexAuthPath;
     private readonly string _claudeSettingsPath;
+    private readonly string _grokConfigPath;
 
     public ConfigWriterService()
     {
@@ -24,6 +25,7 @@ public class ConfigWriterService
         _codexConfigPath = Path.Combine(userProfile, ".codex", "config.toml");
         _codexAuthPath = Path.Combine(userProfile, ".codex", "auth.json");
         _claudeSettingsPath = Path.Combine(userProfile, ".claude", "settings.json");
+        _grokConfigPath = Path.Combine(userProfile, ".grok", "config.toml");
     }
 
     public void ApplyProvider(Provider provider)
@@ -38,6 +40,12 @@ public class ConfigWriterService
         if (provider.ToolType == 1)
         {
             WriteClaudeSettings(provider.BaseUrl, provider.ApiKey);
+            return;
+        }
+
+        if (provider.ToolType == 2)
+        {
+            WriteGrokConfig(provider.BaseUrl, provider.ApiKey);
             return;
         }
 
@@ -112,6 +120,28 @@ public class ConfigWriterService
         WriteJsonFile(_claudeSettingsPath, root);
     }
 
+    private void WriteGrokConfig(string baseUrl, string apiKey)
+    {
+        EnsureDirectory(_grokConfigPath);
+
+        string content;
+        if (File.Exists(_grokConfigPath))
+        {
+            BackupFile(_grokConfigPath);
+            content = File.ReadAllText(_grokConfigPath, Encoding.UTF8);
+        }
+        else
+        {
+            content = string.Empty;
+        }
+
+        content = UpsertTomlSectionValue(content, "endpoints", "models_base_url", baseUrl);
+        content = UpsertTomlSectionValue(content, "endpoints", "xai_api_base_url", baseUrl);
+        content = UpsertTomlSectionValue(content, "model.\"grok-4.5\"", "api_key", apiKey);
+
+        File.WriteAllText(_grokConfigPath, content, new UTF8Encoding(false));
+    }
+
     private static JsonObject ReadJsonFile(string path)
     {
         if (!File.Exists(path))
@@ -152,6 +182,50 @@ public class ConfigWriterService
     private static string EscapeToml(string value)
     {
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    private static string UpsertTomlSectionValue(string content, string sectionName, string key, string value)
+    {
+        var line = $"{key} = \"{EscapeToml(value)}\"";
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return $"[{sectionName}]" + Environment.NewLine + line + Environment.NewLine;
+        }
+
+        var sectionPattern = $@"(?m)^\s*\[\s*{Regex.Escape(sectionName)}\s*\]\s*$";
+        var sectionMatch = Regex.Match(content, sectionPattern);
+        if (!sectionMatch.Success)
+        {
+            return content.TrimEnd()
+                + Environment.NewLine
+                + Environment.NewLine
+                + $"[{sectionName}]"
+                + Environment.NewLine
+                + line
+                + Environment.NewLine;
+        }
+
+        var bodyStart = sectionMatch.Index + sectionMatch.Length;
+        var nextSectionMatch = Regex.Match(content[bodyStart..], @"(?m)^\s*\[");
+        var bodyEnd = nextSectionMatch.Success
+            ? bodyStart + nextSectionMatch.Index
+            : content.Length;
+        var beforeSection = content[..sectionMatch.Index];
+        var section = content[sectionMatch.Index..bodyEnd];
+        var afterSection = content[bodyEnd..];
+
+        var pattern = $@"(?m)^\s*{Regex.Escape(key)}\s*=.*$";
+        if (Regex.IsMatch(section, pattern))
+        {
+            section = Regex.Replace(section, pattern, line);
+        }
+        else
+        {
+            section = section.TrimEnd() + Environment.NewLine + line + Environment.NewLine;
+        }
+
+        // 只在目标 section 内更新，避免误改其他 model 的同名字段。
+        return beforeSection + section + afterSection;
     }
 }
 

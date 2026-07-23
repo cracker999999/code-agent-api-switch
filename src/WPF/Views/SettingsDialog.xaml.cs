@@ -30,7 +30,11 @@ public partial class SettingsDialog : Window
             ClaudeTestModel = ClaudeTestModelTextBox.Text,
             ClaudeEndpointPath = ClaudeEndpointPathTextBox.Text,
             ClaudePromptText = ClaudePromptTextBox.Text,
-            ClaudeVersion = ClaudeVersionTextBox.Text
+            ClaudeVersion = ClaudeVersionTextBox.Text,
+            GrokTestModel = GrokTestModelTextBox.Text,
+            GrokEndpointPath = GrokEndpointPathTextBox.Text,
+            GrokPromptText = GrokPromptTextBox.Text,
+            GrokVersion = GrokVersionTextBox.Text
         };
 
         try
@@ -72,12 +76,19 @@ public partial class SettingsDialog : Window
         OpenConfigDirectory(".claude");
     }
 
+    private void OpenGrokConfigDirectoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        OpenConfigDirectory(".grok");
+    }
+
     private void OpenConfigDirectory(string directoryName)
     {
         try
         {
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var targetDirectory = Path.Combine(userProfile, directoryName);
+            var targetDirectory = Path.IsPathRooted(directoryName)
+                ? directoryName
+                : Path.Combine(userProfile, directoryName);
             Directory.CreateDirectory(targetDirectory);
 
             var result = ShellLauncher.OpenDirectory(targetDirectory);
@@ -117,5 +128,9 @@ public partial class SettingsDialog : Window
         ClaudeEndpointPathTextBox.Text = settings.ClaudeEndpointPath;
         ClaudePromptTextBox.Text = settings.ClaudePromptText;
         ClaudeVersionTextBox.Text = settings.ClaudeVersion;
+        GrokTestModelTextBox.Text = settings.GrokTestModel;
+        GrokEndpointPathTextBox.Text = settings.GrokEndpointPath;
+        GrokPromptTextBox.Text = settings.GrokPromptText;
+        GrokVersionTextBox.Text = settings.GrokVersion;
     }
 }

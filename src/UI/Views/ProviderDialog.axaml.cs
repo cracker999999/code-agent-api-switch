@@ -34,7 +34,17 @@ public partial class ProviderDialog : Window
         {
             0 => "新增供应商（Codex）",
             1 => "新增供应商（Claude Code）",
+            2 => "新增供应商（Grok）",
             _ => "新增供应商"
+        };
+
+        var settings = appSettingsService.Load();
+        TestModelTextBox.Watermark = toolType switch
+        {
+            0 => settings.CodexTestModel,
+            1 => settings.ClaudeTestModel,
+            2 => settings.GrokTestModel,
+            _ => string.Empty
         };
     }
 
@@ -69,6 +79,7 @@ public partial class ProviderDialog : Window
         {
             0 => settings.CodexTestModel,
             1 => settings.ClaudeTestModel,
+            2 => settings.GrokTestModel,
             _ => string.Empty
         };
     }

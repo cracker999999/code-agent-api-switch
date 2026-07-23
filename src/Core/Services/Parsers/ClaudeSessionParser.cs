@@ -7,7 +7,7 @@ namespace APISwitch.Services.Parsers;
 /// <summary>
 /// Claude 会话解析器 - 封装所有 Claude JSONL 解析逻辑
 /// </summary>
-public class ClaudeSessionParser : ISessionParser
+public class ClaudeSessionParser : BaseSessionParser, ISessionParser
 {
     private const int HeadLineCount = 10;
     private const int TailLineCount = 30;
@@ -363,70 +363,10 @@ public class ClaudeSessionParser : ISessionParser
         return string.Empty;
     }
 
-    private static bool TryGetObject(JsonElement element, string propertyName, out JsonElement value)
-    {
-        if (JsonFieldExtractor.TryGetProperty(element, propertyName, out value) && value.ValueKind == JsonValueKind.Object)
-        {
-            return true;
-        }
-
-        value = default;
-        return false;
-    }
-
     /// <summary>
     /// 从多个可能的字段名中查找 DateTime
     /// </summary>
-    private static DateTime? FindDateTimeMultiple(JsonElement root, params string[] propertyNames)
-    {
-        foreach (var name in propertyNames)
-        {
-            var result = JsonFieldExtractor.FindDateTime(root, name);
-            if (result.HasValue)
-            {
-                return result;
-            }
-        }
-
-        return null;
-    }
-
-    private static string NormalizeRole(string role)
-    {
-        if (string.Equals(role, "user", StringComparison.OrdinalIgnoreCase))
-        {
-            return "user";
-        }
-
-        if (string.Equals(role, "developer", StringComparison.OrdinalIgnoreCase))
-        {
-            return "developer";
-        }
-
-        if (string.Equals(role, "tool", StringComparison.OrdinalIgnoreCase))
-        {
-            return "tool";
-        }
-
-        if (string.Equals(role, "error", StringComparison.OrdinalIgnoreCase))
-        {
-            return "error";
-        }
-
-        return "assistant";
-    }
-
-    private static string NormalizeTitleText(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
-
-        var trimmed = value.Trim();
-        return trimmed.Length <= 80 ? trimmed : trimmed[..80];
-    }
-
+    // Claude 特有的 BuildSessionTitle：只取最后一级目录名
     private static string BuildSessionTitle(string projectDir, string fallback)
     {
         if (!string.IsNullOrWhiteSpace(projectDir))
@@ -440,18 +380,5 @@ public class ClaudeSessionParser : ISessionParser
         }
 
         return fallback;
-    }
-
-    private static string FirstNonEmpty(params string[] values)
-    {
-        foreach (var value in values)
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                return value;
-            }
-        }
-
-        return string.Empty;
     }
 }

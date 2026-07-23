@@ -166,7 +166,8 @@ public partial class App : System.Windows.Application
     {
         var codexProvider = GetActiveProviderDisplayName(0);
         var claudeProvider = GetActiveProviderDisplayName(1);
-        var tooltip = BuildTrayTooltipTextCore(codexProvider, claudeProvider);
+        var grokProvider = GetActiveProviderDisplayName(2);
+        var tooltip = BuildTrayTooltipTextCore(codexProvider, claudeProvider, grokProvider);
         if (tooltip.Length <= NotifyIconTextMaxLength)
         {
             return tooltip;
@@ -175,9 +176,9 @@ public partial class App : System.Windows.Application
         return tooltip[..(NotifyIconTextMaxLength - 3)] + "...";
     }
 
-    private static string BuildTrayTooltipTextCore(string codexProvider, string claudeProvider)
+    private static string BuildTrayTooltipTextCore(string codexProvider, string claudeProvider, string grokProvider)
     {
-        return $"APISwitch{Environment.NewLine}Codex:{codexProvider}{Environment.NewLine}Claude Code:{claudeProvider}";
+        return $"APISwitch{Environment.NewLine}Codex:{codexProvider}{Environment.NewLine}Claude Code:{claudeProvider}{Environment.NewLine}Grok:{grokProvider}";
     }
 
     private string GetActiveProviderDisplayName(int toolType)

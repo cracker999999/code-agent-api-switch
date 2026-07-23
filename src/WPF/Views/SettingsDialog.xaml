@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="设置"
-        Width="720"
+        Width="1040"
         SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner">
@@ -15,6 +15,8 @@
 
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="20" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="20" />
                 <ColumnDefinition Width="*" />
@@ -101,6 +103,49 @@
 
                 <TextBlock Text="客户端版本号" FontWeight="SemiBold" />
                 <TextBox x:Name="ClaudeVersionTextBox"
+                         Margin="0,8,0,14"
+                         Height="32"
+                         VerticalContentAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="4">
+                <TextBlock Text="Grok"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="#111827"
+                           Margin="0,0,0,10" />
+                <Button x:Name="OpenGrokConfigDirectoryButton"
+                        Width="120"
+                        Height="30"
+                        Margin="0,0,0,14"
+                        Click="OpenGrokConfigDirectoryButton_Click">打开配置目录</Button>
+
+                <TextBlock Text="默认测试模型" FontWeight="SemiBold" />
+                <TextBox x:Name="GrokTestModelTextBox"
+                         Margin="0,8,0,14"
+                         Height="32"
+                         VerticalContentAlignment="Center" />
+
+                <TextBlock Text="测试端点路径" FontWeight="SemiBold" />
+                <TextBox x:Name="GrokEndpointPathTextBox"
+                         Margin="0,8,0,4"
+                         Height="32"
+                         VerticalContentAlignment="Center" />
+                <TextBlock Text="拼接在 BaseUrl 之后,以 / 开头"
+                           FontSize="11"
+                           Foreground="#9CA3AF"
+                           Margin="0,0,0,14" />
+
+                <TextBlock Text="Prompt 文本" FontWeight="SemiBold" />
+                <TextBox x:Name="GrokPromptTextBox"
+                         Margin="0,8,0,14"
+                         Height="64"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto" />
+
+                <TextBlock Text="客户端版本号" FontWeight="SemiBold" />
+                <TextBox x:Name="GrokVersionTextBox"
                          Margin="0,8,0,14"
                          Height="32"
                          VerticalContentAlignment="Center" />

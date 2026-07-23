@@ -8,7 +8,7 @@ namespace APISwitch.Services.Parsers;
 /// <summary>
 /// Codex 会话解析器 - 封装所有 Codex JSONL 解析逻辑
 /// </summary>
-public class CodexSessionParser : ISessionParser
+public class CodexSessionParser : BaseSessionParser, ISessionParser
 {
     private const int HeadLineCount = 10;
     private const int TailLineCount = 30;
@@ -450,17 +450,6 @@ public class CodexSessionParser : ISessionParser
         }
     }
 
-    private static bool TryGetObject(JsonElement element, string propertyName, out JsonElement value)
-    {
-        if (JsonFieldExtractor.TryGetProperty(element, propertyName, out value) && value.ValueKind == JsonValueKind.Object)
-        {
-            return true;
-        }
-
-        value = default;
-        return false;
-    }
-
     private static DateTime? TryGetDateTime(JsonElement element, string propertyName)
     {
         if (!JsonFieldExtractor.TryGetProperty(element, propertyName, out var value))
@@ -525,17 +514,7 @@ public class CodexSessionParser : ISessionParser
         }
     }
 
-    private static string NormalizeTitleText(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return string.Empty;
-        }
-
-        var trimmed = text.Trim();
-        return trimmed.Length <= 80 ? trimmed : trimmed[..80];
-    }
-
+    // Codex 特有的 BuildSessionTitle：只取最后一级目录名
     private static string BuildSessionTitle(string projectDir, string fallback)
     {
         if (!string.IsNullOrWhiteSpace(projectDir))
@@ -549,18 +528,5 @@ public class CodexSessionParser : ISessionParser
         }
 
         return fallback;
-    }
-
-    private static string FirstNonEmpty(params string[] values)
-    {
-        foreach (var value in values)
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                return value;
-            }
-        }
-
-        return string.Empty;
     }
 }

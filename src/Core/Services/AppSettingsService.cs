@@ -2,7 +2,7 @@ using APISwitch.Models;
 
 namespace APISwitch.Services;
 
-// 全局应用设置:每个工具(Codex / Claude)各有一份"默认测试模型 / 端点路径 / prompt 文本"。
+// 全局应用设置:每个工具(Codex / Claude / Grok)各有一份"默认测试模型 / 端点路径 / prompt 文本 / 客户端版本"。
 // 持久化到 SQLite 的 Settings 表,key 为 "<工具>.<字段>"。
 // 内存缓存避免每次测试都查库;Save 时刷新缓存。
 public class AppSettingsService
@@ -36,7 +36,11 @@ public class AppSettingsService
                 ClaudeTestModel = stored.GetValueOrDefault(SettingKeys.ClaudeTestModel) ?? defaults.ClaudeTestModel,
                 ClaudeEndpointPath = stored.GetValueOrDefault(SettingKeys.ClaudeEndpointPath) ?? defaults.ClaudeEndpointPath,
                 ClaudePromptText = stored.GetValueOrDefault(SettingKeys.ClaudePromptText) ?? defaults.ClaudePromptText,
-                ClaudeVersion = stored.GetValueOrDefault(SettingKeys.ClaudeVersion) ?? defaults.ClaudeVersion
+                ClaudeVersion = stored.GetValueOrDefault(SettingKeys.ClaudeVersion) ?? defaults.ClaudeVersion,
+                GrokTestModel = stored.GetValueOrDefault(SettingKeys.GrokTestModel) ?? defaults.GrokTestModel,
+                GrokEndpointPath = stored.GetValueOrDefault(SettingKeys.GrokEndpointPath) ?? defaults.GrokEndpointPath,
+                GrokPromptText = stored.GetValueOrDefault(SettingKeys.GrokPromptText) ?? defaults.GrokPromptText,
+                GrokVersion = stored.GetValueOrDefault(SettingKeys.GrokVersion) ?? defaults.GrokVersion
             };
             _cached = loaded;
             return Clone(loaded);
@@ -60,7 +64,11 @@ public class AppSettingsService
                 ClaudeTestModel = Coalesce(settings.ClaudeTestModel, defaults.ClaudeTestModel),
                 ClaudeEndpointPath = NormalizePath(settings.ClaudeEndpointPath, defaults.ClaudeEndpointPath),
                 ClaudePromptText = Coalesce(settings.ClaudePromptText, defaults.ClaudePromptText),
-                ClaudeVersion = Coalesce(settings.ClaudeVersion, defaults.ClaudeVersion)
+                ClaudeVersion = Coalesce(settings.ClaudeVersion, defaults.ClaudeVersion),
+                GrokTestModel = Coalesce(settings.GrokTestModel, defaults.GrokTestModel),
+                GrokEndpointPath = NormalizePath(settings.GrokEndpointPath, defaults.GrokEndpointPath),
+                GrokPromptText = Coalesce(settings.GrokPromptText, defaults.GrokPromptText),
+                GrokVersion = Coalesce(settings.GrokVersion, defaults.GrokVersion)
             };
 
             var updates = new Dictionary<string, string>
@@ -72,7 +80,11 @@ public class AppSettingsService
                 [SettingKeys.ClaudeTestModel] = normalized.ClaudeTestModel,
                 [SettingKeys.ClaudeEndpointPath] = normalized.ClaudeEndpointPath,
                 [SettingKeys.ClaudePromptText] = normalized.ClaudePromptText,
-                [SettingKeys.ClaudeVersion] = normalized.ClaudeVersion
+                [SettingKeys.ClaudeVersion] = normalized.ClaudeVersion,
+                [SettingKeys.GrokTestModel] = normalized.GrokTestModel,
+                [SettingKeys.GrokEndpointPath] = normalized.GrokEndpointPath,
+                [SettingKeys.GrokPromptText] = normalized.GrokPromptText,
+                [SettingKeys.GrokVersion] = normalized.GrokVersion
             };
             _databaseService.SetSettings(updates);
 
@@ -100,7 +112,11 @@ public class AppSettingsService
         ClaudeTestModel = src.ClaudeTestModel,
         ClaudeEndpointPath = src.ClaudeEndpointPath,
         ClaudePromptText = src.ClaudePromptText,
-        ClaudeVersion = src.ClaudeVersion
+        ClaudeVersion = src.ClaudeVersion,
+        GrokTestModel = src.GrokTestModel,
+        GrokEndpointPath = src.GrokEndpointPath,
+        GrokPromptText = src.GrokPromptText,
+        GrokVersion = src.GrokVersion
     };
 
     private static class SettingKeys
@@ -113,6 +129,10 @@ public class AppSettingsService
         public const string ClaudeEndpointPath = "Claude.EndpointPath";
         public const string ClaudePromptText = "Claude.PromptText";
         public const string ClaudeVersion = "Claude.Version";
+        public const string GrokTestModel = "Grok.TestModel";
+        public const string GrokEndpointPath = "Grok.EndpointPath";
+        public const string GrokPromptText = "Grok.PromptText";
+        public const string GrokVersion = "Grok.Version";
     }
 
     private static readonly string[] AllKeys =
@@ -124,6 +144,10 @@ public class AppSettingsService
         SettingKeys.ClaudeTestModel,
         SettingKeys.ClaudeEndpointPath,
         SettingKeys.ClaudePromptText,
-        SettingKeys.ClaudeVersion
+        SettingKeys.ClaudeVersion,
+        SettingKeys.GrokTestModel,
+        SettingKeys.GrokEndpointPath,
+        SettingKeys.GrokPromptText,
+        SettingKeys.GrokVersion
     };
 }

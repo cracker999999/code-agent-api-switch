@@ -64,6 +64,18 @@ public partial class SessionWindow : Window
         await ReloadSessionsAsync();
     }
 
+    private async void GrokTabButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (SessionService.IsGrok(_currentProviderId))
+        {
+            return;
+        }
+
+        _currentProviderId = SessionService.ProviderGrok;
+        UpdateTabButtons();
+        await ReloadSessionsAsync();
+    }
+
     private async void SessionListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (SessionListBox.SelectedItem is not SessionListItem item)
@@ -201,7 +213,9 @@ public partial class SessionWindow : Window
         {
             sessions = await Task.Run(() => SessionService.IsCodex(_currentProviderId)
                 ? _sessionService.ScanCodexSessions()
-                : _sessionService.ScanClaudeSessions());
+                : SessionService.IsClaude(_currentProviderId)
+                    ? _sessionService.ScanClaudeSessions()
+                    : _sessionService.ScanGrokSessions());
         }
         catch (Exception ex)
         {
@@ -407,7 +421,7 @@ public partial class SessionWindow : Window
         }
 
         var isCodexSession = _selectedSession is not null &&
-            SessionService.IsCodex(_selectedSession.ProviderId);
+            (SessionService.IsCodex(_selectedSession.ProviderId) || SessionService.IsGrok(_selectedSession.ProviderId));
 
         for (var index = 0; index < messages.Count; index++)
         {
@@ -775,6 +789,7 @@ public partial class SessionWindow : Window
     {
         SetTabButtonSelectedState(CodexTabButton, SessionService.IsCodex(_currentProviderId));
         SetTabButtonSelectedState(ClaudeTabButton, SessionService.IsClaude(_currentProviderId));
+        SetTabButtonSelectedState(GrokTabButton, SessionService.IsGrok(_currentProviderId));
     }
 
     private static string FormatRelativeTime(DateTime timestamp)
@@ -811,9 +826,7 @@ public partial class SessionWindow : Window
 
     private static string NormalizeProviderId(string? providerId)
     {
-        return SessionService.IsClaude(providerId)
-            ? SessionService.ProviderClaude
-            : SessionService.ProviderCodex;
+        return SessionService.NormalizeProviderId(providerId);
     }
 
     private static string FormatMessageTime(DateTime timestamp)

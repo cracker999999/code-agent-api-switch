@@ -43,6 +43,7 @@ public class ApiTestService
         {
             0 => await TestCodexAsync(provider),
             1 => await TestClaudeAsync(provider),
+            2 => await TestGrokAsync(provider),
             _ => new ApiTestResult
             {
                 Success = false,
@@ -116,6 +117,43 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("x-stainless-runtime-version", "v24.3.0");
         request.Headers.TryAddWithoutValidation("x-stainless-retry-count", "0");
         request.Headers.TryAddWithoutValidation("x-stainless-timeout", "60");
+
+        return await SendAndReadFirstChunkAsync(request);
+    }
+
+    private async Task<ApiTestResult> TestGrokAsync(Provider provider)
+    {
+        var settings = _settingsService.Load();
+        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.GrokEndpointPath}";
+        var model = string.IsNullOrWhiteSpace(provider.TestModel)
+            ? settings.GrokTestModel
+            : provider.TestModel.Trim();
+        // 与真实 grok-shell 一致: conv/session 同一 UUID, req/agent 各独立生成
+        var sessionId = Guid.NewGuid().ToString();
+        var reqId = Guid.NewGuid().ToString();
+        var agentId = Guid.NewGuid().ToString();
+        var body = BuildGrokRequestBody(model, settings.GrokPromptText);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json")
+        };
+
+        // 请求头对齐 grok-shell/0.2.111 真实抓包
+        request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
+        request.Headers.TryAddWithoutValidation("accept", "text/event-stream");
+        request.Headers.TryAddWithoutValidation("user-agent", $"grok-shell/{settings.GrokVersion} (windows; x86_64)");
+        request.Headers.TryAddWithoutValidation("x-xai-token-auth", "xai-grok-cli");
+        request.Headers.TryAddWithoutValidation("x-authenticateresponse", "authenticate-response");
+        request.Headers.TryAddWithoutValidation("x-grok-client-mode", "headless");
+        request.Headers.TryAddWithoutValidation("x-grok-client-version", settings.GrokVersion);
+        request.Headers.TryAddWithoutValidation("x-grok-client-identifier", "grok-shell");
+        request.Headers.TryAddWithoutValidation("x-grok-conv-id", sessionId);
+        request.Headers.TryAddWithoutValidation("x-grok-req-id", reqId);
+        request.Headers.TryAddWithoutValidation("x-grok-model-override", model);
+        request.Headers.TryAddWithoutValidation("x-grok-session-id", sessionId);
+        request.Headers.TryAddWithoutValidation("x-grok-agent-id", agentId);
+        request.Headers.TryAddWithoutValidation("x-grok-turn-idx", "1");
 
         return await SendAndReadFirstChunkAsync(request);
     }
@@ -449,6 +487,35 @@ public class ApiTestService
             ["metadata"] = new JsonObject
             {
                 ["user_id"] = userIdJson
+            }
+        };
+
+        return payload.ToJsonString();
+    }
+
+    private static string BuildGrokRequestBody(string model, string promptText)
+    {
+        // 对齐真实 grok-shell 主对话 POST /v1/responses 请求体
+        // 不含 metadata(中转站会 400)、不含 tools(连通性测试不需要)
+        var payload = new JsonObject
+        {
+            ["model"] = model,
+            ["stream"] = true,
+            ["store"] = false,
+            ["include"] = new JsonArray { "reasoning.encrypted_content" },
+            ["reasoning"] = new JsonObject
+            {
+                ["effort"] = "high",
+                ["summary"] = "concise"
+            },
+            ["input"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["type"] = "message",
+                    ["role"] = "user",
+                    ["content"] = promptText
+                }
             }
         };
 
