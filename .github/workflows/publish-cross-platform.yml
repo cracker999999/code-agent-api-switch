@@ -113,16 +113,31 @@ jobs:
 
           chmod +x "${MACOS_DIR}/${EXECUTABLE_NAME}"
 
-      - name: Package .app zip
+      - name: Package .app as DMG
+        shell: bash
         run: |
-          cd out
-          zip -r APISwitch-osx-intel.zip APISwitch.app
+          # 暂存目录：.app + Applications 快捷方式，方便拖拽安装
+          DMG_ROOT="out/dmg-root"
+          rm -rf "${DMG_ROOT}"
+          mkdir -p "${DMG_ROOT}"
+          cp -R out/APISwitch.app "${DMG_ROOT}/"
+          ln -s /Applications "${DMG_ROOT}/Applications"
+
+          # UDZO = 压缩只读镜像，用户可双击挂载后拖入 Applications
+          hdiutil create \
+            -volname "APISwitch" \
+            -srcfolder "${DMG_ROOT}" \
+            -ov \
+            -format UDZO \
+            out/APISwitch-osx-intel.dmg
+
+          rm -rf "${DMG_ROOT}"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: APISwitch-osx-intel
-          path: out/APISwitch-osx-intel.zip
+          path: out/APISwitch-osx-intel.dmg
           retention-days: 30
 
   publish-win-x64:
@@ -192,10 +207,10 @@ jobs:
         run: |
           TS="$(date -u +%Y%m%d)"
           TAG="${TS}-r${GITHUB_RUN_NUMBER}"
-          OSX_ZIP="APISwitch-osx-intel-${TAG}.zip"
+          OSX_DMG="APISwitch-osx-intel-${TAG}.dmg"
           WIN_ZIP="APISwitch-win-x64-${TAG}.zip"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "osx_zip=${OSX_ZIP}" >> "$GITHUB_OUTPUT"
+          echo "osx_dmg=${OSX_DMG}" >> "$GITHUB_OUTPUT"
           echo "win_zip=${WIN_ZIP}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release with both assets
@@ -208,19 +223,19 @@ jobs:
             '${{ github.ref_name }}' \
             '${{ github.run_id }}')"
 
-          OSX_ZIP_PATH="out/osx/APISwitch-osx-intel.zip"
+          OSX_DMG_PATH="out/osx/APISwitch-osx-intel.dmg"
           WIN_ZIP_PATH="out/win/APISwitch-win-x64.zip"
 
-          if [ ! -f "$OSX_ZIP_PATH" ] || [ ! -f "$WIN_ZIP_PATH" ]; then
+          if [ ! -f "$OSX_DMG_PATH" ] || [ ! -f "$WIN_ZIP_PATH" ]; then
             echo "Release assets are missing."
             exit 1
           fi
 
-          mv "$OSX_ZIP_PATH" "out/osx/${{ steps.meta.outputs.osx_zip }}"
+          mv "$OSX_DMG_PATH" "out/osx/${{ steps.meta.outputs.osx_dmg }}"
           mv "$WIN_ZIP_PATH" "out/win/${{ steps.meta.outputs.win_zip }}"
 
           gh release create "${{ steps.meta.outputs.tag }}" \
-            "out/osx/${{ steps.meta.outputs.osx_zip }}" \
+            "out/osx/${{ steps.meta.outputs.osx_dmg }}" \
             "out/win/${{ steps.meta.outputs.win_zip }}" \
             --repo "${{ github.repository }}" \
             --title "APISwitch ${{ steps.meta.outputs.tag }}" \

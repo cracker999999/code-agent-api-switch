@@ -1,6 +1,6 @@
 ﻿# APISwitch
 
-APISwitch 用于可视化管理 Codex 和 Claude Code 的 API 供应商，并支持一键切换激活配置。  
+APISwitch 用于可视化管理 **Codex**、**Claude Code** 和 **Grok Build** 的 API 供应商，并支持一键切换激活配置。  
 当前仓库包含两套前端：
 
 - 新版：`src/UI`（Avalonia，跨平台）
@@ -9,15 +9,18 @@ APISwitch 用于可视化管理 Codex 和 Claude Code 的 API 供应商，并支
 
 ## 功能说明
 
-- 供应商管理：按工具类型（Codex / Claude Code）分别管理供应商
+- 供应商管理：按工具类型（Codex / Claude Code / Grok）分别管理供应商，激活状态与排序按分类隔离
 - 数据持久化：使用 SQLite 存储 Name、BaseUrl、ApiKey、激活状态、排序与测试状态（`TestStatus`）
-- 供应商连通性测试：卡片支持“测试”按钮，分别请求 Codex/Claude 对应接口
+- 供应商连通性测试：卡片支持“测试”按钮，分别请求 Codex / Claude / Grok 对应接口
 - 测试状态点：供应商名称前显示状态点（绿色=可用，红色=失败，无文字），状态持久化到数据库
 - 配置写入：
   - Codex：写入 `~/.codex/config.toml` 的 `[model_providers.OpenAI]` 段下 `base_url`，并写入 `~/.codex/auth.json` 的 `OPENAI_API_KEY`
   - Claude Code：写入 `~/.claude/settings.json` 的 `env.ANTHROPIC_AUTH_TOKEN` 与 `env.ANTHROPIC_BASE_URL`
+  - Grok Build：写入 `~/.grok/config.toml` 的 `endpoints.models_base_url`、`endpoints.xai_api_base_url`，以及 `model."grok-4.5".api_key`
+- 会话管理：扫描并管理 Codex / Claude / Grok 会话（列表、详情、恢复、删除）；Grok 会话目录为 `~/.grok/sessions`
+- 设置页：可分别为三类工具配置默认测试模型、端点路径、Prompt 与客户端版本，并打开对应配置目录
 - 自动备份：写入前自动生成 `.bak` 备份
-- 系统托盘：关闭窗口后隐藏到托盘，支持托盘菜单显示主窗口与退出
+- 系统托盘：关闭窗口后隐藏到托盘，支持托盘菜单显示主窗口与退出；托盘提示展示当前激活的供应商（含 Grok）
 
 ## 技术栈
 
@@ -37,25 +40,42 @@ src/
 
 ## 构建与运行
 
-1. 恢复依赖
+### 日常构建
 
-```powershell
-dotnet restore APISwitch.sln
-```
-
-2. 构建（会尝试构建新旧两版）
+直接构建（SDK 会在需要时自动还原 NuGet 包）：
 
 ```powershell
 dotnet build APISwitch.sln
 ```
 
-3. 运行新版（推荐）
+### 显式还原后再构建
+
+首次克隆、清理 `obj`/`bin`、换机，或需要使用 `--no-restore` 时，**必须先还原**：
+
+```powershell
+dotnet restore APISwitch.sln
+dotnet build APISwitch.sln --no-restore
+```
+
+不要跳过还原直接执行 `dotnet build ... --no-restore`。否则常见失败：
+
+| 错误 | 含义 |
+|------|------|
+| `NETSDK1004` 找不到 `project.assets.json` | 该项目从未成功还原（例如 `src/WPF`） |
+| `NU1101` 找不到 Avalonia / Microsoft.Data.Sqlite 等包 | 上次还原失败，留下了残缺的 assets |
+| `NU1801` 无法加载 `https://api.nuget.org/v3/index.json` | 访问 nuget.org 失败（代理/防火墙/DNS）；源通后再 `dotnet restore` |
+
+说明：`NU1101` 在 `NU1801` 之后出现时，多半是源不可达导致的误报，不是包不存在。网络恢复后重新 `dotnet restore APISwitch.sln` 即可。
+
+### 运行
+
+新版（推荐）：
 
 ```powershell
 dotnet run --project src/UI/UI.csproj
 ```
 
-4. 运行旧版（仅 Windows）
+旧版（仅 Windows）：
 
 ```powershell
 dotnet run --project src/WPF/WPF.csproj
@@ -67,7 +87,7 @@ dotnet run --project src/WPF/WPF.csproj
 
 - 工作流：`.github/workflows/publish-cross-platform.yml`
 - 触发方式：推送分支，或在 GitHub Actions 页面手动运行 `Publish Cross Platform`
-- macOS：发布 `osx-x64` 自包含，并打包 `.app` + zip
+- macOS：发布 `osx-x64` 自包含，打包为 `.app` 并生成 `.dmg`（含 Applications 快捷方式，可拖拽安装）
 - Windows：发布 `win-x64` 单文件、非自包含，并打 zip
 - 产物：workflow artifact 与 GitHub Release 附件
 
@@ -99,11 +119,13 @@ Avalonia 版存在裁剪/AOT 发布场景，默认反射序列化可能被禁用
 
 - Codex: `~/.codex/config.toml`, `~/.codex/auth.json`
 - Claude Code: `~/.claude/settings.json`
+- Grok Build: `~/.grok/config.toml`；会话：`~/.grok/sessions`
 - APISwitch 数据库: `~/.APISwitch/apiswitch.db`
 
 ## 说明
 
 - 若激活 Codex 供应商时缺少 `config.toml`，应用会提示“请先安装 Codex”，且不会创建该文件。
-- `auth.json` 与 `settings.json` 在不存在时会自动创建。
+- `auth.json`、`settings.json` 与 Grok 的 `config.toml` 在不存在时会自动创建（写入前会创建父目录）。
 - 供应商配置被编辑后，测试状态会重置为未知（不显示状态点）。
+- Grok 默认测试模型为 `grok-4.5`，测试请求对齐 grok-shell 的 Responses API；可在设置页或供应商级 TestModel 覆盖。
 - Windows 非自包含发布需要目标机安装 .NET 运行时。
