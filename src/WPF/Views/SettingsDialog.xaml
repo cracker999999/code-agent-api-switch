@@ -23,16 +23,18 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <TextBlock Text="Codex"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="#111827"
-                           Margin="0,0,0,10" />
-                <Button x:Name="OpenCodexConfigDirectoryButton"
-                        Width="120"
-                        Height="30"
-                        Margin="0,0,0,14"
-                        Click="OpenCodexConfigDirectoryButton_Click">打开配置目录</Button>
+                <Grid Margin="0,0,0,14">
+                    <TextBlock Text="Codex"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="#111827"
+                               VerticalAlignment="Center" />
+                    <Button x:Name="OpenCodexConfigDirectoryButton"
+                            Width="120"
+                            Height="30"
+                            HorizontalAlignment="Right"
+                            Click="OpenCodexConfigDirectoryButton_Click">打开配置目录</Button>
+                </Grid>
 
                 <TextBlock Text="默认测试模型" FontWeight="SemiBold" />
                 <TextBox x:Name="CodexTestModelTextBox"
@@ -66,16 +68,18 @@
             </StackPanel>
 
             <StackPanel Grid.Column="2">
-                <TextBlock Text="Claude Code"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="#111827"
-                           Margin="0,0,0,10" />
-                <Button x:Name="OpenClaudeConfigDirectoryButton"
-                        Width="120"
-                        Height="30"
-                        Margin="0,0,0,14"
-                        Click="OpenClaudeConfigDirectoryButton_Click">打开配置目录</Button>
+                <Grid Margin="0,0,0,14">
+                    <TextBlock Text="Claude Code"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="#111827"
+                               VerticalAlignment="Center" />
+                    <Button x:Name="OpenClaudeConfigDirectoryButton"
+                            Width="120"
+                            Height="30"
+                            HorizontalAlignment="Right"
+                            Click="OpenClaudeConfigDirectoryButton_Click">打开配置目录</Button>
+                </Grid>
 
                 <TextBlock Text="默认测试模型" FontWeight="SemiBold" />
                 <TextBox x:Name="ClaudeTestModelTextBox"
@@ -109,16 +113,18 @@
             </StackPanel>
 
             <StackPanel Grid.Column="4">
-                <TextBlock Text="Grok"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="#111827"
-                           Margin="0,0,0,10" />
-                <Button x:Name="OpenGrokConfigDirectoryButton"
-                        Width="120"
-                        Height="30"
-                        Margin="0,0,0,14"
-                        Click="OpenGrokConfigDirectoryButton_Click">打开配置目录</Button>
+                <Grid Margin="0,0,0,14">
+                    <TextBlock Text="Grok"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="#111827"
+                               VerticalAlignment="Center" />
+                    <Button x:Name="OpenGrokConfigDirectoryButton"
+                            Width="120"
+                            Height="30"
+                            HorizontalAlignment="Right"
+                            Click="OpenGrokConfigDirectoryButton_Click">打开配置目录</Button>
+                </Grid>
 
                 <TextBlock Text="默认测试模型" FontWeight="SemiBold" />
                 <TextBox x:Name="GrokTestModelTextBox"
