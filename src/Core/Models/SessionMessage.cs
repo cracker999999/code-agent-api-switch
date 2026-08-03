@@ -8,5 +8,5 @@ public class SessionMessage
 
     public List<string> ImageDataUrls { get; set; } = new();
 
-    public DateTime Timestamp { get; set; }
+    public DateTime? Timestamp { get; set; }
 }

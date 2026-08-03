@@ -12,6 +12,30 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
 {
     private const int HeadLineCount = 10;
     private const int TailLineCount = 30;
+    private const string UpdatesFileName = "updates.jsonl";
+    private const string RewindPointsFileName = "rewind_points.jsonl";
+
+    private sealed class ParsedMessage(SessionMessage message, int? promptIndex)
+    {
+        public SessionMessage Message { get; } = message;
+
+        public int? PromptIndex { get; } = promptIndex;
+
+        public ParsedMessage? LinkedAssistantMessage { get; set; }
+
+        public IReadOnlyList<string> LinkedToolCallIds { get; set; } = Array.Empty<string>();
+    }
+
+    private sealed record TimestampCandidate(string Role, string ContentKey, DateTime Timestamp);
+
+    private sealed record TimestampTarget(ParsedMessage ParsedMessage, string ContentKey);
+
+    private sealed class TimestampSources
+    {
+        public List<TimestampCandidate> MessageCandidates { get; } = new();
+
+        public Dictionary<string, DateTime> ToolCallTimestamps { get; } = new(StringComparer.Ordinal);
+    }
 
     public SessionMeta? ParseSession(string filePath)
     {
@@ -97,7 +121,8 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
 
     public List<SessionMessage> LoadMessages(string filePath)
     {
-        var messages = new List<SessionMessage>();
+        var parsedMessages = new List<ParsedMessage>();
+        var pendingReasoningMessages = new List<ParsedMessage>();
 
         try
         {
@@ -110,13 +135,46 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
 
                 using var document = JsonDocument.Parse(line);
                 var root = document.RootElement;
+                TryGetString(root, "type", out var eventType);
 
-                if (!TryExtractMessage(root, out var message))
+                ParsedMessage? parsedMessage = null;
+                if (TryExtractMessage(root, out var message))
+                {
+                    parsedMessage = new ParsedMessage(message, TryGetPromptIndex(root));
+                    parsedMessages.Add(parsedMessage);
+                }
+
+                if (string.Equals(eventType, "reasoning", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (parsedMessage is not null)
+                    {
+                        pendingReasoningMessages.Add(parsedMessage);
+                    }
+
+                    continue;
+                }
+
+                // 新一轮用户提问意味着上一轮在思考阶段被中断，残留的 reasoning 不能挪用后续 assistant 的时间。
+                if (parsedMessage is not null &&
+                    string.Equals(parsedMessage.Message.Role, "user", StringComparison.OrdinalIgnoreCase))
+                {
+                    pendingReasoningMessages.Clear();
+                }
+
+                if (!string.Equals(eventType, "assistant", StringComparison.OrdinalIgnoreCase) ||
+                    pendingReasoningMessages.Count == 0)
                 {
                     continue;
                 }
 
-                messages.Add(message);
+                var toolCallIds = GetToolCallIds(root);
+                foreach (var reasoningMessage in pendingReasoningMessages)
+                {
+                    reasoningMessage.LinkedAssistantMessage = parsedMessage;
+                    reasoningMessage.LinkedToolCallIds = toolCallIds;
+                }
+
+                pendingReasoningMessages.Clear();
             }
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
@@ -124,7 +182,333 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
             return new List<SessionMessage>();
         }
 
-        return messages;
+        ApplySidecarMessageTimestamps(filePath, parsedMessages);
+        return parsedMessages.Select(static parsed => parsed.Message).ToList();
+    }
+
+    private static void ApplySidecarMessageTimestamps(string filePath, IReadOnlyList<ParsedMessage> parsedMessages)
+    {
+        var sessionDirectory = TryGetGrokSessionDirectory(filePath);
+        if (string.IsNullOrWhiteSpace(sessionDirectory))
+        {
+            return;
+        }
+
+        var timestampSources = LoadUpdateTimestampSources(sessionDirectory);
+        ApplyUpdateTimestampCandidates(parsedMessages, timestampSources.MessageCandidates);
+
+        // rewind_points 的 created_at 是发送前的文件快照时间，比真实发送时间早数秒，只当 updates 匹配不上时的兜底。
+        ApplyRewindPointTimestamps(sessionDirectory, parsedMessages);
+        ApplyLinkedReasoningTimestamps(parsedMessages, timestampSources.ToolCallTimestamps);
+    }
+
+    /// <summary>
+    /// 逐行解析 JSONL 侧车文件 - 容忍单行残缺（Grok 运行期持续追加），文件缺失或不可读时静默跳过。
+    /// </summary>
+    private static void ForEachJsonLine(string filePath, Action<JsonElement> handleLine)
+    {
+        try
+        {
+            foreach (var line in SessionFileUtils.EnumerateLinesShared(filePath))
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    using var document = JsonDocument.Parse(line);
+                    handleLine(document.RootElement);
+                }
+                catch (JsonException)
+                {
+                    // 末行可能尚未写完整；忽略该行，已完成的消息仍应可查看。
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // 侧车文件缺失或被独占，时间戳回填降级为不可用。
+        }
+    }
+
+    private static void ApplyRewindPointTimestamps(
+        string sessionDirectory,
+        IReadOnlyList<ParsedMessage> parsedMessages)
+    {
+        var timestampsByPromptIndex = new Dictionary<int, DateTime>();
+        ForEachJsonLine(Path.Combine(sessionDirectory, RewindPointsFileName), root =>
+        {
+            var promptIndex = TryGetPromptIndex(root);
+            var timestamp = FindDateTimeMultiple(root, "created_at", "createdAt", "timestamp");
+            if (promptIndex.HasValue && timestamp.HasValue)
+            {
+                timestampsByPromptIndex[promptIndex.Value] = timestamp.Value;
+            }
+        });
+
+        foreach (var parsedMessage in parsedMessages)
+        {
+            if (!string.Equals(parsedMessage.Message.Role, "user", StringComparison.OrdinalIgnoreCase) ||
+                parsedMessage.Message.Timestamp.HasValue ||
+                !parsedMessage.PromptIndex.HasValue)
+            {
+                continue;
+            }
+
+            if (timestampsByPromptIndex.TryGetValue(parsedMessage.PromptIndex.Value, out var timestamp))
+            {
+                parsedMessage.Message.Timestamp = timestamp;
+            }
+        }
+    }
+
+    private static TimestampSources LoadUpdateTimestampSources(string sessionDirectory)
+    {
+        var sources = new TimestampSources();
+        var assistantContent = new StringBuilder();
+        DateTime? assistantStartedAt = null;
+
+        ForEachJsonLine(Path.Combine(sessionDirectory, UpdatesFileName), root =>
+        {
+            if (!TryGetObject(root, "params", out var parameters) ||
+                !TryGetObject(parameters, "update", out var update) ||
+                !TryGetString(update, "sessionUpdate", out var updateType))
+            {
+                return;
+            }
+
+            var timestamp = FindDateTimeMultiple(root, "timestamp");
+            if (IsAssistantMessageBoundary(updateType))
+            {
+                FlushAssistantTimestampCandidate(sources.MessageCandidates, assistantContent, ref assistantStartedAt);
+            }
+
+            if (string.Equals(updateType, "tool_call", StringComparison.OrdinalIgnoreCase) &&
+                timestamp.HasValue &&
+                TryGetString(update, "toolCallId", out var toolCallId) &&
+                !string.IsNullOrWhiteSpace(toolCallId))
+            {
+                sources.ToolCallTimestamps.TryAdd(toolCallId, timestamp.Value);
+            }
+
+            if (string.Equals(updateType, "user_message_chunk", StringComparison.OrdinalIgnoreCase))
+            {
+                if (timestamp.HasValue && TryExtractUpdateText(update, out var userContent))
+                {
+                    var contentKey = NormalizeTimestampContent("user", userContent);
+                    if (!string.IsNullOrWhiteSpace(contentKey))
+                    {
+                        sources.MessageCandidates.Add(new TimestampCandidate("user", contentKey, timestamp.Value));
+                    }
+                }
+
+                return;
+            }
+
+            if (string.Equals(updateType, "agent_message_chunk", StringComparison.OrdinalIgnoreCase) &&
+                timestamp.HasValue &&
+                TryExtractUpdateText(update, out var assistantChunk))
+            {
+                assistantStartedAt ??= timestamp.Value;
+                assistantContent.Append(assistantChunk);
+            }
+        });
+
+        FlushAssistantTimestampCandidate(sources.MessageCandidates, assistantContent, ref assistantStartedAt);
+        return sources;
+    }
+
+    /// <summary>
+    /// 助手消息在 updates.jsonl 中被切成多个 chunk，遇到这些类型说明当前助手消息已结束。
+    /// agent_thought_chunk 不是边界 - 它与 agent_message_chunk 交错出现在同一条助手消息内。
+    /// </summary>
+    private static bool IsAssistantMessageBoundary(string updateType)
+    {
+        return string.Equals(updateType, "user_message_chunk", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(updateType, "tool_call", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(updateType, "turn_completed", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(updateType, "rewind_marker", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(updateType, "retry_state", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void FlushAssistantTimestampCandidate(
+        ICollection<TimestampCandidate> candidates,
+        StringBuilder assistantContent,
+        ref DateTime? assistantStartedAt)
+    {
+        if (assistantStartedAt.HasValue && assistantContent.Length > 0)
+        {
+            var contentKey = NormalizeTimestampContent("assistant", assistantContent.ToString());
+            if (!string.IsNullOrWhiteSpace(contentKey))
+            {
+                candidates.Add(new TimestampCandidate("assistant", contentKey, assistantStartedAt.Value));
+            }
+        }
+
+        assistantContent.Clear();
+        assistantStartedAt = null;
+    }
+
+    private static bool TryExtractUpdateText(JsonElement update, out string text)
+    {
+        text = JsonFieldExtractor.ExtractText(update, "content");
+        return !string.IsNullOrEmpty(text);
+    }
+
+    private static void ApplyUpdateTimestampCandidates(
+        IReadOnlyList<ParsedMessage> parsedMessages,
+        IReadOnlyList<TimestampCandidate> candidates)
+    {
+        var targets = parsedMessages
+            .Where(static parsed => IsTimestampedMessageRole(parsed.Message.Role) &&
+                                    !string.IsNullOrWhiteSpace(parsed.Message.Content))
+            .Select(static parsed => new TimestampTarget(
+                parsed,
+                NormalizeTimestampContent(parsed.Message.Role, parsed.Message.Content)))
+            .Where(static target => !string.IsNullOrWhiteSpace(target.ContentKey))
+            .ToList();
+
+        if (targets.Count == 0 || candidates.Count == 0)
+        {
+            return;
+        }
+
+        // updates.jsonl 会保留回退分支。使用当前 chat_history 消息序列做 LCS 对齐，只采纳仍在当前分支中的候选时间。
+        var matches = new int[targets.Count + 1, candidates.Count + 1];
+        for (var targetIndex = targets.Count - 1; targetIndex >= 0; targetIndex--)
+        {
+            for (var candidateIndex = candidates.Count - 1; candidateIndex >= 0; candidateIndex--)
+            {
+                matches[targetIndex, candidateIndex] = IsTimestampMatch(targets[targetIndex], candidates[candidateIndex])
+                    ? matches[targetIndex + 1, candidateIndex + 1] + 1
+                    : Math.Max(matches[targetIndex + 1, candidateIndex], matches[targetIndex, candidateIndex + 1]);
+            }
+        }
+
+        var currentTarget = 0;
+        var currentCandidate = 0;
+        while (currentTarget < targets.Count && currentCandidate < candidates.Count)
+        {
+            // 填表时匹配即写入 +1，因此回溯只需判断是否匹配即可确定该格落在最优路径上。
+            if (IsTimestampMatch(targets[currentTarget], candidates[currentCandidate]))
+            {
+                targets[currentTarget].ParsedMessage.Message.Timestamp ??= candidates[currentCandidate].Timestamp;
+                currentTarget++;
+                currentCandidate++;
+                continue;
+            }
+
+            if (matches[currentTarget, currentCandidate + 1] >= matches[currentTarget + 1, currentCandidate])
+            {
+                currentCandidate++;
+            }
+            else
+            {
+                currentTarget++;
+            }
+        }
+    }
+
+    private static void ApplyLinkedReasoningTimestamps(
+        IReadOnlyList<ParsedMessage> parsedMessages,
+        IReadOnlyDictionary<string, DateTime> toolCallTimestamps)
+    {
+        foreach (var parsedMessage in parsedMessages)
+        {
+            if (parsedMessage.Message.Timestamp.HasValue)
+            {
+                continue;
+            }
+
+            if (parsedMessage.LinkedAssistantMessage?.Message.Timestamp is { } assistantTimestamp)
+            {
+                parsedMessage.Message.Timestamp = assistantTimestamp;
+                continue;
+            }
+
+            foreach (var toolCallId in parsedMessage.LinkedToolCallIds)
+            {
+                if (toolCallTimestamps.TryGetValue(toolCallId, out var toolCallTimestamp))
+                {
+                    parsedMessage.Message.Timestamp = toolCallTimestamp;
+                    break;
+                }
+            }
+        }
+    }
+
+    private static bool IsTimestampedMessageRole(string role)
+    {
+        return string.Equals(role, "user", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(role, "assistant", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTimestampMatch(TimestampTarget target, TimestampCandidate candidate)
+    {
+        return string.Equals(target.ParsedMessage.Message.Role, candidate.Role, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(target.ContentKey, candidate.ContentKey, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeTimestampContent(string role, string content)
+    {
+        // 必须与 TryExtractMessage 消费的 NormalizeMessageContent 保持同一套规则，否则 LCS 会静默全部失配。
+        // chat_history 侧多段内容用 Environment.NewLine 拼接，updates.jsonl 的流式 chunk 是裸 \n，需归一化换行。
+        return NormalizeMessageContent(role, content)
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Trim();
+    }
+
+    private static int? TryGetPromptIndex(JsonElement root)
+    {
+        if (!TryGetProperty(root, "prompt_index", out var value))
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var numericValue))
+        {
+            return numericValue;
+        }
+
+        if (value.ValueKind == JsonValueKind.String &&
+            int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var stringValue))
+        {
+            return stringValue;
+        }
+
+        return null;
+    }
+
+    private static IReadOnlyList<string> GetToolCallIds(JsonElement root)
+    {
+        var messageRoot = SelectMessageRoot(root);
+        if (!TryGetProperty(messageRoot, "tool_calls", out var toolCalls) ||
+            toolCalls.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<string>();
+        }
+
+        var toolCallIds = new List<string>();
+        foreach (var toolCall in toolCalls.EnumerateArray())
+        {
+            if (toolCall.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var toolCallId = FirstNonEmpty(
+                GetTopLevelString(toolCall, "id"),
+                GetTopLevelString(toolCall, "toolCallId"),
+                GetTopLevelString(toolCall, "tool_call_id"));
+            if (!string.IsNullOrWhiteSpace(toolCallId))
+            {
+                toolCallIds.Add(toolCallId);
+            }
+        }
+
+        return toolCallIds;
     }
 
     private static bool TryExtractMetadata(JsonElement root, out SessionMeta metadata)
@@ -195,8 +579,7 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
             FindString(messageRoot, "role"),
             FindString(root, "role"));
 
-        var timestamp = FindDateTimeMultiple(root, "timestamp", "created_at", "createdAt", "last_active_at", "lastActiveAt", "updated_at", "updatedAt")
-            ?? DateTime.Now;
+        var timestamp = FindDateTimeMultiple(root, "timestamp", "created_at", "createdAt", "last_active_at", "lastActiveAt", "updated_at", "updatedAt");
 
         var hasContent = TryExtractContent(messageRoot, out var content, out var imageDataUrls);
         if (!hasContent && messageRoot.ValueKind != JsonValueKind.Object)

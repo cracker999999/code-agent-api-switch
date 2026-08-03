@@ -463,7 +463,7 @@ public partial class SessionWindow : Window
         string content,
         bool isUser,
         string roleDisplayName,
-        DateTime timestamp,
+        DateTime? timestamp,
         IReadOnlyList<string> imageDataUrls)
     {
         var bubble = new Border
@@ -495,12 +495,7 @@ public partial class SessionWindow : Window
             FontWeight.SemiBold);
         header.Children.Add(roleText);
 
-        var timeText = CreateSelectableTextElement(
-            FormatMessageTime(timestamp),
-            12,
-            isUser ? CreateBrush("#DBEAFE") : CreateBrush("#6B7280"));
-        Grid.SetColumn(timeText, 1);
-        header.Children.Add(timeText);
+        AddTimestampToHeader(header, timestamp, CreateBrush(isUser ? "#DBEAFE" : "#6B7280"), 1);
 
         container.Children.Add(header);
 
@@ -526,7 +521,7 @@ public partial class SessionWindow : Window
         return bubble;
     }
 
-    private static Control CreateErrorMessageElement(string content, DateTime timestamp)
+    private static Control CreateErrorMessageElement(string content, DateTime? timestamp)
     {
         var bubble = new Border
         {
@@ -558,12 +553,7 @@ public partial class SessionWindow : Window
             CreateBrush("#B91C1C"),
             FontWeight.SemiBold));
 
-        var timeText = CreateSelectableTextElement(
-            FormatMessageTime(timestamp),
-            12,
-            CreateBrush("#B91C1C"));
-        Grid.SetColumn(timeText, 1);
-        header.Children.Add(timeText);
+        AddTimestampToHeader(header, timestamp, CreateBrush("#B91C1C"), 1);
 
         container.Children.Add(header);
         container.Children.Add(CreateSelectableTextElement(
@@ -576,7 +566,7 @@ public partial class SessionWindow : Window
         return bubble;
     }
 
-    private static Control CreateCollapsedMessageElement(string title, string content, DateTime timestamp)
+    private static Control CreateCollapsedMessageElement(string title, string content, DateTime? timestamp)
     {
         var root = new StackPanel
         {
@@ -624,10 +614,7 @@ public partial class SessionWindow : Window
         Grid.SetColumn(titleText, 1);
         header.Children.Add(titleText);
 
-        var timeText = CreateSelectableTextElement(FormatMessageTime(timestamp), 12, CreateBrush("#6B7280"));
-        timeText.Margin = new Thickness(8, 0, 0, 0);
-        Grid.SetColumn(timeText, 2);
-        header.Children.Add(timeText);
+        AddTimestampToHeader(header, timestamp, CreateBrush("#6B7280"), 2, new Thickness(8, 0, 0, 0));
 
         var headerButton = new Border
         {
@@ -664,6 +651,28 @@ public partial class SessionWindow : Window
         root.Children.Add(headerButton);
         root.Children.Add(contentBorder);
         return root;
+    }
+
+    private static void AddTimestampToHeader(
+        Grid header,
+        DateTime? timestamp,
+        IBrush foreground,
+        int column,
+        Thickness? margin = null)
+    {
+        if (!timestamp.HasValue)
+        {
+            return;
+        }
+
+        var timeText = CreateSelectableTextElement(FormatMessageTime(timestamp.Value), 12, foreground);
+        if (margin.HasValue)
+        {
+            timeText.Margin = margin.Value;
+        }
+
+        Grid.SetColumn(timeText, column);
+        header.Children.Add(timeText);
     }
 
     private static Control CreateSelectableTextElement(

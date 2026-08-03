@@ -473,7 +473,7 @@ public partial class SessionWindow : Window
         string content,
         bool isUser,
         string roleDisplayName,
-        DateTime timestamp,
+        DateTime? timestamp,
         IReadOnlyList<string> imageDataUrls)
     {
         var bubble = new Border
@@ -503,12 +503,7 @@ public partial class SessionWindow : Window
             FontWeights.SemiBold);
         header.Children.Add(roleText);
 
-        var timestampText = CreateSelectableTextElement(
-            FormatMessageTime(timestamp),
-            12,
-            isUser ? CreateBrush("#DBEAFE") : CreateBrush("#6B7280"));
-        Grid.SetColumn(timestampText, 1);
-        header.Children.Add(timestampText);
+        AddTimestampToHeader(header, timestamp, CreateBrush(isUser ? "#DBEAFE" : "#6B7280"));
 
         container.Children.Add(header);
 
@@ -537,12 +532,12 @@ public partial class SessionWindow : Window
         return bubble;
     }
 
-    private static FrameworkElement CreateToolMessageElement(string content, DateTime timestamp)
+    private static FrameworkElement CreateToolMessageElement(string content, DateTime? timestamp)
     {
         return CreateCollapsedMessageElement("工具", content, timestamp);
     }
 
-    private static FrameworkElement CreateErrorMessageElement(string content, DateTime timestamp)
+    private static FrameworkElement CreateErrorMessageElement(string content, DateTime? timestamp)
     {
         var bubble = new Border
         {
@@ -570,12 +565,7 @@ public partial class SessionWindow : Window
             CreateBrush("#B91C1C"),
             FontWeights.SemiBold));
 
-        var timestampText = CreateSelectableTextElement(
-            FormatMessageTime(timestamp),
-            12,
-            CreateBrush("#B91C1C"));
-        Grid.SetColumn(timestampText, 1);
-        header.Children.Add(timestampText);
+        AddTimestampToHeader(header, timestamp, CreateBrush("#B91C1C"));
 
         container.Children.Add(header);
         container.Children.Add(CreateSelectableTextElement(
@@ -588,12 +578,12 @@ public partial class SessionWindow : Window
         return bubble;
     }
 
-    private static FrameworkElement CreateDeveloperMessageElement(string content, DateTime timestamp)
+    private static FrameworkElement CreateDeveloperMessageElement(string content, DateTime? timestamp)
     {
         return CreateCollapsedMessageElement("developer", content, timestamp);
     }
 
-    private static FrameworkElement CreateCollapsedMessageElement(string title, string content, DateTime timestamp)
+    private static FrameworkElement CreateCollapsedMessageElement(string title, string content, DateTime? timestamp)
     {
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -605,12 +595,7 @@ public partial class SessionWindow : Window
             CreateBrush("#1E3A8A"),
             FontWeights.SemiBold));
 
-        var timestampText = CreateSelectableTextElement(
-            FormatMessageTime(timestamp),
-            12,
-            CreateBrush("#6B7280"));
-        Grid.SetColumn(timestampText, 1);
-        header.Children.Add(timestampText);
+        AddTimestampToHeader(header, timestamp, CreateBrush("#6B7280"));
 
         var expander = new Expander
         {
@@ -633,6 +618,18 @@ public partial class SessionWindow : Window
         };
 
         return expander;
+    }
+
+    private static void AddTimestampToHeader(Grid header, DateTime? timestamp, Media.Brush foreground)
+    {
+        if (!timestamp.HasValue)
+        {
+            return;
+        }
+
+        var timestampText = CreateSelectableTextElement(FormatMessageTime(timestamp.Value), 12, foreground);
+        Grid.SetColumn(timestampText, 1);
+        header.Children.Add(timestampText);
     }
 
     private static System.Windows.Controls.TextBox CreateSelectableTextElement(

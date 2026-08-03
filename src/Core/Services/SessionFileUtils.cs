@@ -73,15 +73,20 @@ public static class SessionFileUtils
 
     public static List<string> ReadAllLinesShared(string filePath)
     {
-        var lines = new List<string>();
+        return EnumerateLinesShared(filePath).ToList();
+    }
+
+    /// <summary>
+    /// 流式逐行读取 - 会话日志单行可达上百 KB，全量读入会把大量字符串推进大对象堆。
+    /// </summary>
+    public static IEnumerable<string> EnumerateLinesShared(string filePath)
+    {
         using var stream = OpenReadShared(filePath);
         using var reader = new StreamReader(stream);
         while (reader.ReadLine() is { } line)
         {
-            lines.Add(line);
+            yield return line;
         }
-
-        return lines;
     }
 
     private static FileStream OpenReadShared(string filePath)
