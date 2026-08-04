@@ -139,6 +139,12 @@ public partial class MainWindow : Window
         LoadProviders();
     }
 
+    private async void PromptButton_Click(object? sender, RoutedEventArgs e)
+    {
+        var window = new PromptWindow(_databaseService);
+        await window.ShowDialog(this);
+    }
+
     private void SessionManagerButton_Click(object? sender, RoutedEventArgs e)
     {
         OpenSessionManagerWindow();

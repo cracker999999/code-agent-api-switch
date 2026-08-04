@@ -114,40 +114,26 @@ public partial class ProviderDialog : Window
 
     private async void QuickCopyButton_Click(object? sender, RoutedEventArgs e)
     {
-        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-        if (clipboard is null)
+        var payload = new ProviderClipboardPayload
         {
-            await DialogService.ShowErrorAsync(this, "错误", "复制失败：无法访问剪贴板");
-            return;
-        }
-
-        try
-        {
-            var payload = new ProviderClipboardPayload
+            Type = ProviderClipboardType,
+            Version = ProviderClipboardVersion,
+            Provider = new ProviderClipboardData
             {
-                Type = ProviderClipboardType,
-                Version = ProviderClipboardVersion,
-                Provider = new ProviderClipboardData
-                {
-                    Name = NameTextBox.Text?.Trim() ?? string.Empty,
-                    BaseUrl = BaseUrlTextBox.Text?.Trim() ?? string.Empty,
-                    ApiKey = ApiKeyTextBox.Text?.Trim() ?? string.Empty,
-                    TestModel = TestModelTextBox.Text?.Trim() ?? string.Empty,
-                    Remark = RemarkTextBox.Text?.Trim() ?? string.Empty
-                }
-            };
+                Name = NameTextBox.Text?.Trim() ?? string.Empty,
+                BaseUrl = BaseUrlTextBox.Text?.Trim() ?? string.Empty,
+                ApiKey = ApiKeyTextBox.Text?.Trim() ?? string.Empty,
+                TestModel = TestModelTextBox.Text?.Trim() ?? string.Empty,
+                Remark = RemarkTextBox.Text?.Trim() ?? string.Empty
+            }
+        };
 
-            var content = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
-
-            await clipboard.SetTextAsync(content);
-        }
-        catch (Exception ex)
+        var content = JsonSerializer.Serialize(payload, new JsonSerializerOptions
         {
-            await DialogService.ShowErrorAsync(this, "错误", $"复制失败：{ex.Message}");
-        }
+            WriteIndented = true
+        });
+
+        await ClipboardService.CopyTextAsync(this, content);
     }
 
     private async void QuickPasteButton_Click(object? sender, RoutedEventArgs e)

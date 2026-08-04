@@ -1,0 +1,104 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:APISwitch.Models;assembly=Core"
+        x:Class="APISwitch.UI.Views.PromptWindow"
+        Title="Prompt 收藏夹"
+        Icon="/Assets/app.ico"
+        Width="760"
+        Height="560"
+        MinWidth="600"
+        MinHeight="420"
+        WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Border.prompt-card">
+      <Setter Property="Margin" Value="0,0,0,10" />
+      <Setter Property="Padding" Value="16" />
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="#D1D5DB" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Button.prompt-action">
+      <Setter Property="MinWidth" Value="64" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.prompt-copy">
+      <Setter Property="Background" Value="#2563EB" />
+      <Setter Property="BorderBrush" Value="#2563EB" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.prompt-delete">
+      <Setter Property="Foreground" Value="#DC2626" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="16" RowDefinitions="Auto,*" Background="#F3F4F6">
+    <Grid Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+      <TextBlock Text="Prompt 收藏夹"
+                 FontSize="20"
+                 FontWeight="SemiBold"
+                 Foreground="#111827"
+                 VerticalAlignment="Center" />
+      <Button x:Name="AddPromptButton"
+              Grid.Column="1"
+              Width="88"
+              Height="36"
+              Click="AddPromptButton_Click"
+              Content="新增" />
+    </Grid>
+
+    <Grid Grid.Row="1">
+      <ScrollViewer VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl x:Name="PromptItemsControl">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="models:PromptItem">
+              <Border Classes="prompt-card">
+                <Grid RowDefinitions="Auto,Auto">
+                  <TextBox Text="{Binding Content}"
+                           IsReadOnly="True"
+                           AcceptsReturn="True"
+                           TextWrapping="Wrap"
+                           MinHeight="64"
+                           MaxHeight="220"
+                           Padding="0"
+                           BorderThickness="0"
+                           Background="Transparent"
+                           ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+                  <StackPanel Grid.Row="1"
+                              Margin="0,12,0,0"
+                              Orientation="Horizontal"
+                              HorizontalAlignment="Right">
+                    <Button Classes="prompt-action prompt-copy"
+                            Click="CopyPromptButton_Click"
+                            Content="复制" />
+                    <Button Classes="prompt-action"
+                            Margin="8,0,0,0"
+                            Click="EditPromptButton_Click"
+                            Content="编辑" />
+                    <Button Classes="prompt-action prompt-delete"
+                            Margin="8,0,0,0"
+                            Click="DeletePromptButton_Click"
+                            Content="删除" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <TextBlock x:Name="EmptyPromptTextBlock"
+                 Text="暂无 Prompt"
+                 IsVisible="False"
+                 Foreground="#6B7280"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center" />
+    </Grid>
+  </Grid>
+</Window>

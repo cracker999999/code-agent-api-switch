@@ -87,6 +87,15 @@ public partial class MainWindow : Window
         LoadProviders();
     }
 
+    private void PromptButton_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new PromptWindow(_databaseService)
+        {
+            Owner = this
+        };
+        window.ShowDialog();
+    }
+
     private void SessionManagerButton_Click(object sender, RoutedEventArgs e)
     {
         OpenSessionManagerWindow();

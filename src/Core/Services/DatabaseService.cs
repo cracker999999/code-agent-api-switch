@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS Providers (
 CREATE TABLE IF NOT EXISTS Settings (
     Key TEXT PRIMARY KEY,
     Value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS Prompts (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Content TEXT NOT NULL
 );";
 
         using var command = connection.CreateCommand();
@@ -109,6 +113,76 @@ ON CONFLICT(Key) DO UPDATE SET Value = excluded.Value;";
             }
 
             transaction.Commit();
+        }
+    }
+
+    public List<PromptItem> GetPrompts()
+    {
+        lock (_syncRoot)
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT Id, Content FROM Prompts ORDER BY Id DESC;";
+
+            using var reader = command.ExecuteReader();
+            var prompts = new List<PromptItem>();
+            while (reader.Read())
+            {
+                prompts.Add(new PromptItem
+                {
+                    Id = reader.GetInt32(0),
+                    Content = reader.GetString(1)
+                });
+            }
+
+            return prompts;
+        }
+    }
+
+    public int AddPrompt(PromptItem prompt)
+    {
+        lock (_syncRoot)
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+INSERT INTO Prompts (Content) VALUES ($content);
+SELECT last_insert_rowid();";
+            command.Parameters.AddWithValue("$content", prompt.Content);
+            return Convert.ToInt32(command.ExecuteScalar());
+        }
+    }
+
+    public void UpdatePrompt(PromptItem prompt)
+    {
+        lock (_syncRoot)
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE Prompts SET Content = $content WHERE Id = $id;";
+            command.Parameters.AddWithValue("$id", prompt.Id);
+            command.Parameters.AddWithValue("$content", prompt.Content);
+            command.ExecuteNonQuery();
+        }
+    }
+
+    public void DeletePrompt(int id)
+    {
+        lock (_syncRoot)
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM Prompts WHERE Id = $id;";
+            command.Parameters.AddWithValue("$id", id);
+            command.ExecuteNonQuery();
         }
     }
 
@@ -410,5 +484,4 @@ LIMIT 1;";
         return new SqliteConnection($"Data Source={_databasePath}");
     }
 }
-
 
