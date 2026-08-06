@@ -3,7 +3,7 @@
         x:Class="APISwitch.UI.Views.SettingsDialog"
         Title="设置"
         Icon="/Assets/app.ico"
-        Width="1040"
+        Width="800"
         SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
