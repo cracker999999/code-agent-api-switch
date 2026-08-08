@@ -346,12 +346,91 @@ WHERE Id = $id;";
 
     public void MoveProviderUp(int id, int toolType)
     {
-        MoveProvider(id, toolType, moveUp: true);
+        MoveProvider(id, toolType, currentIndex => currentIndex - 1);
     }
 
     public void MoveProviderDown(int id, int toolType)
     {
-        MoveProvider(id, toolType, moveUp: false);
+        MoveProvider(id, toolType, currentIndex => currentIndex + 1);
+    }
+
+    public void MoveProviderToIndex(int id, int toolType, int destinationIndex)
+    {
+        MoveProvider(id, toolType, _ => destinationIndex);
+    }
+
+    private void MoveProvider(int id, int toolType, Func<int, int> getDestinationIndex)
+    {
+        lock (_syncRoot)
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+
+            using var transaction = connection.BeginTransaction();
+            var providerOrders = new List<(int Id, int SortOrder)>();
+
+            using (var queryCommand = connection.CreateCommand())
+            {
+                queryCommand.Transaction = transaction;
+                queryCommand.CommandText = @"
+SELECT Id, SortOrder
+FROM Providers
+WHERE ToolType = $toolType
+ORDER BY SortOrder ASC, Id ASC;";
+                queryCommand.Parameters.AddWithValue("$toolType", toolType);
+
+                using var reader = queryCommand.ExecuteReader();
+                while (reader.Read())
+                {
+                    providerOrders.Add((reader.GetInt32(0), reader.GetInt32(1)));
+                }
+            }
+
+            var currentIndex = providerOrders.FindIndex(provider => provider.Id == id);
+            if (currentIndex < 0 || providerOrders.Count < 2)
+            {
+                transaction.Rollback();
+                return;
+            }
+
+            var destinationIndex = Math.Clamp(getDestinationIndex(currentIndex), 0, providerOrders.Count - 1);
+            if (destinationIndex == currentIndex)
+            {
+                transaction.Rollback();
+                return;
+            }
+
+            var movedProvider = providerOrders[currentIndex];
+            providerOrders.RemoveAt(currentIndex);
+            providerOrders.Insert(destinationIndex, movedProvider);
+
+            // 移动（包括拖拽）可能跨越多条记录，统一归一化顺序可同时消除历史重复 SortOrder。
+            using var updateCommand = connection.CreateCommand();
+            updateCommand.Transaction = transaction;
+            updateCommand.CommandText = @"
+UPDATE Providers
+SET SortOrder = $sortOrder
+WHERE Id = $id AND ToolType = $toolType;";
+            var sortOrderParameter = updateCommand.Parameters.Add("$sortOrder", SqliteType.Integer);
+            var idParameter = updateCommand.Parameters.Add("$id", SqliteType.Integer);
+            updateCommand.Parameters.AddWithValue("$toolType", toolType);
+
+            for (var index = 0; index < providerOrders.Count; index++)
+            {
+                var sortOrder = index + 1;
+                if (providerOrders[index].SortOrder == sortOrder)
+                {
+                    continue;
+                }
+
+                // 正常顺序下只更新移动范围；历史重复或断号仍会被归一化。
+                sortOrderParameter.Value = sortOrder;
+                idParameter.Value = providerOrders[index].Id;
+                updateCommand.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
     }
 
     private static void EnsureProviderColumns(SqliteConnection connection)
@@ -391,97 +470,8 @@ WHERE Id = $id;";
         alterCommand.ExecuteNonQuery();
     }
 
-    private void MoveProvider(int id, int toolType, bool moveUp)
-    {
-        lock (_syncRoot)
-        {
-            using var connection = CreateConnection();
-            connection.Open();
-
-            using var transaction = connection.BeginTransaction();
-
-            int? currentSortOrder;
-            using (var currentCommand = connection.CreateCommand())
-            {
-                currentCommand.Transaction = transaction;
-                currentCommand.CommandText = @"
-SELECT SortOrder
-FROM Providers
-WHERE Id = $id AND ToolType = $toolType;";
-                currentCommand.Parameters.AddWithValue("$id", id);
-                currentCommand.Parameters.AddWithValue("$toolType", toolType);
-                var result = currentCommand.ExecuteScalar();
-                currentSortOrder = result is null || result is DBNull ? null : Convert.ToInt32(result);
-            }
-
-            if (currentSortOrder is null)
-            {
-                transaction.Rollback();
-                return;
-            }
-
-            int? neighborId = null;
-            int? neighborSortOrder = null;
-
-            using (var neighborCommand = connection.CreateCommand())
-            {
-                neighborCommand.Transaction = transaction;
-                neighborCommand.CommandText = moveUp
-                    ? @"
-SELECT Id, SortOrder
-FROM Providers
-WHERE ToolType = $toolType AND SortOrder < $sortOrder
-ORDER BY SortOrder DESC, Id DESC
-LIMIT 1;"
-                    : @"
-SELECT Id, SortOrder
-FROM Providers
-WHERE ToolType = $toolType AND SortOrder > $sortOrder
-ORDER BY SortOrder ASC, Id ASC
-LIMIT 1;";
-
-                neighborCommand.Parameters.AddWithValue("$toolType", toolType);
-                neighborCommand.Parameters.AddWithValue("$sortOrder", currentSortOrder.Value);
-
-                using var neighborReader = neighborCommand.ExecuteReader();
-                if (neighborReader.Read())
-                {
-                    neighborId = neighborReader.GetInt32(0);
-                    neighborSortOrder = neighborReader.GetInt32(1);
-                }
-            }
-
-            if (neighborId is null || neighborSortOrder is null)
-            {
-                transaction.Rollback();
-                return;
-            }
-
-            using (var updateCurrent = connection.CreateCommand())
-            {
-                updateCurrent.Transaction = transaction;
-                updateCurrent.CommandText = "UPDATE Providers SET SortOrder = $sortOrder WHERE Id = $id;";
-                updateCurrent.Parameters.AddWithValue("$sortOrder", neighborSortOrder.Value);
-                updateCurrent.Parameters.AddWithValue("$id", id);
-                updateCurrent.ExecuteNonQuery();
-            }
-
-            using (var updateNeighbor = connection.CreateCommand())
-            {
-                updateNeighbor.Transaction = transaction;
-                updateNeighbor.CommandText = "UPDATE Providers SET SortOrder = $sortOrder WHERE Id = $id;";
-                updateNeighbor.Parameters.AddWithValue("$sortOrder", currentSortOrder.Value);
-                updateNeighbor.Parameters.AddWithValue("$id", neighborId.Value);
-                updateNeighbor.ExecuteNonQuery();
-            }
-
-            transaction.Commit();
-        }
-    }
-
     private SqliteConnection CreateConnection()
     {
         return new SqliteConnection($"Data Source={_databasePath}");
     }
 }
-

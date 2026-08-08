@@ -6,10 +6,20 @@ using System.Windows.Documents;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using APISwitch.Models;
 using APISwitch.Services;
+using APISwitch.Utilities;
 using WPF.Services;
 using WPF.Views;
+using DragDrop = System.Windows.DragDrop;
+using DragDropEffects = System.Windows.DragDropEffects;
+using DragEventArgs = System.Windows.DragEventArgs;
+using DragEventHandler = System.Windows.DragEventHandler;
+using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
+using MouseButtonState = System.Windows.Input.MouseButtonState;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Point = System.Windows.Point;
 
 namespace WPF;
 
@@ -21,6 +31,10 @@ public partial class MainWindow : Window
     private readonly ApiTestService _apiTestService;
     private SessionWindow? _sessionWindow;
     private int _currentToolType;
+    private readonly DispatcherTimer _providerAutoScrollTimer;
+    private readonly ProviderDragController _providerDragController;
+
+    private const string ProviderDragFormat = "APISwitch.Provider";
 
     public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService, AppSettingsService appSettingsService)
     {
@@ -31,6 +45,23 @@ public partial class MainWindow : Window
         _currentToolType = 0;
 
         InitializeComponent();
+
+        _providerAutoScrollTimer = new DispatcherTimer(DispatcherPriority.Input)
+        {
+            Interval = TimeSpan.FromMilliseconds(80)
+        };
+        _providerAutoScrollTimer.Tick += ProviderAutoScrollTimer_Tick;
+
+        _providerDragController = new ProviderDragController(
+            GetProviderCardGeometry,
+            GetProviderDragScrollState,
+            SetProviderDropIndicator);
+        _providerDragController.AutoScrollActiveChanged += SetProviderAutoScrollActive;
+
+        // 即使子控件先将拖放事件标记为已处理，窗口仍需接收最终 Drop。
+        AddHandler(DragDrop.DragOverEvent, new DragEventHandler(MainWindow_DragOver), true);
+        AddHandler(DragDrop.DragLeaveEvent, new DragEventHandler(MainWindow_DragLeave), true);
+        AddHandler(DragDrop.DropEvent, new DragEventHandler(MainWindow_Drop), true);
 
         UpdateTabButtons();
         LoadProviders();
@@ -367,8 +398,224 @@ public partial class MainWindow : Window
         LoadProviders();
     }
 
+    private IReadOnlyList<Provider> LoadedProviders =>
+        ProvidersItemsControl.ItemsSource as IReadOnlyList<Provider>
+        ?? throw new InvalidOperationException("供应商列表的数据源必须实现 IReadOnlyList<Provider>。");
+
+    private void ProviderDragHandle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: Provider } handle ||
+            e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        var startPoint = e.GetPosition(ProvidersItemsControl);
+        _providerDragController.BeginHandlePress(startPoint.X, startPoint.Y);
+        handle.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void ProviderDragHandle_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: Provider provider } handle ||
+            e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        var currentPoint = e.GetPosition(ProvidersItemsControl);
+        if (!_providerDragController.TryStartDrag(provider, currentPoint.X, currentPoint.Y))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        try
+        {
+            var data = new System.Windows.DataObject();
+            data.SetData(ProviderDragFormat, provider.Id.ToString(), false);
+            DragDrop.DoDragDrop(handle, data, DragDropEffects.Move);
+        }
+        finally
+        {
+            if (handle.IsMouseCaptured)
+            {
+                handle.ReleaseMouseCapture();
+            }
+
+            EndProviderDrag();
+        }
+    }
+
+    private void ProviderDragHandle_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _providerDragController.ReleaseHandle();
+        if (sender is UIElement element && element.IsMouseCaptured)
+        {
+            element.ReleaseMouseCapture();
+        }
+    }
+
+    private void ProviderDragHandle_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        _providerDragController.ReleaseHandle();
+    }
+
+    private void MainWindow_DragOver(object sender, DragEventArgs e)
+    {
+        if (!TryGetDraggedProviderId(e.Data, out var providerId) ||
+            !_providerDragController.IsDraggingProvider(providerId))
+        {
+            return;
+        }
+
+        UpdateProviderDragTarget(e);
+        // 自有拖拽在布局瞬间更新时仍保持 Move，避免 OLE 拖放被临时判定为无效。
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private void MainWindow_DragLeave(object sender, DragEventArgs e)
+    {
+        var position = e.GetPosition(this);
+        if (_providerDragController.HasActiveDrag &&
+            (position.X < 0 || position.X > ActualWidth || position.Y < 0 || position.Y > ActualHeight))
+        {
+            UpdateProviderDragTarget(e);
+            e.Handled = true;
+        }
+    }
+
+    private void MainWindow_Drop(object sender, DragEventArgs e)
+    {
+        if (!TryGetDraggedProviderId(e.Data, out var providerId) ||
+            !_providerDragController.IsDraggingProvider(providerId))
+        {
+            return;
+        }
+
+        UpdateProviderDragTarget(e);
+        var hasTarget = _providerDragController.HasPendingTarget;
+        if (hasTarget && _providerDragController.GetPendingMove(LoadedProviders) is { } move)
+        {
+            _databaseService.MoveProviderToIndex(move.ProviderId, move.ToolType, move.DestinationIndex);
+            LoadProviders();
+        }
+
+        e.Effects = hasTarget ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+        EndProviderDrag();
+    }
+
+    private void UpdateProviderDragTarget(DragEventArgs e)
+    {
+        var viewportPosition = e.GetPosition(ProvidersScrollViewer);
+        var contentPosition = e.GetPosition(ProvidersItemsControl);
+        _providerDragController.UpdateTarget(
+            LoadedProviders,
+            viewportPosition.X,
+            viewportPosition.Y,
+            contentPosition.Y);
+    }
+
+    private static bool TryGetDraggedProviderId(System.Windows.IDataObject data, out int providerId)
+    {
+        providerId = 0;
+        return data.GetDataPresent(ProviderDragFormat, false) &&
+               data.GetData(ProviderDragFormat, false) is string value &&
+               int.TryParse(value, out providerId) &&
+               providerId > 0;
+    }
+
+    private ProviderCardGeometry? GetProviderCardGeometry(int index)
+    {
+        if (ProvidersItemsControl.ItemContainerGenerator.ContainerFromIndex(index) is not ContentPresenter container)
+        {
+            return null;
+        }
+
+        var template = container.ContentTemplate ?? ProvidersItemsControl.ItemTemplate;
+        if (template?.FindName("ProviderCard", container) is not Border card)
+        {
+            return null;
+        }
+
+        var top = card.TranslatePoint(new Point(0, 0), ProvidersItemsControl).Y;
+        return new ProviderCardGeometry(top, card.ActualHeight);
+    }
+
+    private ProviderDragScrollState GetProviderDragScrollState()
+    {
+        return new ProviderDragScrollState(
+            ProvidersScrollViewer.ActualWidth,
+            ProvidersScrollViewer.ActualHeight,
+            ProvidersScrollViewer.VerticalOffset,
+            ProvidersScrollViewer.ScrollableHeight,
+            ProviderDropInsertionIndicator.Height);
+    }
+
+    private void SetProviderDropIndicator(double? offset)
+    {
+        if (offset is not double indicatorOffset)
+        {
+            ProviderDropInsertionIndicator.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        ProviderDropIndicatorTransform.Y = indicatorOffset;
+        ProviderDropInsertionIndicator.Visibility = Visibility.Visible;
+    }
+
+    private void SetProviderAutoScrollActive(bool isActive)
+    {
+        if (isActive)
+        {
+            _providerAutoScrollTimer.Start();
+        }
+        else
+        {
+            _providerAutoScrollTimer.Stop();
+        }
+    }
+
+    private void ProviderAutoScrollTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_providerDragController.TryGetAutoScrollDirection(out var direction))
+        {
+            _providerAutoScrollTimer.Stop();
+            return;
+        }
+
+        if (direction < 0)
+        {
+            ProvidersScrollViewer.LineUp();
+        }
+        else
+        {
+            ProvidersScrollViewer.LineDown();
+        }
+
+        // LineUp/LineDown 在后续布局阶段才更新 VerticalOffset，延后到布局完成后再换算插入槽位。
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, CompleteProviderAutoScroll);
+    }
+
+    private void CompleteProviderAutoScroll()
+    {
+        if (_providerDragController.HasActiveDrag)
+        {
+            _providerDragController.CompleteAutoScrollTick(LoadedProviders);
+        }
+    }
+
+    private void EndProviderDrag()
+    {
+        _providerDragController.EndDrag();
+    }
+
     private void LoadProviders()
     {
+        _providerDragController.ClearGeometry();
         var providers = _databaseService.GetProviders(_currentToolType);
         for (var index = 0; index < providers.Count; index++)
         {

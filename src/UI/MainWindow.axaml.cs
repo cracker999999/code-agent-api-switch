@@ -4,10 +4,14 @@ using APISwitch.UI.Services;
 using APISwitch.UI.Views;
 using APISwitch.Models;
 using APISwitch.Services;
+using APISwitch.Utilities;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace APISwitch.UI;
 
@@ -17,10 +21,16 @@ public partial class MainWindow : Window
     private readonly ConfigWriterService _configWriterService;
     private readonly AppSettingsService _appSettingsService;
     private readonly ApiTestService _apiTestService;
+    private readonly TranslateTransform _providerDropIndicatorTransform;
+    private readonly DispatcherTimer _providerAutoScrollTimer;
+    private readonly ProviderDragController _providerDragController;
     private bool _initialProvidersLoaded;
 
     private SessionWindow? _sessionWindow;
     private int _currentToolType;
+
+    private static readonly DataFormat<string> ProviderDragFormat =
+        DataFormat.CreateStringApplicationFormat("APISwitch.Provider");
 
     public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService, AppSettingsService appSettingsService)
     {
@@ -31,6 +41,26 @@ public partial class MainWindow : Window
 
         _currentToolType = 0;
         InitializeComponent();
+
+        _providerDropIndicatorTransform = new TranslateTransform();
+        ProviderDropInsertionIndicator.RenderTransform = _providerDropIndicatorTransform;
+
+        _providerAutoScrollTimer = new DispatcherTimer(DispatcherPriority.Input)
+        {
+            Interval = TimeSpan.FromMilliseconds(80)
+        };
+        _providerAutoScrollTimer.Tick += ProviderAutoScrollTimer_Tick;
+
+        _providerDragController = new ProviderDragController(
+            GetProviderCardGeometry,
+            GetProviderDragScrollState,
+            SetProviderDropIndicator);
+        _providerDragController.AutoScrollActiveChanged += SetProviderAutoScrollActive;
+
+        DragDrop.SetAllowDrop(this, true);
+        DragDrop.AddDragOverHandler(this, MainWindow_DragOver);
+        DragDrop.AddDragLeaveHandler(this, MainWindow_DragLeave);
+        DragDrop.AddDropHandler(this, MainWindow_Drop);
 
         UpdateTabButtons();
         Opened += MainWindow_Opened;
@@ -323,8 +353,212 @@ public partial class MainWindow : Window
         LoadProviders();
     }
 
+    private IReadOnlyList<Provider> LoadedProviders =>
+        ProvidersItemsControl.ItemsSource as IReadOnlyList<Provider>
+        ?? throw new InvalidOperationException("供应商列表的数据源必须实现 IReadOnlyList<Provider>。");
+
+    private void ProviderDragHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control { DataContext: Provider } handle ||
+            !e.Pointer.IsPrimary ||
+            !e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        var startPoint = e.GetPosition(ProvidersItemsControl);
+        _providerDragController.BeginHandlePress(startPoint.X, startPoint.Y);
+        e.Pointer.Capture(handle);
+        e.Handled = true;
+    }
+
+    private async void ProviderDragHandle_PointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (sender is not Control { DataContext: Provider provider } handle ||
+            !e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        var currentPoint = e.GetPosition(ProvidersItemsControl);
+        if (!_providerDragController.TryStartDrag(provider, currentPoint.X, currentPoint.Y))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        try
+        {
+            var data = new DataTransfer();
+            data.Add(DataTransferItem.Create(ProviderDragFormat, provider.Id.ToString()));
+            await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Move);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(this, "拖拽失败", $"调整供应商顺序失败：{ex.Message}");
+        }
+        finally
+        {
+            e.Pointer.Capture(null);
+            EndProviderDrag();
+        }
+    }
+
+    private void ProviderDragHandle_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _providerDragController.ReleaseHandle();
+        e.Pointer.Capture(null);
+    }
+
+    private void ProviderDragHandle_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        _providerDragController.ReleaseHandle();
+    }
+
+    private void MainWindow_DragOver(object? sender, DragEventArgs e)
+    {
+        if (!TryGetDraggedProviderId(e.DataTransfer, out var providerId) ||
+            !_providerDragController.IsDraggingProvider(providerId))
+        {
+            return;
+        }
+
+        UpdateProviderDragTarget(e);
+        // 自有拖拽在布局瞬间更新时仍保持 Move，避免原生拖放被临时判定为无效。
+        e.DragEffects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private void MainWindow_DragLeave(object? sender, DragEventArgs e)
+    {
+        var position = e.GetPosition(this);
+        if (_providerDragController.HasActiveDrag &&
+            (position.X < 0 || position.X > Bounds.Width || position.Y < 0 || position.Y > Bounds.Height))
+        {
+            UpdateProviderDragTarget(e);
+            e.Handled = true;
+        }
+    }
+
+    private void MainWindow_Drop(object? sender, DragEventArgs e)
+    {
+        if (!TryGetDraggedProviderId(e.DataTransfer, out var providerId) ||
+            !_providerDragController.IsDraggingProvider(providerId))
+        {
+            return;
+        }
+
+        UpdateProviderDragTarget(e);
+        var hasTarget = _providerDragController.HasPendingTarget;
+        if (hasTarget && _providerDragController.GetPendingMove(LoadedProviders) is { } move)
+        {
+            _databaseService.MoveProviderToIndex(move.ProviderId, move.ToolType, move.DestinationIndex);
+            LoadProviders();
+        }
+
+        e.DragEffects = hasTarget ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+        EndProviderDrag();
+    }
+
+    private void UpdateProviderDragTarget(DragEventArgs e)
+    {
+        var viewportPosition = e.GetPosition(ProvidersScrollViewer);
+        var contentPosition = e.GetPosition(ProvidersItemsControl);
+        _providerDragController.UpdateTarget(
+            LoadedProviders,
+            viewportPosition.X,
+            viewportPosition.Y,
+            contentPosition.Y);
+    }
+
+    private static bool TryGetDraggedProviderId(IDataTransfer data, out int providerId)
+    {
+        return int.TryParse(data.TryGetValue(ProviderDragFormat), out providerId) && providerId > 0;
+    }
+
+    private ProviderCardGeometry? GetProviderCardGeometry(int index)
+    {
+        var container = ProvidersItemsControl.ContainerFromIndex(index);
+        var card = container?
+            .GetSelfAndVisualDescendants()
+            .OfType<Border>()
+            .FirstOrDefault(item => item.Name == "ProviderCard");
+        var cardTop = card?.TranslatePoint(new Point(0, 0), ProvidersItemsControl);
+        if (card is null || cardTop is null)
+        {
+            return null;
+        }
+
+        return new ProviderCardGeometry(cardTop.Value.Y, card.Bounds.Height);
+    }
+
+    private ProviderDragScrollState GetProviderDragScrollState()
+    {
+        var offset = ProvidersScrollViewer.Offset;
+        var maxOffsetY = Math.Max(
+            0,
+            ProvidersScrollViewer.Extent.Height - ProvidersScrollViewer.Viewport.Height);
+        return new ProviderDragScrollState(
+            ProvidersScrollViewer.Bounds.Width,
+            ProvidersScrollViewer.Bounds.Height,
+            offset.Y,
+            maxOffsetY,
+            ProviderDropInsertionIndicator.Height);
+    }
+
+    private void SetProviderDropIndicator(double? offset)
+    {
+        if (offset is not double indicatorOffset)
+        {
+            ProviderDropInsertionIndicator.IsVisible = false;
+            return;
+        }
+
+        _providerDropIndicatorTransform.Y = indicatorOffset;
+        ProviderDropInsertionIndicator.IsVisible = true;
+    }
+
+    private void SetProviderAutoScrollActive(bool isActive)
+    {
+        if (isActive)
+        {
+            _providerAutoScrollTimer.Start();
+        }
+        else
+        {
+            _providerAutoScrollTimer.Stop();
+        }
+    }
+
+    private void ProviderAutoScrollTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_providerDragController.TryGetAutoScrollDirection(out var direction))
+        {
+            _providerAutoScrollTimer.Stop();
+            return;
+        }
+
+        if (direction < 0)
+        {
+            ProvidersScrollViewer.LineUp();
+        }
+        else
+        {
+            ProvidersScrollViewer.LineDown();
+        }
+
+        _providerDragController.CompleteAutoScrollTick(LoadedProviders);
+    }
+
+    private void EndProviderDrag()
+    {
+        _providerDragController.EndDrag();
+    }
+
     private void LoadProviders()
     {
+        _providerDragController.ClearGeometry();
         var providers = _databaseService.GetProviders(_currentToolType);
         for (var index = 0; index < providers.Count; index++)
         {

@@ -104,15 +104,30 @@
       </StackPanel>
     </Grid>
 
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Hidden">
+    <ScrollViewer x:Name="ProvidersScrollViewer"
+                  Grid.Row="1"
+                  VerticalScrollBarVisibility="Hidden"
+                  HorizontalScrollBarVisibility="Hidden">
       <ItemsControl x:Name="ProvidersItemsControl">
         <ItemsControl.ItemTemplate>
           <DataTemplate DataType="models:Provider">
-            <Border Classes="provider-card"
+            <Border x:Name="ProviderCard"
+                    Classes="provider-card"
                     Classes.active="{Binding IsActive}"
                     PointerPressed="ProviderCard_PointerPressed">
-              <Grid ColumnDefinitions="*,Auto">
-                <StackPanel>
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="☰"
+                           Margin="0,0,12,0"
+                           VerticalAlignment="Center"
+                           Foreground="#9CA3AF"
+                           FontSize="16"
+                           PointerPressed="ProviderDragHandle_PointerPressed"
+                           PointerMoved="ProviderDragHandle_PointerMoved"
+                           PointerReleased="ProviderDragHandle_PointerReleased"
+                           PointerCaptureLost="ProviderDragHandle_PointerCaptureLost" />
+
+                <StackPanel Grid.Column="1">
                   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Grid Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
                       <shapes:Ellipse Fill="#22C55E" IsVisible="{Binding IsTestSuccess}" />
@@ -132,7 +147,7 @@
                   <Button Classes="link-button" Click="BaseUrlButton_Click" Content="{Binding BaseUrl}" Margin="0,6,0,0" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                   <Button Classes="action-btn"
                           Click="ActivateProviderButton_Click"
                           Content="{Binding ActivateButtonText}"
@@ -149,5 +164,15 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </ScrollViewer>
+
+    <!-- 拖拽时显示供应商的插入位置，不参与命中测试。 -->
+    <Border Grid.Row="1"
+            x:Name="ProviderDropInsertionIndicator"
+            Height="2"
+            Margin="2,0,18,0"
+            VerticalAlignment="Top"
+            Background="#2563EB"
+            IsHitTestVisible="False"
+            IsVisible="False" />
   </Grid>
 </Window>

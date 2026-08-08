@@ -122,10 +122,32 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **WHEN** 用户点击某卡片的下移按钮且该卡片不是最后一项
 - **THEN** 系统将该卡片与后一项交换顺序，列表立即按新顺序刷新
 
+### Requirement: 供应商拖拽排序交互
+WPF 和 Avalonia 主窗口 SHALL 支持通过卡片左侧拖动手柄调整当前 ToolType 的供应商顺序，并显示目标插入位置。
+
+#### Scenario: 拖放供应商卡片
+- **WHEN** 用户按住拖动手柄并将供应商卡片放到另一张卡片的上半区或下半区
+- **THEN** 系统在目标卡片之前或之后插入该供应商，立即刷新列表并持久化新顺序
+
+#### Scenario: 拖拽插入位置提示
+- **WHEN** 用户拖动供应商卡片经过有效目标卡片
+- **THEN** 主窗口在唯一的目标插入槽位显示一条提示线，相邻卡片不得为同一槽位分别显示提示线
+
+#### Scenario: 在卡片间距释放
+- **WHEN** 用户在两张供应商卡片之间的间距松开鼠标
+- **THEN** 系统按该间距对应的插入槽位完成排序，不得取消本次拖拽
+
+#### Scenario: 拖拽边缘自动滚动
+- **WHEN** 用户拖动供应商卡片到列表可视区域的顶部或底部边缘
+- **THEN** 列表自动向对应方向滚动并持续更新目标插入位置
+
+#### Scenario: 鼠标移出窗口后继续滚动
+- **WHEN** 用户拖动供应商卡片越过窗口顶部或底部边界且列表仍可继续滚动
+- **THEN** 列表 SHALL 按对应方向持续滚动，直到到达滚动边界或拖拽结束
+
 ### Requirement: 会话管理按钮
 主窗口右上角 SHALL 显示"会话管理"按钮，点击打开 SessionWindow。
 
 #### Scenario: 点击会话管理按钮
 - **WHEN** 用户点击右上角"会话管理"按钮
 - **THEN** 系统以 `new SessionWindow { Owner = this }.Show()` 打开会话管理窗口
-

@@ -10,6 +10,7 @@
         Width="900"
         MinWidth="720"
         MinHeight="460"
+        AllowDrop="True"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <Style x:Key="ActionButtonStyle" TargetType="Button">
@@ -148,12 +149,14 @@
         </Grid>
 
         <ScrollViewer Grid.Row="1"
+                      x:Name="ProvidersScrollViewer"
                       VerticalScrollBarVisibility="Hidden"
                       HorizontalScrollBarVisibility="Hidden">
             <ItemsControl x:Name="ProvidersItemsControl">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:Provider}">
-                        <Border Margin="0,0,0,10"
+                        <Border x:Name="ProviderCard"
+                                Margin="0,0,0,10"
                                 Padding="14"
                                 Background="White"
                                 CornerRadius="10"
@@ -173,11 +176,24 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <StackPanel>
+                                <TextBlock Grid.Column="0"
+                                           Text="☰"
+                                           Margin="0,0,12,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="#9CA3AF"
+                                           FontSize="16"
+                                           Cursor="SizeAll"
+                                           PreviewMouseLeftButtonDown="ProviderDragHandle_PreviewMouseLeftButtonDown"
+                                           PreviewMouseMove="ProviderDragHandle_PreviewMouseMove"
+                                           PreviewMouseLeftButtonUp="ProviderDragHandle_PreviewMouseLeftButtonUp"
+                                           LostMouseCapture="ProviderDragHandle_LostMouseCapture" />
+
+                                <StackPanel Grid.Column="1">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Ellipse Style="{StaticResource TestStatusDotStyle}" />
                                         <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" Foreground="#111827" />
@@ -208,7 +224,7 @@
                                     </TextBlock>
                                 </StackPanel>
 
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <Button Click="ActivateProviderButton_Click">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
@@ -239,5 +255,20 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <!-- 拖拽时显示供应商的插入位置，不参与命中测试。 -->
+        <Border Grid.Row="1"
+                x:Name="ProviderDropInsertionIndicator"
+                Height="2"
+                Margin="2,0,18,0"
+                VerticalAlignment="Top"
+                Background="#2563EB"
+                IsHitTestVisible="False"
+                Panel.ZIndex="10"
+                Visibility="Collapsed">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ProviderDropIndicatorTransform" />
+            </Border.RenderTransform>
+        </Border>
     </Grid>
 </Window>

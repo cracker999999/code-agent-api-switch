@@ -76,7 +76,7 @@ Provider 数据模型 SHALL 包含以下字段：Id（INTEGER PK 自增）、Too
 - **THEN** 系统 SHALL 将目标供应商 `TestStatus` 更新为 `2`
 
 ### Requirement: 供应商顺序重排
-系统 SHALL 支持在同一 ToolType 内按记录顺序执行上移/下移重排。
+系统 SHALL 支持在同一 ToolType 内按记录顺序执行上移/下移或拖拽重排。
 
 #### Scenario: 上移重排
 - **WHEN** 用户对某供应商执行上移操作
@@ -85,6 +85,10 @@ Provider 数据模型 SHALL 包含以下字段：Id（INTEGER PK 自增）、Too
 #### Scenario: 下移重排
 - **WHEN** 用户对某供应商执行下移操作
 - **THEN** 系统 MUST 在同一 ToolType 范围内将该供应商与后一条记录交换 `SortOrder`
+
+#### Scenario: 拖拽重排
+- **WHEN** 用户将某供应商拖放到同一列表中的目标插入位置
+- **THEN** 系统 MUST 按拖放后的记录顺序更新并持久化当前 ToolType 的 `SortOrder`
 
 #### Scenario: 跨 ToolType 隔离
 - **WHEN** 用户在 Codex 列表执行顺序调整
@@ -110,4 +114,3 @@ Grok 供应商顺序调整 MUST 只影响 ToolType=2 的记录。
 #### Scenario: Grok 顺序调整不影响其他工具
 - **WHEN** 用户在 Grok 列表执行顺序调整
 - **THEN** 系统 MUST 不影响 Codex 和 Claude Code 列表记录的 `SortOrder`
-
