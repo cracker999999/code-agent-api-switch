@@ -29,8 +29,16 @@ TBD - created by archiving change session-management. Update Purpose after archi
 系统 SHALL 按照 codex.rs 规格解析 Codex 的 `.jsonl` 文件。
 
 #### Scenario: 解析 session_meta 行
-- **WHEN** 遇到 `type=session_meta` 的行
+- **WHEN** 遇到文件中的首个 `type=session_meta` 行
 - **THEN** 提取 `payload.id` 作为 SessionId、`payload.cwd` 作为 ProjectDir、`payload.timestamp` 作为 CreatedAt
+
+#### Scenario: 解析 Codex 子代理元数据
+- **WHEN** 首个 `session_meta` 的 `payload.thread_source` 为 `subagent`，且 `payload.source.subagent.thread_spawn` 包含父线程信息
+- **THEN** 系统提取 `parent_thread_id`、`agent_path`、`agent_nickname`，并将该会话标记为子代理
+
+#### Scenario: 忽略子代理继承的主会话元数据
+- **WHEN** 子代理 JSONL 在首个 `session_meta` 后包含继承自主会话的其他 `session_meta`
+- **THEN** 后续元数据不得覆盖子代理自身的 SessionId 和父子关系
 
 #### Scenario: 解析 response_item message
 - **WHEN** 遇到 `type=response_item` 且 `payload.type=message` 的行
@@ -94,11 +102,15 @@ TBD - created by archiving change session-management. Update Purpose after archi
 - **THEN** `SourcePath` MUST 为对应 `.jsonl` 文件的绝对路径
 
 ### Requirement: 删除 Codex 会话
-系统 SHALL 删除 Codex 会话的 `.jsonl` 文件。
+系统 SHALL 删除 Codex 会话的 `.jsonl` 文件，并递归删除该会话的全部后代子代理文件。
 
 #### Scenario: 删除 Codex 会话
 - **WHEN** 调用 `DeleteSession("codex", sessionId, sourcePath)`
-- **THEN** 删除 `sourcePath` 指向的 `.jsonl` 文件
+- **THEN** 删除 `sourcePath` 指向的 `.jsonl` 文件，以及 ParentSessionId 直接或间接指向该会话的全部子代理 `.jsonl` 文件
+
+#### Scenario: 删除包含后代的子代理
+- **WHEN** 删除的 Codex 子代理自身仍包含下级子代理
+- **THEN** 系统仅递归删除该子代理及其后代，不删除其父会话或兄弟子代理
 
 ### Requirement: 删除 Claude 会话
 系统 SHALL 删除 Claude 会话的 `.jsonl` 文件及同名 sidecar 目录。
@@ -142,4 +154,3 @@ TBD - created by archiving change session-management. Update Purpose after archi
 #### Scenario: 删除 Grok 会话
 - **WHEN** 调用 `DeleteSession("grok", sessionId, sourcePath)`
 - **THEN** 删除 `sourcePath` 所在的 Grok 会话目录
-

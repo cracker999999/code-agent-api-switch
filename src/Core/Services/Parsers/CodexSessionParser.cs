@@ -36,10 +36,15 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
         var (headLines, tailLines) = SessionFileUtils.ReadHeadAndTailLines(filePath, HeadLineCount, TailLineCount);
 
         string? sessionId = null;
+        string? parentSessionId = null;
+        string? agentPath = null;
+        string? agentNickname = null;
         string? projectDir = null;
         string? customTitle = null;
         DateTime? createdAt = null;
         DateTime? lastActiveAt = null;
+        var isSubagent = false;
+        var hasSessionMeta = false;
         var hasMessage = false;
 
         foreach (var line in headLines.Concat(tailLines))
@@ -61,17 +66,46 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
             if (string.Equals(eventType, "session_meta", StringComparison.OrdinalIgnoreCase) &&
                 TryGetObject(root, "payload", out var metaPayload))
             {
-                if (JsonFieldExtractor.TryGetString(metaPayload, "id", out var parsedSessionId))
+                // 子代理文件会在首行元数据后附带继承的主会话元数据，只能采用首个 session_meta。
+                if (!hasSessionMeta)
                 {
-                    sessionId = parsedSessionId;
-                }
+                    hasSessionMeta = true;
+                    if (JsonFieldExtractor.TryGetString(metaPayload, "id", out var parsedSessionId))
+                    {
+                        sessionId = parsedSessionId;
+                    }
 
-                if (JsonFieldExtractor.TryGetString(metaPayload, "cwd", out var parsedProjectDir))
-                {
-                    projectDir = parsedProjectDir;
-                }
+                    if (JsonFieldExtractor.TryGetString(metaPayload, "cwd", out var parsedProjectDir))
+                    {
+                        projectDir = parsedProjectDir;
+                    }
 
-                createdAt ??= TryGetDateTime(metaPayload, "timestamp") ?? TryGetDateTime(root, "timestamp");
+                    isSubagent = JsonFieldExtractor.TryGetString(metaPayload, "thread_source", out var threadSource) &&
+                        string.Equals(threadSource, "subagent", StringComparison.OrdinalIgnoreCase);
+
+                    if (TryGetObject(metaPayload, "source", out var source) &&
+                        TryGetObject(source, "subagent", out var subagent) &&
+                        TryGetObject(subagent, "thread_spawn", out var threadSpawn))
+                    {
+                        isSubagent = true;
+                        if (JsonFieldExtractor.TryGetString(threadSpawn, "parent_thread_id", out var parsedParentSessionId))
+                        {
+                            parentSessionId = parsedParentSessionId;
+                        }
+
+                        if (JsonFieldExtractor.TryGetString(threadSpawn, "agent_path", out var parsedAgentPath))
+                        {
+                            agentPath = parsedAgentPath;
+                        }
+
+                        if (JsonFieldExtractor.TryGetString(threadSpawn, "agent_nickname", out var parsedAgentNickname))
+                        {
+                            agentNickname = parsedAgentNickname;
+                        }
+                    }
+
+                    createdAt = TryGetDateTime(metaPayload, "timestamp") ?? TryGetDateTime(root, "timestamp");
+                }
             }
             // 解析 thread_name_updated 事件
             else if (string.Equals(eventType, "event_msg", StringComparison.OrdinalIgnoreCase) &&
@@ -127,7 +161,12 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
         {
             ProviderId = SessionService.ProviderCodex,
             SessionId = sessionId ?? string.Empty,
+            ParentSessionId = parentSessionId ?? string.Empty,
+            IsSubagent = isSubagent,
+            AgentPath = agentPath ?? string.Empty,
+            AgentNickname = agentNickname ?? string.Empty,
             Title = FirstNonEmpty(
+                isSubagent ? BuildAgentTitle(agentPath, agentNickname) : string.Empty,
                 NormalizeTitleText(customTitle),
                 BuildSessionTitle(projectDir, string.Empty)),
             ProjectDir = projectDir,
@@ -528,5 +567,19 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
         }
 
         return fallback;
+    }
+
+    private static string BuildAgentTitle(string? agentPath, string? agentNickname)
+    {
+        if (!string.IsNullOrWhiteSpace(agentPath))
+        {
+            var taskName = Path.GetFileName(agentPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (!string.IsNullOrWhiteSpace(taskName))
+            {
+                return NormalizeTitleText(taskName);
+            }
+        }
+
+        return NormalizeTitleText(agentNickname);
     }
 }

@@ -162,6 +162,25 @@ public partial class SessionWindow : Window
         RenderMessages(messages);
     }
 
+    private void SubagentToggleButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton toggleButton || toggleButton.DataContext is not SessionListItem item)
+        {
+            return;
+        }
+
+        var isExpanded = toggleButton.IsChecked == true;
+        item.SetExpanded(isExpanded);
+        if (!isExpanded &&
+            _selectedGroupListBox?.SelectedItem is SessionListItem selectedItem &&
+            item.ContainsDescendant(selectedItem))
+        {
+            _selectedGroupListBox.SelectedItem = item;
+        }
+
+        e.Handled = true;
+    }
+
     private async void DeleteSessionButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_selectedSession is null)
@@ -169,7 +188,11 @@ public partial class SessionWindow : Window
             return;
         }
 
-        var confirmed = await DialogService.ConfirmAsync(this, "删除确认", $"确认删除会话“{_selectedSession.Title}”吗？");
+        var selectedSession = _selectedSession;
+        var confirmationMessage = SessionService.IsCodex(selectedSession.ProviderId)
+            ? $"确认删除会话“{selectedSession.Title}”及其所有子代理吗？"
+            : $"确认删除会话“{selectedSession.Title}”吗？";
+        var confirmed = await DialogService.ConfirmAsync(this, "删除确认", confirmationMessage);
         if (!confirmed)
         {
             return;
@@ -177,7 +200,10 @@ public partial class SessionWindow : Window
 
         try
         {
-            _sessionService.DeleteSession(_selectedSession.ProviderId, _selectedSession.SessionId, _selectedSession.SourcePath);
+            await Task.Run(() => _sessionService.DeleteSession(
+                selectedSession.ProviderId,
+                selectedSession.SessionId,
+                selectedSession.SourcePath));
         }
         catch (Exception ex)
         {
@@ -266,15 +292,21 @@ public partial class SessionWindow : Window
         ResetDetailPanel();
 
         List<SessionMeta> sessions;
+        List<SessionListItem> items;
+        int subagentCount;
 
         try
         {
-            sessions = await Task.Run(() =>
-                SessionService.IsCodex(targetProviderId)
+            (sessions, items, subagentCount) = await Task.Run(() =>
+            {
+                var scannedSessions = SessionService.IsCodex(targetProviderId)
                     ? _sessionService.ScanCodexSessions()
                     : SessionService.IsClaude(targetProviderId)
                         ? _sessionService.ScanClaudeSessions()
-                        : _sessionService.ScanGrokSessions());
+                        : _sessionService.ScanGrokSessions();
+                var sessionList = SessionListBuilder.BuildItems(targetProviderId, scannedSessions);
+                return (scannedSessions, sessionList.Items, sessionList.SubagentCount);
+            });
         }
         catch (Exception ex)
         {
@@ -286,6 +318,8 @@ public partial class SessionWindow : Window
 
             await DialogService.ShowErrorAsync(this, "错误", $"扫描会话失败：{ex.Message}");
             sessions = new List<SessionMeta>();
+            items = new List<SessionListItem>();
+            subagentCount = 0;
         }
 
         if (reloadVersion != _reloadSessionsVersion ||
@@ -294,83 +328,9 @@ public partial class SessionWindow : Window
             return;
         }
 
-        var items = sessions
-            .Select(session => new SessionListItem(
-                session,
-                BuildDisplayTitle(session),
-                BuildProjectGroupName(session),
-                FormatRelativeTime(session.LastActiveAt),
-                FormatFileSize(GetSessionFileLength(session.SourcePath))))
-            .ToList();
-
         SessionGroupsItemsControl.ItemsSource = BuildSessionGroups(items);
-        SessionCountTextBlock.Text = $"会话列表 ({items.Count})";
+        SessionCountTextBlock.Text = SessionListBuilder.BuildCountText(sessions.Count, subagentCount);
         SessionEmptyTextBlock.IsVisible = items.Count == 0;
-    }
-
-    private static string BuildDisplayTitle(SessionMeta session)
-    {
-        if (!string.IsNullOrWhiteSpace(session.Title))
-        {
-            return session.Title;
-        }
-
-        return string.IsNullOrWhiteSpace(session.SessionId) ? "未命名会话" : session.SessionId;
-    }
-
-    private static string BuildProjectGroupName(SessionMeta session)
-    {
-        if (!string.IsNullOrWhiteSpace(session.ProjectDir))
-        {
-            var normalized = session.ProjectDir.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var name = Path.GetFileName(normalized);
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                return name;
-            }
-        }
-
-        return "未分组项目";
-    }
-
-    private static long GetSessionFileLength(string sourcePath)
-    {
-        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
-        {
-            return 0;
-        }
-
-        try
-        {
-            return new FileInfo(sourcePath).Length;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return 0;
-        }
-    }
-
-    private static string FormatFileSize(long fileSizeBytes)
-    {
-        if (fileSizeBytes < 1024)
-        {
-            return $"{fileSizeBytes} B";
-        }
-
-        var sizeKb = fileSizeBytes / 1024d;
-        if (sizeKb < 1024)
-        {
-            return $"{sizeKb:0.0} KB";
-        }
-
-        var sizeMb = sizeKb / 1024d;
-        if (sizeMb < 1024)
-        {
-            return $"{sizeMb:0.0} MB";
-        }
-
-        var sizeGb = sizeMb / 1024d;
-        return $"{sizeGb:0.0} GB";
     }
 
     private void ResetDetailPanel()
@@ -829,38 +789,6 @@ public partial class SessionWindow : Window
         SetTabButtonSelectedState(CodexTabButton, SessionService.IsCodex(_currentProviderId));
         SetTabButtonSelectedState(ClaudeTabButton, SessionService.IsClaude(_currentProviderId));
         SetTabButtonSelectedState(GrokTabButton, SessionService.IsGrok(_currentProviderId));
-    }
-
-    private static string FormatRelativeTime(DateTime timestamp)
-    {
-        var now = DateTime.Now;
-        var delta = now - timestamp;
-        if (delta < TimeSpan.Zero)
-        {
-            delta = TimeSpan.Zero;
-        }
-
-        if (delta < TimeSpan.FromMinutes(1))
-        {
-            return "刚刚";
-        }
-
-        if (delta < TimeSpan.FromHours(1))
-        {
-            return $"{Math.Max(1, (int)delta.TotalMinutes)} 分钟前";
-        }
-
-        if (delta < TimeSpan.FromDays(1))
-        {
-            return $"{Math.Max(1, (int)delta.TotalHours)} 小时前";
-        }
-
-        if (delta < TimeSpan.FromDays(7))
-        {
-            return $"{Math.Max(1, (int)delta.TotalDays)} 天前";
-        }
-
-        return timestamp.ToString("yyyy/MM/dd");
     }
 
     private static string NormalizeProviderId(string? providerId)

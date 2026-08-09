@@ -8,6 +8,8 @@
         MinHeight="480"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
         <Style x:Key="TabButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="36" />
             <Setter Property="Width" Value="120" />
@@ -33,11 +35,43 @@
             </Setter>
         </Style>
 
+        <Style x:Key="SubagentToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#6B7280" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Content" Value="▶" />
+            <Setter Property="ToolTip" Value="展开或收起 subagent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#2563EB" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Content" Value="▼" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="SessionListBoxItemStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0,0,0,8" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Cursor" Value="Arrow" />
+            <Setter Property="Visibility"
+                    Value="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
@@ -168,6 +202,8 @@
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="18" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
@@ -175,12 +211,24 @@
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
-                                        <TextBlock Text="{Binding Title}"
+
+                                        <Border Grid.RowSpan="2"
+                                                Width="{Binding IndentWidth}"
+                                                Background="Transparent" />
+                                        <ToggleButton Grid.Column="1"
+                                                      VerticalAlignment="Top"
+                                                      Style="{StaticResource SubagentToggleButtonStyle}"
+                                                      IsChecked="{Binding IsExpanded, Mode=OneWay}"
+                                                      Visibility="{Binding HasChildren, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                      Click="SubagentToggleButton_Click" />
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding Title}"
+                                                   ToolTip="{Binding Title}"
                                                    FontSize="13"
                                                    FontWeight="SemiBold"
                                                    Foreground="#111827"
                                                    TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Grid.Column="1"
+                                        <TextBlock Grid.Column="3"
                                                    Margin="8,0,0,0"
                                                    Text="{Binding FileSize}"
                                                    FontSize="11"
@@ -188,8 +236,10 @@
                                                    VerticalAlignment="Center"
                                                    HorizontalAlignment="Right" />
                                         <TextBlock Grid.Row="1"
+                                                   Grid.Column="2"
+                                                   Grid.ColumnSpan="2"
                                                    Margin="0,6,0,0"
-                                                   Text="{Binding RelativeTime}"
+                                                   Text="{Binding SecondaryText}"
                                                    FontSize="12"
                                                    Foreground="#6B7280" />
                                     </Grid>

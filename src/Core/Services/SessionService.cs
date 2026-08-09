@@ -252,14 +252,15 @@ public class SessionService
             return;
         }
 
+        if (IsCodex(providerId))
+        {
+            DeleteCodexSession(sessionId, sourcePath);
+            return;
+        }
+
         if (File.Exists(sourcePath))
         {
             File.Delete(sourcePath);
-        }
-
-        if (IsCodex(providerId))
-        {
-            return;
         }
 
         var sourceDirectory = Path.GetDirectoryName(sourcePath);
@@ -272,6 +273,83 @@ public class SessionService
         if (Directory.Exists(sidecarDirectory))
         {
             Directory.Delete(sidecarDirectory, recursive: true);
+        }
+    }
+
+    private void DeleteCodexSession(string sessionId, string sourcePath)
+    {
+        var roots = CodexSessionHierarchy.Build(ScanCodexSessions());
+        var pathComparer = OperatingSystem.IsWindows()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
+        var sourcePaths = new List<string>();
+        var collectedPaths = new HashSet<string>(pathComparer);
+        var target = FindCodexSessionNode(roots, sourcePath, pathComparer);
+
+        if (target is not null)
+        {
+            CollectCodexSessionSourcePaths(target, sourcePaths, collectedPaths);
+        }
+        else if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            // 主文件若在删除前已消失，扫描结果中的直属孤儿仍应随原主会话删除。
+            foreach (var root in roots)
+            {
+                if (root.Session.IsSubagent &&
+                    string.Equals(root.Session.ParentSessionId, sessionId, StringComparison.OrdinalIgnoreCase))
+                {
+                    CollectCodexSessionSourcePaths(root, sourcePaths, collectedPaths);
+                }
+            }
+        }
+
+        if (collectedPaths.Add(sourcePath))
+        {
+            sourcePaths.Add(sourcePath);
+        }
+
+        // 后代优先删除；任一子代理删除失败时保留尚未删除的父会话。
+        foreach (var path in sourcePaths)
+        {
+            File.Delete(path);
+        }
+    }
+
+    private static CodexSessionNode? FindCodexSessionNode(
+        IReadOnlyList<CodexSessionNode> nodes,
+        string sourcePath,
+        StringComparer pathComparer)
+    {
+        foreach (var node in nodes)
+        {
+            if (pathComparer.Equals(node.Session.SourcePath, sourcePath))
+            {
+                return node;
+            }
+
+            var descendant = FindCodexSessionNode(node.Children, sourcePath, pathComparer);
+            if (descendant is not null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
+    }
+
+    private static void CollectCodexSessionSourcePaths(
+        CodexSessionNode node,
+        ICollection<string> sourcePaths,
+        ISet<string> collectedPaths)
+    {
+        foreach (var child in node.Children)
+        {
+            CollectCodexSessionSourcePaths(child, sourcePaths, collectedPaths);
+        }
+
+        if (!string.IsNullOrWhiteSpace(node.Session.SourcePath) && collectedPaths.Add(node.Session.SourcePath))
+        {
+            sourcePaths.Add(node.Session.SourcePath);
         }
     }
 

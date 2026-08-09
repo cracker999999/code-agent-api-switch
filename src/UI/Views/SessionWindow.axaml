@@ -140,6 +140,34 @@
       <Setter Property="BorderThickness" Value="0" />
     </Style>
 
+    <Style Selector="ToggleButton.subagent-toggle">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="#6B7280" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Content" Value="▶" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+
+    <Style Selector="ToggleButton.subagent-toggle:pointerover">
+      <Setter Property="Foreground" Value="#2563EB" />
+    </Style>
+
+    <Style Selector="ToggleButton.subagent-toggle:checked">
+      <Setter Property="Content" Value="▼" />
+    </Style>
+
   </Window.Styles>
 
   <Grid Margin="16" Background="#F3F4F6" RowDefinitions="Auto,*">
@@ -181,6 +209,7 @@
                             <Setter Property="Padding" Value="0" />
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                             <Setter Property="FocusAdorner" Value="{x:Null}" />
+                            <Setter Property="IsVisible" Value="{Binding IsVisible}" />
                             <Setter Property="Template">
                               <ControlTemplate>
                                 <Border x:Name="ItemBorder"
@@ -203,13 +232,25 @@
                         </ListBox.ItemContainerTheme>
                         <ListBox.ItemTemplate>
                           <DataTemplate>
-                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                              <TextBlock Text="{Binding Title}"
+                            <Grid ColumnDefinitions="Auto,18,*,Auto" RowDefinitions="Auto,Auto">
+                              <Border Grid.RowSpan="2"
+                                      Width="{Binding IndentWidth}"
+                                      Background="Transparent" />
+                              <ToggleButton Grid.Column="1"
+                                            Classes="subagent-toggle"
+                                            VerticalAlignment="Top"
+                                            IsChecked="{Binding IsExpanded, Mode=OneWay}"
+                                            IsVisible="{Binding HasChildren}"
+                                            ToolTip.Tip="展开或收起 subagent"
+                                            Click="SubagentToggleButton_Click" />
+                              <TextBlock Grid.Column="2"
+                                         Text="{Binding Title}"
+                                         ToolTip.Tip="{Binding Title}"
                                          FontSize="13"
                                          FontWeight="SemiBold"
                                          Foreground="#111827"
                                          TextTrimming="CharacterEllipsis" />
-                              <TextBlock Grid.Column="1"
+                              <TextBlock Grid.Column="3"
                                          Margin="8,0,0,0"
                                          Text="{Binding FileSize}"
                                          FontSize="11"
@@ -217,8 +258,10 @@
                                          VerticalAlignment="Center"
                                          HorizontalAlignment="Right" />
                               <TextBlock Grid.Row="1"
+                                         Grid.Column="2"
+                                         Grid.ColumnSpan="2"
                                          Margin="0,6,0,0"
-                                         Text="{Binding RelativeTime}"
+                                         Text="{Binding SecondaryText}"
                                          Foreground="#6B7280" />
                             </Grid>
                           </DataTemplate>

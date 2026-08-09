@@ -22,11 +22,34 @@ SessionWindow SHALL 采用左右分栏布局，左侧 ~300px 显示会话列表�
 
 #### Scenario: 会话列表加载
 - **WHEN** 选项卡切换或窗口首次加载
-- **THEN** 左侧面板页眉显示会话总数，列表按 LastActiveAt 降序显示所有会话，每项显示标题和相对时间
+- **THEN** 左侧面板页眉显示会话总数，列表按 LastActiveAt 降序显示会话，每项显示标题和相对时间
 
 #### Scenario: 无会话
 - **WHEN** 扫描结果为空
 - **THEN** 列表区域显示空状态
+
+### Requirement: Codex 子代理分组
+WPF 与 Avalonia 的 Codex 会话列表 SHALL 根据 ParentSessionId 将子代理折叠到对应主会话下，Claude Code 与 Grok 的列表行为保持不变。
+
+#### Scenario: 主会话包含子代理
+- **WHEN** Codex 扫描结果中存在 ParentSessionId 指向主会话 SessionId 的子代理
+- **THEN** 列表默认只显示主会话，主会话摘要显示子代理数量，点击展开按钮后按缩进层级显示子代理
+
+#### Scenario: 显示子代理身份
+- **WHEN** 用户展开主会话的子代理
+- **THEN** 子代理项使用 agent_path 的末级任务名作为标题，并在摘要中显示“subagent”和可用的 agent_nickname
+
+#### Scenario: 子代理活动更新主会话排序
+- **WHEN** 子代理的 LastActiveAt 晚于其主会话
+- **THEN** 主会话使用自身及全部后代中的最新活动时间参与排序和相对时间显示
+
+#### Scenario: 父会话不存在
+- **WHEN** 子代理的 ParentSessionId 在当前扫描结果中找不到对应会话
+- **THEN** 该子代理作为独立顶层项显示，不从列表中隐藏
+
+#### Scenario: 非 Codex 会话列表
+- **WHEN** 用户查看 Claude Code 或 Grok 选项卡
+- **THEN** 会话继续按原有项目分组和平铺方式显示，不启用父子折叠
 
 ### Requirement: 选项卡切换重新扫描
 切换 Codex/Claude 选项卡 SHALL 重新扫描对应目录并刷新列表。
@@ -66,7 +89,7 @@ SessionWindow SHALL 采用左右分栏布局，左侧 ~300px 显示会话列表�
 
 #### Scenario: 确认删除会话
 - **WHEN** 用户点击删除按钮并在确认对话框中确认
-- **THEN** 系统调用 DeleteSession 删除文件，刷新左侧会话列表，右侧详情面板清空
+- **THEN** 系统调用 DeleteSession 删除文件，Codex 会话同时删除其全部后代子代理，然后刷新左侧会话列表并清空右侧详情面板
 
 #### Scenario: 取消删除
 - **WHEN** 用户点击删除按钮后在确认对话框中取消
@@ -108,4 +131,3 @@ SessionWindow SHALL 采用左右分栏布局，左侧 ~300px 显示会话列表�
 #### Scenario: 切换到 Grok 选项卡
 - **WHEN** 用户点击 Grok 选项卡
 - **THEN** 系统调用 ScanGrokSessions() 并刷新左侧会话列表
-
