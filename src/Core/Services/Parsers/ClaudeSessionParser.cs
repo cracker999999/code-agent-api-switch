@@ -19,6 +19,7 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
         string? sessionId = null;
         string? projectDir = null;
         string? customTitle = null;
+        string? aiTitle = null;
         DateTime? createdAt = null;
         DateTime? lastActiveAt = null;
         var hasMessage = false;
@@ -46,7 +47,7 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
             hasMessage = true;
         }
 
-        // 从尾部行提取 customTitle 和最后活跃时间
+        // 从尾部行提取会话标题和最后活跃时间
         for (var index = tailLines.Count - 1; index >= 0; index--)
         {
             var line = tailLines[index];
@@ -69,6 +70,17 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
 
             customTitle ??= JsonFieldExtractor.FindString(root, "customTitle");
 
+            // 未手动重命名时，使用 Claude 自动生成的 aiTitle 作为会话标题。
+            if (string.IsNullOrWhiteSpace(aiTitle) &&
+                JsonFieldExtractor.TryGetString(root, "type", out var aiTitleLineType) &&
+                string.Equals(aiTitleLineType, "ai-title", StringComparison.OrdinalIgnoreCase) &&
+                JsonFieldExtractor.TryGetString(root, "aiTitle", out var parsedAiTitle))
+            {
+                aiTitle = parsedAiTitle;
+            }
+
+            aiTitle ??= JsonFieldExtractor.FindString(root, "aiTitle");
+
             // 查找最后活跃时间 (多个可能的字段名)
             lastActiveAt ??= FindDateTimeMultiple(root, "last_active_at", "lastActiveAt", "timestamp");
 
@@ -89,6 +101,7 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
         var resolvedLastActiveAt = lastActiveAt ?? resolvedCreatedAt;
         var title = FirstNonEmpty(
             NormalizeTitleText(customTitle),
+            NormalizeTitleText(aiTitle),
             BuildSessionTitle(projectDir, string.Empty));
 
         return new SessionMeta
@@ -161,7 +174,7 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
         var timestamp = FindDateTimeMultiple(root, "timestamp", "created_at", "createdAt", "last_active_at", "lastActiveAt")
             ?? DateTime.Now;
 
-        if (!TryExtractContent(messageRoot, out var content, out var allToolResults))
+        if (!TryExtractContent(messageRoot, out var content, out var imageDataUrls, out var allToolResults))
         {
             return false;
         }
@@ -176,6 +189,7 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
         {
             Role = NormalizeRole(role),
             Content = content,
+            ImageDataUrls = imageDataUrls,
             Timestamp = timestamp
         };
 
@@ -198,9 +212,14 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
     /// <summary>
     /// 提取 Claude 消息内容
     /// </summary>
-    private static bool TryExtractContent(JsonElement messageRoot, out string content, out bool allToolResults)
+    private static bool TryExtractContent(
+        JsonElement messageRoot,
+        out string content,
+        out List<string> imageDataUrls,
+        out bool allToolResults)
     {
         content = string.Empty;
+        imageDataUrls = new List<string>();
         allToolResults = false;
 
         if (!JsonFieldExtractor.TryGetProperty(messageRoot, "content", out var contentElement))
@@ -245,6 +264,12 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
                 }
             }
 
+            if (TryExtractImageDataUrl(item, out var imageDataUrl))
+            {
+                imageDataUrls.Add(imageDataUrl);
+                continue;
+            }
+
             var part = ExtractText(item);
             if (!string.IsNullOrWhiteSpace(part))
             {
@@ -254,7 +279,30 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
 
         allToolResults = totalStructuredItems > 0 && toolResultItems == totalStructuredItems;
         content = string.Join(Environment.NewLine, parts).Trim();
-        return !string.IsNullOrWhiteSpace(content);
+        return !string.IsNullOrWhiteSpace(content) || imageDataUrls.Count > 0;
+    }
+
+    /// <summary>
+    /// 提取 Claude image 内容块并转换为渲染层使用的 data URL
+    /// </summary>
+    private static bool TryExtractImageDataUrl(JsonElement item, out string imageDataUrl)
+    {
+        imageDataUrl = string.Empty;
+        if (item.ValueKind != JsonValueKind.Object ||
+            !JsonFieldExtractor.TryGetString(item, "type", out var itemType) ||
+            !string.Equals(itemType, "image", StringComparison.OrdinalIgnoreCase) ||
+            !TryGetObject(item, "source", out var source) ||
+            !JsonFieldExtractor.TryGetString(source, "type", out var sourceType) ||
+            !string.Equals(sourceType, "base64", StringComparison.OrdinalIgnoreCase) ||
+            !JsonFieldExtractor.TryGetString(source, "media_type", out var mediaType) ||
+            !JsonFieldExtractor.TryGetString(source, "data", out var imageData))
+        {
+            return false;
+        }
+
+        // Claude 记录的是 MIME 类型和原始 Base64，现有图片控件接收完整 data URL。
+        imageDataUrl = $"data:{mediaType.Trim()};base64,{imageData.Trim()}";
+        return true;
     }
 
     /// <summary>

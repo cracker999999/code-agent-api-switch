@@ -46,21 +46,34 @@ public static class SessionFileUtils
             }
         }
 
-        var seekPosition = Math.Max(0, fileLength - TailReadWindowBytes);
-        var tailCandidateLines = new List<string>();
-        using (var tailStream = OpenReadShared(filePath))
+        var tailReadWindowBytes = (long)TailReadWindowBytes;
+        List<string> tailCandidateLines;
+        while (true)
         {
-            tailStream.Seek(seekPosition, SeekOrigin.Begin);
-            using var tailReader = new StreamReader(tailStream);
-            while (tailReader.ReadLine() is { } line)
+            var seekPosition = Math.Max(0, fileLength - tailReadWindowBytes);
+            tailCandidateLines = new List<string>();
+            using (var tailStream = OpenReadShared(filePath))
             {
-                tailCandidateLines.Add(line);
+                tailStream.Seek(seekPosition, SeekOrigin.Begin);
+                using var tailReader = new StreamReader(tailStream);
+                while (tailReader.ReadLine() is { } line)
+                {
+                    tailCandidateLines.Add(line);
+                }
             }
-        }
 
-        if (seekPosition > 0 && tailCandidateLines.Count > 0)
-        {
-            tailCandidateLines.RemoveAt(0);
+            if (seekPosition > 0 && tailCandidateLines.Count > 0)
+            {
+                tailCandidateLines.RemoveAt(0);
+            }
+
+            if (seekPosition == 0 || tailCandidateLines.Count >= tailLineCount)
+            {
+                break;
+            }
+
+            // JSONL 单行可能包含大体积图片数据，逐步扩窗以确保真正取得末尾指定行数。
+            tailReadWindowBytes = Math.Min(fileLength, tailReadWindowBytes * 2);
         }
 
         var tailStart = Math.Max(0, tailCandidateLines.Count - tailLineCount);

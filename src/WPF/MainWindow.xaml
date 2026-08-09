@@ -117,13 +117,6 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button x:Name="PromptButton"
-                        Style="{StaticResource RoundedAddButtonStyle}"
-                        Width="70"
-                        Height="38"
-                        Margin="0,0,8,0"
-                        FontSize="12"
-                        Click="PromptButton_Click">Prompt</Button>
                 <Button x:Name="SessionManagerButton"
                         Style="{StaticResource RoundedAddButtonStyle}"
                         Width="88"
@@ -131,6 +124,13 @@
                         Margin="0,0,8,0"
                         FontSize="12"
                         Click="SessionManagerButton_Click">会话管理</Button>
+                <Button x:Name="PromptButton"
+                        Style="{StaticResource RoundedAddButtonStyle}"
+                        Width="70"
+                        Height="38"
+                        Margin="0,0,8,0"
+                        FontSize="12"
+                        Click="PromptButton_Click">Prompt</Button>
                 <Button x:Name="SettingsButton"
                         Style="{StaticResource RoundedAddButtonStyle}"
                         Width="38"

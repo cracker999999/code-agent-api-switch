@@ -69,11 +69,11 @@ TBD - created by archiving change session-management. Update Purpose after archi
 
 #### Scenario: 解析尾部行
 - **WHEN** 读取文件后 30 行（反向）
-- **THEN** 提取 `last_active_at`、`summary`、`custom-title`
+- **THEN** 提取 `last_active_at`、`summary`、`custom-title`、`ai-title`
 
 #### Scenario: 标题优先级
 - **WHEN** 确定 Claude 会话标题
-- **THEN** 按 custom-title > 目录基名 的优先级选取
+- **THEN** 按 custom-title > ai-title > 目录基名 的优先级选取
 
 #### Scenario: 角色重分类
 - **WHEN** 遇到 role=user 但内容项全为 `tool_result` 的消息
