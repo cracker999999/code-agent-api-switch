@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using APISwitch.Extensions;
 using APISwitch.UI.Services;
 using APISwitch.UI.Views;
 using APISwitch.Models;
@@ -28,6 +29,9 @@ public partial class MainWindow : Window
 
     private SessionWindow? _sessionWindow;
     private int _currentToolType;
+    private List<Provider> _allProviders = [];
+    private string _searchKeyword = string.Empty;
+    private AppSettings _cachedSettings;
 
     private static readonly DataFormat<string> ProviderDragFormat =
         DataFormat.CreateStringApplicationFormat("APISwitch.Provider");
@@ -38,6 +42,7 @@ public partial class MainWindow : Window
         _configWriterService = configWriterService;
         _appSettingsService = appSettingsService;
         _apiTestService = new ApiTestService(_appSettingsService);
+        _cachedSettings = _appSettingsService.Load();
 
         _currentToolType = 0;
         InitializeComponent();
@@ -559,19 +564,54 @@ public partial class MainWindow : Window
     private void LoadProviders()
     {
         _providerDragController.ClearGeometry();
-        var providers = _databaseService.GetProviders(_currentToolType);
-        for (var index = 0; index < providers.Count; index++)
+        _allProviders = _databaseService.GetProviders(_currentToolType);
+        for (var index = 0; index < _allProviders.Count; index++)
         {
-            providers[index].CanMoveUp = index > 0;
-            providers[index].CanMoveDown = index < providers.Count - 1;
+            _allProviders[index].CanMoveUp = index > 0;
+            _allProviders[index].CanMoveDown = index < _allProviders.Count - 1;
+            _allProviders[index].TestModelDisplay = _allProviders[index].GetEffectiveTestModel(_cachedSettings);
         }
 
-        ProvidersItemsControl.ItemsSource = providers;
+        ApplySearchFilter();
 
         if (global::Avalonia.Application.Current is App app)
         {
             app.RefreshTrayTooltip(_databaseService);
         }
+    }
+
+    private void ApplySearchFilter()
+    {
+        if (string.IsNullOrWhiteSpace(_searchKeyword))
+        {
+            ProvidersItemsControl.ItemsSource = _allProviders;
+            return;
+        }
+
+        var keyword = _searchKeyword.Trim();
+        var filtered = _allProviders.Where(p =>
+            p.MatchesSearchKeyword(keyword) ||
+            (p.GetEffectiveTestModel(_cachedSettings)?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+        ).ToList();
+
+        ProvidersItemsControl.ItemsSource = filtered;
+    }
+
+    private void SearchTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox textBox)
+        {
+            return;
+        }
+
+        var newKeyword = textBox.Text ?? string.Empty;
+        if (newKeyword == _searchKeyword)
+        {
+            return;
+        }
+
+        _searchKeyword = newKeyword;
+        ApplySearchFilter();
     }
 
     private async void ProviderCard_PointerPressed(object? sender, PointerPressedEventArgs e)

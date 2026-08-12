@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using APISwitch.Extensions;
 using APISwitch.Models;
 using APISwitch.Services;
 using APISwitch.Utilities;
@@ -33,6 +34,9 @@ public partial class MainWindow : Window
     private int _currentToolType;
     private readonly DispatcherTimer _providerAutoScrollTimer;
     private readonly ProviderDragController _providerDragController;
+    private List<Provider> _allProviders = [];
+    private string _searchKeyword = string.Empty;
+    private AppSettings _cachedSettings;
 
     private const string ProviderDragFormat = "APISwitch.Provider";
 
@@ -42,6 +46,7 @@ public partial class MainWindow : Window
         _configWriterService = configWriterService;
         _appSettingsService = appSettingsService;
         _apiTestService = new ApiTestService(_appSettingsService);
+        _cachedSettings = _appSettingsService.Load();
         _currentToolType = 0;
 
         InitializeComponent();
@@ -616,19 +621,54 @@ public partial class MainWindow : Window
     private void LoadProviders()
     {
         _providerDragController.ClearGeometry();
-        var providers = _databaseService.GetProviders(_currentToolType);
-        for (var index = 0; index < providers.Count; index++)
+        _allProviders = _databaseService.GetProviders(_currentToolType);
+        for (var index = 0; index < _allProviders.Count; index++)
         {
-            providers[index].CanMoveUp = index > 0;
-            providers[index].CanMoveDown = index < providers.Count - 1;
+            _allProviders[index].CanMoveUp = index > 0;
+            _allProviders[index].CanMoveDown = index < _allProviders.Count - 1;
+            _allProviders[index].TestModelDisplay = _allProviders[index].GetEffectiveTestModel(_cachedSettings);
         }
 
-        ProvidersItemsControl.ItemsSource = providers;
+        ApplySearchFilter();
 
         if (System.Windows.Application.Current is App app)
         {
             app.RefreshTrayTooltip();
         }
+    }
+
+    private void ApplySearchFilter()
+    {
+        if (string.IsNullOrWhiteSpace(_searchKeyword))
+        {
+            ProvidersItemsControl.ItemsSource = _allProviders;
+            return;
+        }
+
+        var keyword = _searchKeyword.Trim();
+        var filtered = _allProviders.Where(p =>
+            p.MatchesSearchKeyword(keyword) ||
+            (p.GetEffectiveTestModel(_cachedSettings)?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+        ).ToList();
+
+        ProvidersItemsControl.ItemsSource = filtered;
+    }
+
+    private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TextBox textBox)
+        {
+            return;
+        }
+
+        var newKeyword = textBox.Text ?? string.Empty;
+        if (newKeyword == _searchKeyword)
+        {
+            return;
+        }
+
+        _searchKeyword = newKeyword;
+        ApplySearchFilter();
     }
 
     private int GetNextSortOrder()

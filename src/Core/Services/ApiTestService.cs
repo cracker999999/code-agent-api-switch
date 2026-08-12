@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using APISwitch.Extensions;
 using APISwitch.Models;
 
 namespace APISwitch.Services;
@@ -56,9 +57,7 @@ public class ApiTestService
     {
         var settings = _settingsService.Load();
         var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.CodexEndpointPath}";
-        var model = string.IsNullOrWhiteSpace(provider.TestModel)
-            ? settings.CodexTestModel
-            : provider.TestModel.Trim();
+        var model = provider.GetEffectiveTestModel(settings);
 
         // 每次请求生成新的会话标识,避免硬编码值被服务端识别为"重放/伪造"
         var sessionId = Guid.NewGuid().ToString();
@@ -88,9 +87,7 @@ public class ApiTestService
         var settings = _settingsService.Load();
         // 真实 Claude Code 调用的是 /v1/messages?beta=true,部分中转站会校验该查询参数
         var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.ClaudeEndpointPath}";
-        var model = string.IsNullOrWhiteSpace(provider.TestModel)
-            ? settings.ClaudeTestModel
-            : provider.TestModel.Trim();
+        var model = provider.GetEffectiveTestModel(settings);
         var sessionId = Guid.NewGuid().ToString();
         var body = BuildClaudeRequestBody(model, sessionId, settings.ClaudePromptText);
 
@@ -125,9 +122,7 @@ public class ApiTestService
     {
         var settings = _settingsService.Load();
         var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.GrokEndpointPath}";
-        var model = string.IsNullOrWhiteSpace(provider.TestModel)
-            ? settings.GrokTestModel
-            : provider.TestModel.Trim();
+        var model = provider.GetEffectiveTestModel(settings);
         // 与真实 grok-shell 一致: conv/session 同一 UUID, req/agent 各独立生成
         var sessionId = Guid.NewGuid().ToString();
         var reqId = Guid.NewGuid().ToString();

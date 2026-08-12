@@ -26,6 +26,8 @@ public class Provider
 
     public string TestModel { get; set; } = string.Empty;
 
+    public string TestModelDisplay { get; set; } = string.Empty;
+
     public string Remark { get; set; } = string.Empty;
 
     public bool CanMoveUp { get; set; }
