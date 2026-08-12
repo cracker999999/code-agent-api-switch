@@ -13,6 +13,9 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
     private const int HeadLineCount = 10;
     private const int TailLineCount = 30;
 
+    // 上下文压缩事件在会话详情中显示的提示文案
+    private const string ContextCompactedNotice = "Context compacted";
+
     private static readonly Regex CodexImageOpenTagPattern = new(
         @"^\s*<image\b[^>]*>\s*$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -197,12 +200,28 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
                     continue;
                 }
 
-                if (!string.Equals(eventType, "response_item", StringComparison.OrdinalIgnoreCase))
+                if (!TryGetObject(root, "payload", out var payload))
                 {
                     continue;
                 }
 
-                if (!TryGetObject(root, "payload", out var payload))
+                // event_msg 中只关心上下文压缩事件：它本身没有正文，按发生顺序插入一条提示消息
+                if (string.Equals(eventType, "event_msg", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (IsContextCompactedEvent(payload))
+                    {
+                        messages.Add(new SessionMessage
+                        {
+                            Role = "assistant",
+                            Content = ContextCompactedNotice,
+                            Timestamp = ResolveMessageTimestamp(root, payload, filePath)
+                        });
+                    }
+
+                    continue;
+                }
+
+                if (!string.Equals(eventType, "response_item", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -217,9 +236,7 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
                     Role = role,
                     Content = content,
                     ImageDataUrls = imageDataUrls,
-                    Timestamp = TryGetDateTime(root, "timestamp")
-                        ?? TryGetDateTime(payload, "timestamp")
-                        ?? File.GetLastWriteTime(filePath)
+                    Timestamp = ResolveMessageTimestamp(root, payload, filePath)
                 });
             }
         }
@@ -229,6 +246,25 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
         }
 
         return messages;
+    }
+
+    /// <summary>
+    /// 判断 event_msg 的 payload 是否为上下文压缩事件
+    /// </summary>
+    private static bool IsContextCompactedEvent(JsonElement payload)
+    {
+        return JsonFieldExtractor.TryGetString(payload, "type", out var payloadType) &&
+               string.Equals(payloadType, "context_compacted", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 消息时间优先取行级 timestamp，其次 payload.timestamp，最后回退文件修改时间
+    /// </summary>
+    private static DateTime ResolveMessageTimestamp(JsonElement root, JsonElement payload, string filePath)
+    {
+        return TryGetDateTime(root, "timestamp")
+            ?? TryGetDateTime(payload, "timestamp")
+            ?? File.GetLastWriteTime(filePath);
     }
 
     /// <summary>

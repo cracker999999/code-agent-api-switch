@@ -52,6 +52,10 @@ TBD - created by archiving change session-management. Update Purpose after archi
 - **WHEN** 遇到 `type=response_item` 且 `payload.type=function_call_output` 的行
 - **THEN** 角色设为 tool，内容从 `payload.output` 获取
 
+#### Scenario: 解析 event_msg context_compacted
+- **WHEN** 遇到 `type=event_msg` 且 `payload.type=context_compacted` 的行
+- **THEN** 在消息流的对应位置插入一条角色为 assistant、内容为 `Context compacted` 的消息
+
 #### Scenario: 会话 ID 回退
 - **WHEN** 未找到 `session_meta` 行
 - **THEN** 从文件名匹配 UUID 正则作为 SessionId
