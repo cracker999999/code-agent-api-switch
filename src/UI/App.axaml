@@ -46,17 +46,26 @@
     <!-- 滑块最小尺寸，避免内容过长时滑块被压缩到难以拖动 -->
     <Style Selector="ScrollBar:vertical /template/ Thumb">
       <Setter Property="MinHeight" Value="30" />
+      <Setter Property="RenderTransform" Value="none" />
+    </Style>
+    <Style Selector="ScrollBar:horizontal /template/ Thumb">
+      <Setter Property="MinWidth" Value="30" />
+      <Setter Property="RenderTransform" Value="none" />
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ Thumb /template/ Border">
       <Setter Property="Margin" Value="2,0" />
       <Setter Property="CornerRadius" Value="4" />
       <Setter Property="Background" Value="#B0B8C4" />
     </Style>
-    <Style Selector="ScrollBar:horizontal /template/ Thumb">
-      <Setter Property="MinWidth" Value="30" />
+    <Style Selector="ScrollBar:horizontal /template/ Thumb /template/ Border">
       <Setter Property="Margin" Value="0,2" />
       <Setter Property="CornerRadius" Value="4" />
       <Setter Property="Background" Value="#B0B8C4" />
     </Style>
-    <Style Selector="ScrollBar /template/ Thumb:pointerover">
+    <Style Selector="ScrollBar:vertical /template/ Thumb:pointerover /template/ Border">
+      <Setter Property="Background" Value="#8A94A6" />
+    </Style>
+    <Style Selector="ScrollBar:horizontal /template/ Thumb:pointerover /template/ Border">
       <Setter Property="Background" Value="#8A94A6" />
     </Style>
   </Application.Styles>

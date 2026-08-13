@@ -134,7 +134,7 @@
                            VerticalAlignment="Center"
                            Foreground="#9CA3AF"
                            FontSize="16"
-                           Cursor="SizeAll"
+                           Cursor="Hand"
                            PointerPressed="ProviderDragHandle_PointerPressed"
                            PointerMoved="ProviderDragHandle_PointerMoved"
                            PointerReleased="ProviderDragHandle_PointerReleased"

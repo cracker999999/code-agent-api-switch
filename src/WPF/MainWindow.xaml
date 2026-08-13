@@ -241,7 +241,7 @@
                                            VerticalAlignment="Center"
                                            Foreground="#9CA3AF"
                                            FontSize="16"
-                                           Cursor="SizeAll"
+                                           Cursor="Hand"
                                            PreviewMouseLeftButtonDown="ProviderDragHandle_PreviewMouseLeftButtonDown"
                                            PreviewMouseMove="ProviderDragHandle_PreviewMouseMove"
                                            PreviewMouseLeftButtonUp="ProviderDragHandle_PreviewMouseLeftButtonUp"
