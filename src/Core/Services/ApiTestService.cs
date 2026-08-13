@@ -12,6 +12,7 @@ namespace APISwitch.Services;
 public class ApiTestService
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+    private static readonly string FallbackGrokAgentId = Guid.NewGuid().ToString();
 
     private readonly AppSettingsService _settingsService;
 
@@ -123,10 +124,10 @@ public class ApiTestService
         var settings = _settingsService.Load();
         var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.GrokEndpointPath}";
         var model = provider.GetEffectiveTestModel(settings);
-        // 与真实 grok-shell 一致: conv/session 同一 UUID, req/agent 各独立生成
+        // 与真实 grok-shell 一致: conv/session 使用同一 UUID,req 每次生成,agent 使用本机持久 ID
         var sessionId = Guid.NewGuid().ToString();
         var reqId = Guid.NewGuid().ToString();
-        var agentId = Guid.NewGuid().ToString();
+        var agentId = GetGrokAgentId();
         var body = BuildGrokRequestBody(model, settings.GrokPromptText);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
@@ -150,25 +151,51 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("x-grok-agent-id", agentId);
         request.Headers.TryAddWithoutValidation("x-grok-turn-idx", "1");
 
-        return await SendAndReadFirstChunkAsync(request);
+        // Grok Responses 流必须读到终态。只读取头部后主动断开会让中转站将请求记为 client_gone。
+        return await SendAndReadFirstChunkAsync(request, waitForTerminalEvent: true);
     }
 
-    private static async Task<ApiTestResult> SendAndReadFirstChunkAsync(HttpRequestMessage request)
+    private static string GetGrokAgentId()
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var agentIdPath = Path.Combine(userProfile, ".grok", "agent_id");
+        if (!File.Exists(agentIdPath))
+        {
+            return FallbackGrokAgentId;
+        }
+
+        var value = File.ReadAllText(agentIdPath, Encoding.UTF8).Trim();
+        return Guid.TryParse(value, out var agentId)
+            ? agentId.ToString()
+            : FallbackGrokAgentId;
+    }
+
+    private static async Task<ApiTestResult> SendAndReadFirstChunkAsync(
+        HttpRequestMessage request,
+        bool waitForTerminalEvent = false)
     {
         using var client = new HttpClient
         {
             Timeout = Timeout
         };
+        // ResponseHeadersRead 返回后 HttpClient.Timeout 不再约束流读取,Grok 需要额外限制完整测试时长。
+        using var streamTimeout = waitForTerminalEvent
+            ? new CancellationTokenSource(Timeout)
+            : null;
+        var cancellationToken = streamTimeout?.Token ?? CancellationToken.None;
 
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 var errorMessage = string.IsNullOrWhiteSpace(errorContent)
                     ? response.ReasonPhrase ?? "请求失败"
                     : errorContent;
@@ -186,7 +213,7 @@ public class ApiTestService
             var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
             if (!contentType.Contains("event-stream", StringComparison.OrdinalIgnoreCase))
             {
-                var jsonBody = await response.Content.ReadAsStringAsync();
+                var jsonBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 var extracted = TryExtractErrorMessage(jsonBody);
                 return new ApiTestResult
                 {
@@ -195,10 +222,10 @@ public class ApiTestService
                 };
             }
 
-            using var stream = await response.Content.ReadAsStreamAsync();
-            return await InspectSseHeadAsync(stream, stopwatch);
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            return await InspectSseAsync(stream, stopwatch, waitForTerminalEvent, cancellationToken);
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
         {
             return new ApiTestResult
             {
@@ -224,13 +251,17 @@ public class ApiTestService
         }
     }
 
-    // 读取 SSE 流头部若干行用于判定真实结果。
+    // Codex/Claude 读取 SSE 流头部若干行,Grok 则持续读取到 Responses API 终态。
     // 有的中转站会返回 200 + text/event-stream,但实际内容是:
     //   {"id":"chatcmpl-dummy",...,"choices":[{"delta":{"content":""}}]}  ← 占位空 chunk
     //   {"type":"error","error":{...},"status_code":429,...}              ← 真正的错误
     // 仅凭"读到第一个字节"判成功会被这种伪流欺骗,因此需要解析前 N 行 JSON,
     // 命中 error 才能返回失败。
-    private static async Task<ApiTestResult> InspectSseHeadAsync(Stream stream, Stopwatch stopwatch)
+    private static async Task<ApiTestResult> InspectSseAsync(
+        Stream stream,
+        Stopwatch stopwatch,
+        bool waitForTerminalEvent,
+        CancellationToken cancellationToken)
     {
         const int MaxBytes = 16 * 1024;
         const int MaxLines = 50;
@@ -240,10 +271,12 @@ public class ApiTestService
         var totalBytes = 0;
         var linesRead = 0;
         var hasAnyPayload = false;
+        var terminalEventReceived = false;
+        long? firstPayloadResponseTimeMs = null;
 
-        while (linesRead < MaxLines && totalBytes < MaxBytes)
+        while (waitForTerminalEvent || (linesRead < MaxLines && totalBytes < MaxBytes))
         {
-            var line = await reader.ReadLineAsync();
+            var line = await reader.ReadLineAsync(cancellationToken);
             if (line is null)
             {
                 // 流提前结束
@@ -270,7 +303,17 @@ public class ApiTestService
                 ? trimmed.Substring(5).TrimStart()
                 : trimmed;
 
-            if (payload.Length == 0 || payload == "[DONE]") continue;
+            if (payload.Length == 0) continue;
+            if (payload == "[DONE]")
+            {
+                if (waitForTerminalEvent)
+                {
+                    terminalEventReceived = hasAnyPayload;
+                    break;
+                }
+
+                continue;
+            }
             if (payload[0] != '{' && payload[0] != '[') continue;
 
             JsonNode? node;
@@ -285,6 +328,7 @@ public class ApiTestService
             if (node is null) continue;
 
             hasAnyPayload = true;
+            firstPayloadResponseTimeMs ??= stopwatch.ElapsedMilliseconds;
 
             var errorMessage = TryExtractSseErrorMessage(node);
             if (errorMessage is not null)
@@ -295,6 +339,27 @@ public class ApiTestService
                     Message = errorMessage
                 };
             }
+
+            if (waitForTerminalEvent)
+            {
+                var eventType = node["type"]?.GetValue<string>();
+                if (string.Equals(eventType, "response.completed", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(eventType, "response.incomplete", StringComparison.OrdinalIgnoreCase))
+                {
+                    terminalEventReceived = true;
+                    // 终态后继续读到 [DONE] 或 EOF,确保服务端正常结束响应,避免主动断流。
+                    continue;
+                }
+            }
+        }
+
+        if (waitForTerminalEvent && hasAnyPayload && !terminalEventReceived)
+        {
+            return new ApiTestResult
+            {
+                Success = false,
+                Message = "Grok 流提前结束，未收到 response.completed 或 response.incomplete"
+            };
         }
 
         if (hasAnyPayload)
@@ -304,7 +369,9 @@ public class ApiTestService
             {
                 Success = true,
                 Message = string.Empty,
-                ResponseTimeMs = stopwatch.ElapsedMilliseconds
+                ResponseTimeMs = waitForTerminalEvent
+                    ? firstPayloadResponseTimeMs
+                    : stopwatch.ElapsedMilliseconds
             };
         }
 
@@ -316,15 +383,16 @@ public class ApiTestService
     }
 
     // 识别 SSE 中的错误事件。命中规则:
-    // 1) 顶层 type == "error"
-    // 2) 顶层存在 error 对象,且含 message / type 字段
+    // 1) 顶层 type == "error" 或 "response.failed"
+    // 2) 顶层或 response 内存在 error 对象,且含 message / type 字段
     // 3) 顶层存在 status_code 且为非 2xx
     private static string? TryExtractSseErrorMessage(JsonNode node)
     {
         var typeValue = node["type"]?.GetValue<string>();
         var isErrorType = string.Equals(typeValue, "error", StringComparison.OrdinalIgnoreCase);
+        var isFailedResponse = string.Equals(typeValue, "response.failed", StringComparison.OrdinalIgnoreCase);
 
-        var errorNode = node["error"];
+        var errorNode = node["error"] ?? node["response"]?["error"];
         var hasErrorObject = errorNode is JsonObject;
 
         int? statusCode = null;
@@ -336,7 +404,7 @@ public class ApiTestService
         }
         var hasBadStatus = statusCode.HasValue && (statusCode.Value < 200 || statusCode.Value >= 300);
 
-        if (!isErrorType && !hasErrorObject && !hasBadStatus) return null;
+        if (!isErrorType && !isFailedResponse && !hasErrorObject && !hasBadStatus) return null;
 
         // 优先取 error.message
         var message = errorNode?["message"]?.GetValue<string>();
