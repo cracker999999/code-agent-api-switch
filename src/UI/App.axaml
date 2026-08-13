@@ -17,12 +17,14 @@
       <Setter Property="Width" Value="12" />
       <Setter Property="MinWidth" Value="12" />
       <Setter Property="MaxWidth" Value="12" />
+      <Setter Property="Background" Value="Transparent" />
     </Style>
 
     <Style Selector="ScrollBar:horizontal">
       <Setter Property="Height" Value="12" />
       <Setter Property="MinHeight" Value="12" />
       <Setter Property="MaxHeight" Value="12" />
+      <Setter Property="Background" Value="Transparent" />
     </Style>
 
     <!-- 隐藏滚动条两端的箭头按钮，使滑块可以到达轨道顶端和底端 -->
@@ -44,9 +46,18 @@
     <!-- 滑块最小尺寸，避免内容过长时滑块被压缩到难以拖动 -->
     <Style Selector="ScrollBar:vertical /template/ Thumb">
       <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Margin" Value="2,0" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="#B0B8C4" />
     </Style>
     <Style Selector="ScrollBar:horizontal /template/ Thumb">
       <Setter Property="MinWidth" Value="30" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="#B0B8C4" />
+    </Style>
+    <Style Selector="ScrollBar /template/ Thumb:pointerover">
+      <Setter Property="Background" Value="#8A94A6" />
     </Style>
   </Application.Styles>
 </Application>
