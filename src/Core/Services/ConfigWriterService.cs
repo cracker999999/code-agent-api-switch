@@ -71,15 +71,11 @@ public class ConfigWriterService
         var escapedBaseUrl = EscapeToml(baseUrl);
         var replacementLine = $"base_url = \"{escapedBaseUrl}\"";
 
-        var updatedSection = Regex.Replace(
-            sectionMatch.Value,
-            @"(?m)^\s*base_url\s*=\s*""[^""]*""\s*$",
-            replacementLine);
-
-        if (updatedSection == sectionMatch.Value)
-        {
-            updatedSection = sectionMatch.Value.TrimEnd() + Environment.NewLine + replacementLine + Environment.NewLine;
-        }
+        var baseUrlPattern = @"(?m)^\s*base_url\s*=\s*""[^""]*""\s*$";
+        // 新旧值相同时替换结果不变，因此必须单独判断字段是否存在。
+        var updatedSection = Regex.IsMatch(sectionMatch.Value, baseUrlPattern)
+            ? Regex.Replace(sectionMatch.Value, baseUrlPattern, replacementLine)
+            : sectionMatch.Value.TrimEnd() + Environment.NewLine + replacementLine + Environment.NewLine;
 
         var updatedContent = content.Remove(sectionMatch.Index, sectionMatch.Length)
             .Insert(sectionMatch.Index, updatedSection);
@@ -228,5 +224,4 @@ public class ConfigWriterService
         return beforeSection + section + afterSection;
     }
 }
-
 
