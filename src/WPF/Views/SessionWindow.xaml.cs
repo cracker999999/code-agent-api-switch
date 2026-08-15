@@ -19,6 +19,11 @@ public partial class SessionWindow : Window
     private int _loadMessagesVersion;
     private double _sessionListWheelStepRemainder;
     private double _messagesWheelStepRemainder;
+    private List<SessionListItem> _allSessionItems = [];
+    private int _allSubagentCount;
+    private string _searchKeyword = string.Empty;
+
+    public bool IsSessionSearchActive => !string.IsNullOrWhiteSpace(_searchKeyword);
 
     public SessionWindow(string? initialProviderId = null)
     {
@@ -232,24 +237,24 @@ public partial class SessionWindow : Window
         _loadMessagesVersion++;
         SessionListBox.SelectedItem = null;
         SessionListBox.ItemsSource = null;
+        _allSessionItems = [];
+        _allSubagentCount = 0;
         SessionCountTextBlock.Text = "会话（加载中...）";
         SessionEmptyTextBlock.Visibility = Visibility.Collapsed;
         ResetDetailPanel();
 
-        List<SessionMeta> sessions;
         List<SessionListItem> items;
         int subagentCount;
         try
         {
-            (sessions, items, subagentCount) = await Task.Run(() =>
+            (items, subagentCount) = await Task.Run(() =>
             {
                 var scannedSessions = SessionService.IsCodex(targetProviderId)
                     ? _sessionService.ScanCodexSessions()
                     : SessionService.IsClaude(targetProviderId)
                         ? _sessionService.ScanClaudeSessions()
                         : _sessionService.ScanGrokSessions();
-                var sessionList = SessionListBuilder.BuildItems(targetProviderId, scannedSessions);
-                return (scannedSessions, sessionList.Items, sessionList.SubagentCount);
+                return SessionListBuilder.BuildItems(targetProviderId, scannedSessions);
             });
         }
         catch (Exception ex)
@@ -260,18 +265,52 @@ public partial class SessionWindow : Window
                 "错误",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Error);
-            sessions = new List<SessionMeta>();
             items = new List<SessionListItem>();
             subagentCount = 0;
         }
 
-        var groupedView = CollectionViewSource.GetDefaultView(items);
+        _allSessionItems = items;
+        _allSubagentCount = subagentCount;
+        ApplySearchFilter();
+    }
+
+    private void SessionSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TextBox textBox)
+        {
+            return;
+        }
+
+        var newKeyword = textBox.Text ?? string.Empty;
+        if (newKeyword == _searchKeyword)
+        {
+            return;
+        }
+
+        _searchKeyword = newKeyword;
+        _selectedSession = null;
+        _loadMessagesVersion++;
+        SessionListBox.SelectedItem = null;
+        ResetDetailPanel();
+        ApplySearchFilter();
+    }
+
+    private void ApplySearchFilter()
+    {
+        var isSearchActive = IsSessionSearchActive;
+        var filteredItems = SessionListBuilder.FilterItems(_allSessionItems, _searchKeyword);
+        var subagentCount = isSearchActive
+            ? filteredItems.Count(item => item.Session.IsSubagent)
+            : _allSubagentCount;
+
+        var groupedView = CollectionViewSource.GetDefaultView(filteredItems);
         groupedView.GroupDescriptions.Clear();
         groupedView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(SessionListItem.ProjectGroupName)));
 
         SessionListBox.ItemsSource = groupedView;
-        SessionCountTextBlock.Text = SessionListBuilder.BuildCountText(sessions.Count, subagentCount);
-        SessionEmptyTextBlock.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        SessionCountTextBlock.Text = SessionListBuilder.BuildCountText(filteredItems.Count, subagentCount);
+        SessionEmptyTextBlock.Text = isSearchActive ? "未找到匹配会话" : "暂无会话";
+        SessionEmptyTextBlock.Visibility = filteredItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ResetDetailPanel()

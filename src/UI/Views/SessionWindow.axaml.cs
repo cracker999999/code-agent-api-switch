@@ -23,6 +23,9 @@ public partial class SessionWindow : Window
     private int _loadMessagesVersion;
     private ListBox? _selectedGroupListBox;
     private bool _isSwitchingSelection;
+    private List<SessionListItem> _allSessionItems = [];
+    private int _allSubagentCount;
+    private string _searchKeyword = string.Empty;
 
     public SessionWindow(string? initialProviderId = null)
     {
@@ -287,25 +290,25 @@ public partial class SessionWindow : Window
         _selectedGroupListBox = null;
 
         SessionGroupsItemsControl.ItemsSource = Array.Empty<SessionGroupItem>();
+        _allSessionItems = [];
+        _allSubagentCount = 0;
         SessionCountTextBlock.Text = "会话列表（加载中...）";
         SessionEmptyTextBlock.IsVisible = false;
         ResetDetailPanel();
 
-        List<SessionMeta> sessions;
         List<SessionListItem> items;
         int subagentCount;
 
         try
         {
-            (sessions, items, subagentCount) = await Task.Run(() =>
+            (items, subagentCount) = await Task.Run(() =>
             {
                 var scannedSessions = SessionService.IsCodex(targetProviderId)
                     ? _sessionService.ScanCodexSessions()
                     : SessionService.IsClaude(targetProviderId)
                         ? _sessionService.ScanClaudeSessions()
                         : _sessionService.ScanGrokSessions();
-                var sessionList = SessionListBuilder.BuildItems(targetProviderId, scannedSessions);
-                return (scannedSessions, sessionList.Items, sessionList.SubagentCount);
+                return SessionListBuilder.BuildItems(targetProviderId, scannedSessions);
             });
         }
         catch (Exception ex)
@@ -317,7 +320,6 @@ public partial class SessionWindow : Window
             }
 
             await DialogService.ShowErrorAsync(this, "错误", $"扫描会话失败：{ex.Message}");
-            sessions = new List<SessionMeta>();
             items = new List<SessionListItem>();
             subagentCount = 0;
         }
@@ -328,9 +330,56 @@ public partial class SessionWindow : Window
             return;
         }
 
-        SessionGroupsItemsControl.ItemsSource = BuildSessionGroups(items);
-        SessionCountTextBlock.Text = SessionListBuilder.BuildCountText(sessions.Count, subagentCount);
-        SessionEmptyTextBlock.IsVisible = items.Count == 0;
+        _allSessionItems = items;
+        _allSubagentCount = subagentCount;
+        ApplySearchFilter();
+    }
+
+    private void SessionSearchTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox textBox)
+        {
+            return;
+        }
+
+        var newKeyword = textBox.Text ?? string.Empty;
+        if (newKeyword == _searchKeyword)
+        {
+            return;
+        }
+
+        _searchKeyword = newKeyword;
+        ClearSelectedSessionForSearch();
+        ApplySearchFilter();
+    }
+
+    private void ApplySearchFilter()
+    {
+        var isSearchActive = !string.IsNullOrWhiteSpace(_searchKeyword);
+        var filteredItems = SessionListBuilder.FilterItems(_allSessionItems, _searchKeyword);
+        var subagentCount = isSearchActive
+            ? filteredItems.Count(item => item.Session.IsSubagent)
+            : _allSubagentCount;
+
+        SessionGroupsItemsControl.ItemsSource = BuildSessionGroups(filteredItems, isSearchActive);
+        SessionCountTextBlock.Text = SessionListBuilder.BuildCountText(filteredItems.Count, subagentCount);
+        SessionEmptyTextBlock.Text = isSearchActive ? "未找到匹配会话" : "暂无会话";
+        SessionEmptyTextBlock.IsVisible = filteredItems.Count == 0;
+    }
+
+    private void ClearSelectedSessionForSearch()
+    {
+        _loadMessagesVersion++;
+        _isSwitchingSelection = true;
+        if (_selectedGroupListBox is not null)
+        {
+            _selectedGroupListBox.SelectedItem = null;
+        }
+
+        _isSwitchingSelection = false;
+        _selectedGroupListBox = null;
+        _selectedSession = null;
+        ResetDetailPanel();
     }
 
     private void ResetDetailPanel()
@@ -776,11 +825,16 @@ public partial class SessionWindow : Window
         }
     }
 
-    private static List<SessionGroupItem> BuildSessionGroups(IReadOnlyList<SessionListItem> items)
+    private static List<SessionGroupItem> BuildSessionGroups(
+        IReadOnlyList<SessionListItem> items,
+        bool isExpanded)
     {
         return items
             .GroupBy(item => item.ProjectGroupName)
-            .Select(group => new SessionGroupItem(group.Key, group.ToList()))
+            .Select(group => new SessionGroupItem(group.Key, group.ToList())
+            {
+                IsExpanded = isExpanded
+            })
             .ToList();
     }
 

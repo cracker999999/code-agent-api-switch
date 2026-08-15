@@ -62,6 +62,21 @@ WPF 与 Avalonia 的 Codex 会话列表 SHALL 根据 ParentSessionId 将子代�
 - **WHEN** 用户点击 Claude 选项卡
 - **THEN** 系统调用 ScanClaudeSessions() 并刷新左侧会话列表
 
+### Requirement: 会话搜索
+WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样式一致的搜索框，并按会话标题或完整 `ProjectDir` 进行不区分大小写的本地过滤。
+
+#### Scenario: 按会话标题搜索
+- **WHEN** 用户输入会话标题的部分文本
+- **THEN** 列表仅显示标题包含该文本的会话
+
+#### Scenario: 按项目目录搜索
+- **WHEN** 用户输入 `ProjectDir` 的部分路径
+- **THEN** 列表仅显示项目目录包含该路径的会话
+
+#### Scenario: 清空搜索
+- **WHEN** 用户清空搜索框
+- **THEN** 列表恢复显示当前选项卡下的全部会话
+
 ### Requirement: 选中会话异步加载消息
 选中会话列表项 SHALL 通过 Task.Run 异步加载该会话的全部消息并在右侧显示。
 

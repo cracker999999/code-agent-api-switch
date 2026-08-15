@@ -20,6 +20,33 @@ public static class SessionListBuilder
             : $"会话列表 ({sessionCount - subagentCount} 主会话 · {subagentCount} subagent)";
     }
 
+    public static List<SessionListItem> FilterItems(
+        IReadOnlyList<SessionListItem> items,
+        string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return items.ToList();
+        }
+
+        var normalizedKeyword = keyword.Trim();
+        return items
+            .Where(item =>
+                item.Title.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase) ||
+                item.Session.ProjectDir.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase))
+            // 搜索结果按会话平铺，确保折叠中的 subagent 命中后也能直接显示，且不改变原树的展开状态。
+            .Select(item => new SessionListItem(
+                item.Session,
+                item.Title,
+                item.ProjectGroupName,
+                item.SecondaryText,
+                item.FileSize,
+                depth: 0,
+                isVisible: true,
+                children: Array.Empty<SessionListItem>()))
+            .ToList();
+    }
+
     private static List<SessionListItem> BuildFlatSessionItems(IEnumerable<SessionMeta> sessions)
     {
         return sessions

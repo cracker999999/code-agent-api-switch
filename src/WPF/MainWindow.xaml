@@ -151,54 +151,10 @@
 
         <TextBox Grid.Row="1"
                  x:Name="SearchTextBox"
-                 Height="36"
+                 Style="{StaticResource SearchTextBoxStyle}"
+                 Tag="搜索供应商..."
                  Margin="0,0,0,12"
-                 Padding="4,0,12,0"
-                 FontSize="14"
-                 VerticalContentAlignment="Center"
-                 TextChanged="SearchTextBox_TextChanged">
-            <TextBox.Style>
-                <Style TargetType="TextBox">
-                    <Setter Property="Background" Value="White" />
-                    <Setter Property="BorderBrush" Value="#D1D5DB" />
-                    <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="TextBox">
-                                <Border Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        CornerRadius="8"
-                                        Padding="{TemplateBinding Padding}">
-                                    <Grid>
-                                        <TextBlock Text="搜索供应商..."
-                                                   FontSize="14"
-                                                   Foreground="#9CA3AF"
-                                                   VerticalAlignment="Center"
-                                                   Margin="6,0,0,0"
-                                                   IsHitTestVisible="False">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource TemplatedParent}}" Value="">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <ScrollViewer x:Name="PART_ContentHost"
-                                                      VerticalAlignment="Center"
-                                                      Focusable="False" />
-                                    </Grid>
-                                </Border>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </TextBox.Style>
-        </TextBox>
+                 TextChanged="SearchTextBox_TextChanged" />
 
         <ScrollViewer Grid.Row="2"
                       x:Name="ProvidersScrollViewer"
