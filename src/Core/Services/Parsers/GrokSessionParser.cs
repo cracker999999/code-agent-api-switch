@@ -843,7 +843,9 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
             using var document = JsonDocument.Parse(File.ReadAllText(summaryPath, Encoding.UTF8));
             var root = document.RootElement;
 
+            // generated_title 是用户重命名后的标题，优先于自动生成的 session_summary。
             SetIfEmpty(ref title, FirstNonEmpty(
+                GetTopLevelString(root, "generated_title"),
                 GetTopLevelString(root, "session_summary"),
                 GetTopLevelString(root, "title"),
                 GetTopLevelString(root, "summary")));
