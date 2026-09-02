@@ -47,98 +47,10 @@ public static class JsonFieldExtractor
     }
 
     /// <summary>
-    /// 递归查找字符串字段 - 在整个 JSON 树中搜索
+    /// 深度优先遍历整个 JSON 树,依次产出所有命中给定属性名的值。
+    /// 惰性求值:调用方拿到想要的值就停,不会遍历剩余节点。
     /// </summary>
-    public static string? FindString(JsonElement root, params string[] propertyNames)
-    {
-        var names = new HashSet<string>(propertyNames, StringComparer.OrdinalIgnoreCase);
-        var stack = new Stack<JsonElement>();
-        stack.Push(root);
-
-        while (stack.Count > 0)
-        {
-            var current = stack.Pop();
-            if (current.ValueKind == JsonValueKind.Object)
-            {
-                foreach (var property in current.EnumerateObject())
-                {
-                    if (names.Contains(property.Name) &&
-                        property.Value.ValueKind == JsonValueKind.String)
-                    {
-                        var value = property.Value.GetString();
-                        if (!string.IsNullOrWhiteSpace(value))
-                        {
-                            return value;
-                        }
-                    }
-
-                    if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
-                    {
-                        stack.Push(property.Value);
-                    }
-                }
-            }
-            else if (current.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in current.EnumerateArray())
-                {
-                    if (item.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
-                    {
-                        stack.Push(item);
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// 递归查找布尔字段
-    /// </summary>
-    public static bool? FindBoolean(JsonElement root, params string[] propertyNames)
-    {
-        var names = new HashSet<string>(propertyNames, StringComparer.OrdinalIgnoreCase);
-        var stack = new Stack<JsonElement>();
-        stack.Push(root);
-
-        while (stack.Count > 0)
-        {
-            var current = stack.Pop();
-            if (current.ValueKind == JsonValueKind.Object)
-            {
-                foreach (var property in current.EnumerateObject())
-                {
-                    if (names.Contains(property.Name) && property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
-                    {
-                        return property.Value.GetBoolean();
-                    }
-
-                    if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
-                    {
-                        stack.Push(property.Value);
-                    }
-                }
-            }
-            else if (current.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in current.EnumerateArray())
-                {
-                    if (item.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
-                    {
-                        stack.Push(item);
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// 递归查找 DateTime 字段
-    /// </summary>
-    public static DateTime? FindDateTime(JsonElement root, params string[] propertyNames)
+    private static IEnumerable<JsonElement> FindValues(JsonElement root, string[] propertyNames)
     {
         var names = new HashSet<string>(propertyNames, StringComparer.OrdinalIgnoreCase);
         var stack = new Stack<JsonElement>();
@@ -153,13 +65,10 @@ public static class JsonFieldExtractor
                 {
                     if (names.Contains(property.Name))
                     {
-                        var timestamp = ParseDateTime(property.Value);
-                        if (timestamp.HasValue)
-                        {
-                            return timestamp;
-                        }
+                        yield return property.Value;
                     }
 
+                    // 命中的值本身可能是容器,仍需继续下钻找同名的嵌套字段。
                     if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
                     {
                         stack.Push(property.Value);
@@ -175,6 +84,59 @@ public static class JsonFieldExtractor
                         stack.Push(item);
                     }
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 递归查找字符串字段 - 在整个 JSON 树中搜索
+    /// </summary>
+    public static string? FindString(JsonElement root, params string[] propertyNames)
+    {
+        foreach (var value in FindValues(root, propertyNames))
+        {
+            if (value.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var text = value.GetString();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                return text;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 递归查找布尔字段
+    /// </summary>
+    public static bool? FindBoolean(JsonElement root, params string[] propertyNames)
+    {
+        foreach (var value in FindValues(root, propertyNames))
+        {
+            if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                return value.GetBoolean();
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 递归查找 DateTime 字段
+    /// </summary>
+    public static DateTime? FindDateTime(JsonElement root, params string[] propertyNames)
+    {
+        foreach (var value in FindValues(root, propertyNames))
+        {
+            var timestamp = ParseDateTime(value);
+            if (timestamp.HasValue)
+            {
+                return timestamp;
             }
         }
 

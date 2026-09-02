@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -14,6 +14,12 @@ public class ApiTestService
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
     private static readonly string FallbackGrokAgentId = Guid.NewGuid().ToString();
 
+    private static ApiTestResult Fail(string message) => new()
+    {
+        Success = false,
+        Message = message
+    };
+
     private readonly AppSettingsService _settingsService;
 
     public ApiTestService(AppSettingsService settingsService)
@@ -25,20 +31,12 @@ public class ApiTestService
     {
         if (provider is null)
         {
-            return new ApiTestResult
-            {
-                Success = false,
-                Message = "供应商信息为空"
-            };
+            return Fail("供应商信息为空");
         }
 
         if (string.IsNullOrWhiteSpace(provider.BaseUrl) || string.IsNullOrWhiteSpace(provider.ApiKey))
         {
-            return new ApiTestResult
-            {
-                Success = false,
-                Message = "BaseUrl 或 ApiKey 为空"
-            };
+            return Fail("BaseUrl 或 ApiKey 为空");
         }
 
         return provider.ToolType switch
@@ -46,11 +44,7 @@ public class ApiTestService
             0 => await TestCodexAsync(provider),
             1 => await TestClaudeAsync(provider),
             2 => await TestGrokAsync(provider),
-            _ => new ApiTestResult
-            {
-                Success = false,
-                Message = "未知的工具类型"
-            }
+            _ => Fail("未知的工具类型")
         };
     }
 
@@ -200,11 +194,7 @@ public class ApiTestService
                     ? response.ReasonPhrase ?? "请求失败"
                     : errorContent;
 
-                return new ApiTestResult
-                {
-                    Success = false,
-                    Message = $"HTTP {(int)response.StatusCode}: {errorMessage}"
-                };
+                return Fail($"HTTP {(int)response.StatusCode}: {errorMessage}");
             }
 
             // 成功的流式响应应当是 text/event-stream;有的中转站会返回 200 + application/json
@@ -215,11 +205,7 @@ public class ApiTestService
             {
                 var jsonBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 var extracted = TryExtractErrorMessage(jsonBody);
-                return new ApiTestResult
-                {
-                    Success = false,
-                    Message = extracted ?? (string.IsNullOrWhiteSpace(jsonBody) ? "未收到有效流式数据" : jsonBody)
-                };
+                return Fail(extracted ?? (string.IsNullOrWhiteSpace(jsonBody) ? "未收到有效流式数据" : jsonBody));
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -227,27 +213,15 @@ public class ApiTestService
         }
         catch (OperationCanceledException)
         {
-            return new ApiTestResult
-            {
-                Success = false,
-                Message = "请求超时（30 秒）"
-            };
+            return Fail("请求超时（30 秒）");
         }
         catch (HttpRequestException ex)
         {
-            return new ApiTestResult
-            {
-                Success = false,
-                Message = $"连接失败：{ex.Message}"
-            };
+            return Fail($"连接失败：{ex.Message}");
         }
         catch (Exception ex)
         {
-            return new ApiTestResult
-            {
-                Success = false,
-                Message = ex.Message
-            };
+            return Fail(ex.Message);
         }
     }
 
@@ -333,11 +307,7 @@ public class ApiTestService
             var errorMessage = TryExtractSseErrorMessage(node);
             if (errorMessage is not null)
             {
-                return new ApiTestResult
-                {
-                    Success = false,
-                    Message = errorMessage
-                };
+                return Fail(errorMessage);
             }
 
             if (waitForTerminalEvent)
@@ -355,11 +325,7 @@ public class ApiTestService
 
         if (waitForTerminalEvent && hasAnyPayload && !terminalEventReceived)
         {
-            return new ApiTestResult
-            {
-                Success = false,
-                Message = "Grok 流提前结束，未收到 response.completed 或 response.incomplete"
-            };
+            return Fail("Grok 流提前结束，未收到 response.completed 或 response.incomplete");
         }
 
         if (hasAnyPayload)
@@ -375,11 +341,7 @@ public class ApiTestService
             };
         }
 
-        return new ApiTestResult
-        {
-            Success = false,
-            Message = "未收到有效流式数据"
-        };
+        return Fail("未收到有效流式数据");
     }
 
     // 识别 SSE 中的错误事件。命中规则:

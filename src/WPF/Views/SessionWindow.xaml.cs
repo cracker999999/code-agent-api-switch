@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows.Data;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,7 +27,7 @@ public partial class SessionWindow : Window
 
     public SessionWindow(string? initialProviderId = null)
     {
-        _currentProviderId = NormalizeProviderId(initialProviderId);
+        _currentProviderId = SessionService.NormalizeProviderId(initialProviderId);
         InitializeComponent();
         UpdateTabButtons();
         _ = ReloadSessionsAsync();
@@ -35,7 +35,7 @@ public partial class SessionWindow : Window
 
     public async Task SelectProviderAsync(string providerId)
     {
-        var targetProviderId = NormalizeProviderId(providerId);
+        var targetProviderId = SessionService.NormalizeProviderId(providerId);
         if (string.Equals(_currentProviderId, targetProviderId, StringComparison.OrdinalIgnoreCase))
         {
             return;
@@ -422,62 +422,23 @@ public partial class SessionWindow : Window
             return;
         }
 
-        var isCodexSession = _selectedSession is not null &&
-            (SessionService.IsCodex(_selectedSession.ProviderId) || SessionService.IsGrok(_selectedSession.ProviderId));
-
-        for (var index = 0; index < messages.Count; index++)
+        foreach (var view in SessionMessageViewBuilder.Build(_selectedSession?.ProviderId, messages))
         {
-            var message = messages[index];
-            if (string.Equals(message.Role, "tool", StringComparison.OrdinalIgnoreCase))
+            MessagesPanel.Children.Add(view switch
             {
-                if (message.ImageDataUrls.Count > 0)
-                {
-                    MessagesPanel.Children.Add(CreateBubbleMessageElement(
-                        message.Content,
-                        false,
-                        SessionService.GetRoleDisplayName(message.Role),
-                        message.Timestamp,
-                        message.ImageDataUrls));
-                    continue;
-                }
-
-                MessagesPanel.Children.Add(CreateToolMessageElement(message.Content, message.Timestamp));
-                continue;
-            }
-
-            if (string.Equals(message.Role, "error", StringComparison.OrdinalIgnoreCase))
-            {
-                MessagesPanel.Children.Add(CreateErrorMessageElement(message.Content, message.Timestamp));
-                continue;
-            }
-
-            if (isCodexSession &&
-                index == 0 &&
-                string.Equals(message.Role, "developer", StringComparison.OrdinalIgnoreCase))
-            {
-                MessagesPanel.Children.Add(CreateDeveloperMessageElement(message.Content, message.Timestamp));
-                continue;
-            }
-
-            var isUser = string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase);
-            MessagesPanel.Children.Add(CreateBubbleMessageElement(
-                message.Content,
-                isUser,
-                SessionService.GetRoleDisplayName(message.Role),
-                message.Timestamp,
-                message.ImageDataUrls));
+                BubbleMessageView bubble => CreateBubbleMessageElement(bubble),
+                ErrorMessageView error => CreateErrorMessageElement(error),
+                CollapsedMessageView collapsed => CreateCollapsedMessageElement(collapsed),
+                _ => throw new NotSupportedException($"未知的消息展示类型:{view.GetType().Name}")
+            });
         }
 
         MessagesScrollViewer.ScrollToHome();
     }
 
-    private static FrameworkElement CreateBubbleMessageElement(
-        string content,
-        bool isUser,
-        string roleDisplayName,
-        DateTime? timestamp,
-        IReadOnlyList<string> imageDataUrls)
+    private static FrameworkElement CreateBubbleMessageElement(BubbleMessageView view)
     {
+        var isUser = view.IsUser;
         var bubble = new Border
         {
             Background = isUser
@@ -499,17 +460,17 @@ public partial class SessionWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var roleText = CreateSelectableTextElement(
-            roleDisplayName,
+            view.Title,
             12,
             isUser ? Media.Brushes.White : CreateBrush("#3B82F6"),
             FontWeights.SemiBold);
         header.Children.Add(roleText);
 
-        AddTimestampToHeader(header, timestamp, CreateBrush(isUser ? "#DBEAFE" : "#6B7280"));
+        AddTimestampToHeader(header, view, CreateBrush(isUser ? "#DBEAFE" : "#6B7280"));
 
         container.Children.Add(header);
 
-        foreach (var imageDataUrl in imageDataUrls)
+        foreach (var imageDataUrl in view.ImageDataUrls)
         {
             var imageElement = CreateImageElementFromDataUrl(imageDataUrl);
             if (imageElement is null)
@@ -520,10 +481,10 @@ public partial class SessionWindow : Window
             container.Children.Add(imageElement);
         }
 
-        if (!string.IsNullOrWhiteSpace(content))
+        if (view.HasContent)
         {
             container.Children.Add(CreateSelectableTextElement(
-                content,
+                view.Content,
                 13,
                 isUser ? Media.Brushes.White : CreateBrush("#111827"),
                 textWrapping: TextWrapping.Wrap));
@@ -534,12 +495,7 @@ public partial class SessionWindow : Window
         return bubble;
     }
 
-    private static FrameworkElement CreateToolMessageElement(string content, DateTime? timestamp)
-    {
-        return CreateCollapsedMessageElement("工具", content, timestamp);
-    }
-
-    private static FrameworkElement CreateErrorMessageElement(string content, DateTime? timestamp)
+    private static FrameworkElement CreateErrorMessageElement(ErrorMessageView view)
     {
         var bubble = new Border
         {
@@ -562,16 +518,16 @@ public partial class SessionWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         header.Children.Add(CreateSelectableTextElement(
-            "错误",
+            view.Title,
             12,
             CreateBrush("#B91C1C"),
             FontWeights.SemiBold));
 
-        AddTimestampToHeader(header, timestamp, CreateBrush("#B91C1C"));
+        AddTimestampToHeader(header, view, CreateBrush("#B91C1C"));
 
         container.Children.Add(header);
         container.Children.Add(CreateSelectableTextElement(
-            content,
+            view.Content,
             13,
             CreateBrush("#7F1D1D"),
             textWrapping: TextWrapping.Wrap));
@@ -580,24 +536,19 @@ public partial class SessionWindow : Window
         return bubble;
     }
 
-    private static FrameworkElement CreateDeveloperMessageElement(string content, DateTime? timestamp)
-    {
-        return CreateCollapsedMessageElement("developer", content, timestamp);
-    }
-
-    private static FrameworkElement CreateCollapsedMessageElement(string title, string content, DateTime? timestamp)
+    private static FrameworkElement CreateCollapsedMessageElement(CollapsedMessageView view)
     {
         var header = new Grid();
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         header.Children.Add(CreateSelectableTextElement(
-            title,
+            view.Title,
             12,
             CreateBrush("#1E3A8A"),
             FontWeights.SemiBold));
 
-        AddTimestampToHeader(header, timestamp, CreateBrush("#6B7280"));
+        AddTimestampToHeader(header, view, CreateBrush("#6B7280"));
 
         var expander = new Expander
         {
@@ -613,7 +564,7 @@ public partial class SessionWindow : Window
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(10, 8, 10, 8),
             Child = CreateSelectableTextElement(
-                content,
+                view.Content,
                 12,
                 CreateBrush("#1E3A8A"),
                 textWrapping: TextWrapping.Wrap)
@@ -622,14 +573,14 @@ public partial class SessionWindow : Window
         return expander;
     }
 
-    private static void AddTimestampToHeader(Grid header, DateTime? timestamp, Media.Brush foreground)
+    private static void AddTimestampToHeader(Grid header, SessionMessageView view, Media.Brush foreground)
     {
-        if (!timestamp.HasValue)
+        if (!view.HasTimestamp)
         {
             return;
         }
 
-        var timestampText = CreateSelectableTextElement(FormatMessageTime(timestamp.Value), 12, foreground);
+        var timestampText = CreateSelectableTextElement(view.TimestampText, 12, foreground);
         Grid.SetColumn(timestampText, 1);
         header.Children.Add(timestampText);
     }
@@ -789,16 +740,6 @@ public partial class SessionWindow : Window
         SetTabButtonSelectedState(CodexTabButton, SessionService.IsCodex(_currentProviderId));
         SetTabButtonSelectedState(ClaudeTabButton, SessionService.IsClaude(_currentProviderId));
         SetTabButtonSelectedState(GrokTabButton, SessionService.IsGrok(_currentProviderId));
-    }
-
-    private static string NormalizeProviderId(string? providerId)
-    {
-        return SessionService.NormalizeProviderId(providerId);
-    }
-
-    private static string FormatMessageTime(DateTime timestamp)
-    {
-        return timestamp.ToString("yyyy/M/d HH:mm:ss");
     }
 
     private static void SetTabButtonSelectedState(System.Windows.Controls.Button button, bool isSelected)

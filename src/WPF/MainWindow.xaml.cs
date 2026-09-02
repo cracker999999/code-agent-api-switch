@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -449,7 +449,7 @@ public partial class MainWindow : Window
                 handle.ReleaseMouseCapture();
             }
 
-            EndProviderDrag();
+            _providerDragController.EndDrag();
         }
     }
 
@@ -510,7 +510,7 @@ public partial class MainWindow : Window
 
         e.Effects = hasTarget ? DragDropEffects.Move : DragDropEffects.None;
         e.Handled = true;
-        EndProviderDrag();
+        _providerDragController.EndDrag();
     }
 
     private void UpdateProviderDragTarget(DragEventArgs e)
@@ -611,11 +611,6 @@ public partial class MainWindow : Window
         {
             _providerDragController.CompleteAutoScrollTick(LoadedProviders);
         }
-    }
-
-    private void EndProviderDrag()
-    {
-        _providerDragController.EndDrag();
     }
 
     private void LoadProviders()

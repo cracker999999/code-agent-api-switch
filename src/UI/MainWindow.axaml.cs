@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
 using APISwitch.Extensions;
 using APISwitch.UI.Services;
@@ -405,7 +405,7 @@ public partial class MainWindow : Window
         finally
         {
             e.Pointer.Capture(null);
-            EndProviderDrag();
+            _providerDragController.EndDrag();
         }
     }
 
@@ -463,7 +463,7 @@ public partial class MainWindow : Window
 
         e.DragEffects = hasTarget ? DragDropEffects.Move : DragDropEffects.None;
         e.Handled = true;
-        EndProviderDrag();
+        _providerDragController.EndDrag();
     }
 
     private void UpdateProviderDragTarget(DragEventArgs e)
@@ -554,11 +554,6 @@ public partial class MainWindow : Window
         }
 
         _providerDragController.CompleteAutoScrollTick(LoadedProviders);
-    }
-
-    private void EndProviderDrag()
-    {
-        _providerDragController.EndDrag();
     }
 
     private void LoadProviders()

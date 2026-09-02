@@ -121,24 +121,35 @@ public class SessionService
         _grokParser = new GrokSessionParser();
     }
 
-    public List<SessionMeta> ScanCodexSessions()
+    // 三个 CLI 的会话都是"目录树下的 JSONL",只有根目录、文件名模式和要跳过的文件不同。
+    private List<SessionMeta> Scan(
+        string directory,
+        string searchPattern,
+        Func<string, SessionMeta?> parse,
+        Func<string, bool>? shouldSkip = null)
     {
-        if (!Directory.Exists(_codexSessionsDirectory))
+        if (!Directory.Exists(directory))
         {
             return new List<SessionMeta>();
         }
 
         var sessions = new List<SessionMeta>();
-        foreach (var filePath in Directory.EnumerateFiles(_codexSessionsDirectory, "*.jsonl", SearchOption.AllDirectories))
+        foreach (var filePath in Directory.EnumerateFiles(directory, searchPattern, SearchOption.AllDirectories))
         {
+            if (shouldSkip?.Invoke(filePath) == true)
+            {
+                continue;
+            }
+
             try
             {
-                var session = _codexParser.ParseSession(filePath);
+                var session = parse(filePath);
                 if (session is not null)
                 {
                     sessions.Add(session);
                 }
             }
+            // 单个损坏或占用的会话文件不应中断整次扫描。
             catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
             {
                 continue;
@@ -150,69 +161,19 @@ public class SessionService
             .ToList();
     }
 
-    public List<SessionMeta> ScanClaudeSessions()
-    {
-        if (!Directory.Exists(_claudeProjectsDirectory))
-        {
-            return new List<SessionMeta>();
-        }
+    public List<SessionMeta> ScanCodexSessions() =>
+        Scan(_codexSessionsDirectory, "*.jsonl", _codexParser.ParseSession);
 
-        var sessions = new List<SessionMeta>();
-        foreach (var filePath in Directory.EnumerateFiles(_claudeProjectsDirectory, "*.jsonl", SearchOption.AllDirectories))
-        {
-            var fileName = Path.GetFileName(filePath);
-            if (fileName.StartsWith("agent-", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
+    public List<SessionMeta> ScanClaudeSessions() =>
+        Scan(
+            _claudeProjectsDirectory,
+            "*.jsonl",
+            _claudeParser.ParseSession,
+            // agent-*.jsonl 是子代理日志,不作为独立会话列出。
+            filePath => Path.GetFileName(filePath).StartsWith("agent-", StringComparison.OrdinalIgnoreCase));
 
-            try
-            {
-                var session = _claudeParser.ParseSession(filePath);
-                if (session is not null)
-                {
-                    sessions.Add(session);
-                }
-            }
-            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
-            {
-                continue;
-            }
-        }
-
-        return sessions
-            .OrderByDescending(item => item.LastActiveAt)
-            .ToList();
-    }
-
-    public List<SessionMeta> ScanGrokSessions()
-    {
-        if (!Directory.Exists(_grokSessionsDirectory))
-        {
-            return new List<SessionMeta>();
-        }
-
-        var sessions = new List<SessionMeta>();
-        foreach (var filePath in Directory.EnumerateFiles(_grokSessionsDirectory, "chat_history.jsonl", SearchOption.AllDirectories))
-        {
-            try
-            {
-                var session = _grokParser.ParseSession(filePath);
-                if (session is not null)
-                {
-                    sessions.Add(session);
-                }
-            }
-            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
-            {
-                continue;
-            }
-        }
-
-        return sessions
-            .OrderByDescending(item => item.LastActiveAt)
-            .ToList();
-    }
+    public List<SessionMeta> ScanGrokSessions() =>
+        Scan(_grokSessionsDirectory, "chat_history.jsonl", _grokParser.ParseSession);
 
     public List<SessionMessage> LoadMessages(string providerId, string sourcePath)
     {

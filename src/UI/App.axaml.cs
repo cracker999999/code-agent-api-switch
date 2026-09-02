@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Linq;
 using System.Runtime.InteropServices;
 using APISwitch.Services;
@@ -337,9 +337,7 @@ public partial class App : Application
         var candidates = new[]
         {
             "avares://APISwitch/Assets/app.ico",
-            "avares://APISwitch.UI/Assets/app.ico",
-            "avares://APISwitch/Assets/app-preview.png",
-            "avares://APISwitch.UI/Assets/app-preview.png"
+            "avares://APISwitch/Assets/app-preview.png"
         };
 
         foreach (var candidate in candidates)

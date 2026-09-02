@@ -1,4 +1,4 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Text.Json;
 using APISwitch.Models;
 
@@ -8,24 +8,22 @@ public class ModelDiscoveryService
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
+    private static ModelDiscoveryResult Fail(string errorMessage) => new()
+    {
+        Success = false,
+        ErrorMessage = errorMessage
+    };
+
     public async Task<ModelDiscoveryResult> GetModelsAsync(Provider provider)
     {
         if (provider is null)
         {
-            return new ModelDiscoveryResult
-            {
-                Success = false,
-                ErrorMessage = "供应商信息为空"
-            };
+            return Fail("供应商信息为空");
         }
 
         if (string.IsNullOrWhiteSpace(provider.BaseUrl) || string.IsNullOrWhiteSpace(provider.ApiKey))
         {
-            return new ModelDiscoveryResult
-            {
-                Success = false,
-                ErrorMessage = "BaseUrl 或 ApiKey 为空"
-            };
+            return Fail("BaseUrl 或 ApiKey 为空");
         }
 
         var requestUrl = BuildModelsUrl(provider.BaseUrl);
@@ -45,11 +43,7 @@ public class ModelDiscoveryService
 
             if (!response.IsSuccessStatusCode)
             {
-                return new ModelDiscoveryResult
-                {
-                    Success = false,
-                    ErrorMessage = $"HTTP {(int)response.StatusCode}: {responseText}"
-                };
+                return Fail($"HTTP {(int)response.StatusCode}: {responseText}");
             }
 
             var models = ParseModels(responseText);
@@ -61,35 +55,19 @@ public class ModelDiscoveryService
         }
         catch (TaskCanceledException)
         {
-            return new ModelDiscoveryResult
-            {
-                Success = false,
-                ErrorMessage = "请求超时（30 秒）"
-            };
+            return Fail("请求超时（30 秒）");
         }
         catch (HttpRequestException ex)
         {
-            return new ModelDiscoveryResult
-            {
-                Success = false,
-                ErrorMessage = $"连接失败：{ex.Message}"
-            };
+            return Fail($"连接失败：{ex.Message}");
         }
         catch (JsonException ex)
         {
-            return new ModelDiscoveryResult
-            {
-                Success = false,
-                ErrorMessage = $"响应解析失败：{ex.Message}"
-            };
+            return Fail($"响应解析失败：{ex.Message}");
         }
         catch (Exception ex)
         {
-            return new ModelDiscoveryResult
-            {
-                Success = false,
-                ErrorMessage = ex.Message
-            };
+            return Fail(ex.Message);
         }
     }
 
