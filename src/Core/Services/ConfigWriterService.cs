@@ -134,6 +134,7 @@ public class ConfigWriterService
         content = UpsertTomlSectionValue(content, "endpoints", "models_base_url", baseUrl);
         content = UpsertTomlSectionValue(content, "endpoints", "xai_api_base_url", baseUrl);
         content = UpsertTomlSectionValue(content, "model.\"grok-4.5\"", "api_key", apiKey);
+        content = UpsertTomlSectionValue(content, "model.\"grok-4.6\"", "api_key", apiKey);
 
         File.WriteAllText(_grokConfigPath, content, new UTF8Encoding(false));
     }

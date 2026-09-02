@@ -27,7 +27,7 @@ public class AppSettings
         ClaudeEndpointPath = "/v1/messages?beta=true",
         ClaudePromptText = "你是什么模型",
         ClaudeVersion = "2.1.152",
-        GrokTestModel = "grok-4.5",
+        GrokTestModel = "grok-4.6",
         GrokEndpointPath = "/responses",
         GrokPromptText = "你是什么模型",
         GrokVersion = "0.2.111"

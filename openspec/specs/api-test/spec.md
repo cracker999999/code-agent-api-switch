@@ -34,7 +34,7 @@ TBD - created by archiving change test-model. Update Purpose after archive.
 
 #### Scenario: Grok 测试请求使用默认模型
 - **WHEN** 用户测试一个 ToolType=2（Grok）的供应商且 TestModel 为空
-- **THEN** 系统发送 POST 请求，body 中 `model` 字段使用默认值 `grok-4.5`
+- **THEN** 系统发送 POST 请求，body 中 `model` 字段使用默认值 `grok-4.6`
 
 ### Requirement: 流式判定成功
 系统 SHALL 使用 `HttpCompletionOption.ResponseHeadersRead` + `ReadAsStreamAsync` 实现流式读取，收到首个 stream chunk 即判定成功。

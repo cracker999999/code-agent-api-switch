@@ -16,7 +16,7 @@ APISwitch 用于可视化管理 **Codex**、**Claude Code** 和 **Grok Build** �
 - 配置写入：
   - Codex：写入 `~/.codex/config.toml` 的 `[model_providers.OpenAI]` 段下 `base_url`，并写入 `~/.codex/auth.json` 的 `OPENAI_API_KEY`
   - Claude Code：写入 `~/.claude/settings.json` 的 `env.ANTHROPIC_AUTH_TOKEN` 与 `env.ANTHROPIC_BASE_URL`
-  - Grok Build：写入 `~/.grok/config.toml` 的 `endpoints.models_base_url`、`endpoints.xai_api_base_url`，以及 `model."grok-4.5".api_key`
+  - Grok Build：写入 `~/.grok/config.toml` 的 `endpoints.models_base_url`、`endpoints.xai_api_base_url`，以及 `model."grok-4.5".api_key`、`model."grok-4.6".api_key`
 - 会话管理：扫描并管理 Codex / Claude / Grok 会话（列表、详情、恢复、删除）；Grok 会话目录为 `~/.grok/sessions`
 - 设置页：可分别为三类工具配置默认测试模型、端点路径、Prompt 与客户端版本，并打开对应配置目录
 - 自动备份：写入前自动生成 `.bak` 备份
@@ -127,5 +127,5 @@ Avalonia 版存在裁剪/AOT 发布场景，默认反射序列化可能被禁用
 - 若激活 Codex 供应商时缺少 `config.toml`，应用会提示“请先安装 Codex”，且不会创建该文件。
 - `auth.json`、`settings.json` 与 Grok 的 `config.toml` 在不存在时会自动创建（写入前会创建父目录）。
 - 供应商配置被编辑后，测试状态会重置为未知（不显示状态点）。
-- Grok 默认测试模型为 `grok-4.5`，测试请求对齐 grok-shell 的 Responses API；可在设置页或供应商级 TestModel 覆盖。
+- Grok 默认测试模型为 `grok-4.6`，测试请求对齐 grok-shell 的 Responses API；可在设置页或供应商级 TestModel 覆盖。
 - Windows 非自包含发布需要目标机安装 .NET 运行时。
