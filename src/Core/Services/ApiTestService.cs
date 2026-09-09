@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -11,7 +11,7 @@ namespace APISwitch.Services;
 
 public class ApiTestService
 {
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
     private static readonly string FallbackGrokAgentId = Guid.NewGuid().ToString();
 
     private static ApiTestResult Fail(string message) => new()
@@ -213,7 +213,7 @@ public class ApiTestService
         }
         catch (OperationCanceledException)
         {
-            return Fail("请求超时（30 秒）");
+            return Fail("请求超时（60 秒）");
         }
         catch (HttpRequestException ex)
         {
