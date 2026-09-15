@@ -11,7 +11,7 @@ public partial class ProviderDialog : Window
     private const string ProviderClipboardType = "APISwitch.ProviderClipboard";
     private const int ProviderClipboardVersion = 1;
 
-    private readonly ModelDiscoveryService _modelDiscoveryService = new();
+    private readonly ModelDiscoveryService _modelDiscoveryService;
     private readonly ApiTestService _apiTestService;
     private List<string> _allModels = new();
 
@@ -21,6 +21,7 @@ public partial class ProviderDialog : Window
     {
         InitializeComponent();
         _apiTestService = new ApiTestService(appSettingsService);
+        _modelDiscoveryService = new ModelDiscoveryService(_apiTestService);
         Provider = new Provider
         {
             ToolType = toolType,
@@ -49,6 +50,7 @@ public partial class ProviderDialog : Window
     {
         InitializeComponent();
         _apiTestService = new ApiTestService(appSettingsService);
+        _modelDiscoveryService = new ModelDiscoveryService(_apiTestService);
         Provider = new Provider
         {
             Id = provider.Id,

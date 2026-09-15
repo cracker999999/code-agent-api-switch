@@ -48,6 +48,27 @@ public class ApiTestService
         };
     }
 
+    internal void AddRequestHeaders(HttpRequestMessage request, Provider provider)
+    {
+        var settings = _settingsService.Load();
+        var sessionId = Guid.NewGuid().ToString();
+
+        switch (provider.ToolType)
+        {
+            case 0:
+                AddCodexRequestHeaders(request, provider, settings, sessionId, Guid.NewGuid().ToString());
+                break;
+            case 1:
+                AddClaudeRequestHeaders(request, provider, settings, sessionId);
+                break;
+            case 2:
+                AddGrokRequestHeaders(request, provider, settings, sessionId, Guid.NewGuid().ToString());
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(provider.ToolType), "未知的工具类型");
+        }
+    }
+
     private async Task<ApiTestResult> TestCodexAsync(Provider provider)
     {
         var settings = _settingsService.Load();
@@ -64,15 +85,7 @@ public class ApiTestService
             Content = new StringContent(body, Encoding.UTF8, "application/json")
         };
 
-        var turnMetadata = $@"{{""session_id"":""{sessionId}"",""turn_id"":""{turnId}"",""sandbox"":""none""}}";
-        request.Headers.TryAddWithoutValidation("x-codex-turn-metadata", turnMetadata);
-        request.Headers.TryAddWithoutValidation("x-codex-window-id", $"{sessionId}:0");
-        request.Headers.TryAddWithoutValidation("x-client-request-id", sessionId);
-        request.Headers.TryAddWithoutValidation("session_id", sessionId);
-        request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
-        request.Headers.TryAddWithoutValidation("accept", "text/event-stream");
-        request.Headers.TryAddWithoutValidation("user-agent", $"codex-tui/{settings.CodexVersion} (Windows 10.0.19045; x86_64) WindowsTerminal (codex-tui; {settings.CodexVersion})");
-        request.Headers.TryAddWithoutValidation("originator", "codex_tui");
+        AddCodexRequestHeaders(request, provider, settings, sessionId, turnId);
 
         return await SendAndReadFirstChunkAsync(request);
     }
@@ -91,6 +104,56 @@ public class ApiTestService
             Content = new StringContent(body, Encoding.UTF8, "application/json")
         };
 
+        AddClaudeRequestHeaders(request, provider, settings, sessionId);
+
+        return await SendAndReadFirstChunkAsync(request);
+    }
+
+    private async Task<ApiTestResult> TestGrokAsync(Provider provider)
+    {
+        var settings = _settingsService.Load();
+        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.GrokEndpointPath}";
+        var model = provider.GetEffectiveTestModel(settings);
+        // 与真实 grok-shell 一致: conv/session 使用同一 UUID,req 每次生成,agent 使用本机持久 ID
+        var sessionId = Guid.NewGuid().ToString();
+        var reqId = Guid.NewGuid().ToString();
+        var body = BuildGrokRequestBody(model, settings.GrokPromptText);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json")
+        };
+
+        AddGrokRequestHeaders(request, provider, settings, sessionId, reqId);
+
+        // Grok Responses 流必须读到终态。只读取头部后主动断开会让中转站将请求记为 client_gone。
+        return await SendAndReadFirstChunkAsync(request, waitForTerminalEvent: true);
+    }
+
+    private static void AddCodexRequestHeaders(
+        HttpRequestMessage request,
+        Provider provider,
+        AppSettings settings,
+        string sessionId,
+        string turnId)
+    {
+        var turnMetadata = $@"{{""session_id"":""{sessionId}"",""turn_id"":""{turnId}"",""sandbox"":""none""}}";
+        request.Headers.TryAddWithoutValidation("x-codex-turn-metadata", turnMetadata);
+        request.Headers.TryAddWithoutValidation("x-codex-window-id", $"{sessionId}:0");
+        request.Headers.TryAddWithoutValidation("x-client-request-id", sessionId);
+        request.Headers.TryAddWithoutValidation("session_id", sessionId);
+        request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
+        request.Headers.TryAddWithoutValidation("accept", "text/event-stream");
+        request.Headers.TryAddWithoutValidation("user-agent", $"codex-tui/{settings.CodexVersion} (Windows 10.0.19045; x86_64) WindowsTerminal (codex-tui; {settings.CodexVersion})");
+        request.Headers.TryAddWithoutValidation("originator", "codex_tui");
+    }
+
+    private static void AddClaudeRequestHeaders(
+        HttpRequestMessage request,
+        Provider provider,
+        AppSettings settings,
+        string sessionId)
+    {
         request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
         request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
         // 与真实 Claude Code 2.1.145 完全一致的 beta 列表(顺序也保持一致)
@@ -109,25 +172,16 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("x-stainless-runtime-version", "v24.3.0");
         request.Headers.TryAddWithoutValidation("x-stainless-retry-count", "0");
         request.Headers.TryAddWithoutValidation("x-stainless-timeout", "60");
-
-        return await SendAndReadFirstChunkAsync(request);
     }
 
-    private async Task<ApiTestResult> TestGrokAsync(Provider provider)
+    private static void AddGrokRequestHeaders(
+        HttpRequestMessage request,
+        Provider provider,
+        AppSettings settings,
+        string sessionId,
+        string reqId)
     {
-        var settings = _settingsService.Load();
-        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.GrokEndpointPath}";
         var model = provider.GetEffectiveTestModel(settings);
-        // 与真实 grok-shell 一致: conv/session 使用同一 UUID,req 每次生成,agent 使用本机持久 ID
-        var sessionId = Guid.NewGuid().ToString();
-        var reqId = Guid.NewGuid().ToString();
-        var agentId = GetGrokAgentId();
-        var body = BuildGrokRequestBody(model, settings.GrokPromptText);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, url)
-        {
-            Content = new StringContent(body, Encoding.UTF8, "application/json")
-        };
 
         // 请求头对齐 grok-shell/0.2.111 真实抓包
         request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
@@ -142,11 +196,8 @@ public class ApiTestService
         request.Headers.TryAddWithoutValidation("x-grok-req-id", reqId);
         request.Headers.TryAddWithoutValidation("x-grok-model-override", model);
         request.Headers.TryAddWithoutValidation("x-grok-session-id", sessionId);
-        request.Headers.TryAddWithoutValidation("x-grok-agent-id", agentId);
+        request.Headers.TryAddWithoutValidation("x-grok-agent-id", GetGrokAgentId());
         request.Headers.TryAddWithoutValidation("x-grok-turn-idx", "1");
-
-        // Grok Responses 流必须读到终态。只读取头部后主动断开会让中转站将请求记为 client_gone。
-        return await SendAndReadFirstChunkAsync(request, waitForTerminalEvent: true);
     }
 
     private static string GetGrokAgentId()

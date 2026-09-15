@@ -7,12 +7,18 @@ namespace APISwitch.Services;
 public class ModelDiscoveryService
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+    private readonly ApiTestService _apiTestService;
 
     private static ModelDiscoveryResult Fail(string errorMessage) => new()
     {
         Success = false,
         ErrorMessage = errorMessage
     };
+
+    public ModelDiscoveryService(ApiTestService apiTestService)
+    {
+        _apiTestService = apiTestService;
+    }
 
     public async Task<ModelDiscoveryResult> GetModelsAsync(Provider provider)
     {
@@ -34,10 +40,11 @@ public class ModelDiscoveryService
         };
 
         using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
-        request.Headers.TryAddWithoutValidation("authorization", $"Bearer {provider.ApiKey}");
 
         try
         {
+            // 复用 API 测试的客户端指纹，避免模型请求与实际调用被中转站区别处理。
+            _apiTestService.AddRequestHeaders(request, provider);
             using var response = await client.SendAsync(request);
             var responseText = await response.Content.ReadAsStringAsync();
 
