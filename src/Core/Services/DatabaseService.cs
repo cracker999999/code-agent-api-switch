@@ -195,7 +195,7 @@ SELECT last_insert_rowid();";
 
             using var command = connection.CreateCommand();
             command.CommandText = @"
-SELECT Id, ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark
+SELECT Id, ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark, UseChatCompletions
 FROM Providers
 WHERE ToolType = $toolType
 ORDER BY SortOrder ASC, Id ASC;";
@@ -212,6 +212,7 @@ ORDER BY SortOrder ASC, Id ASC;";
                     Name = reader.GetString(2),
                     BaseUrl = reader.GetString(3),
                     ApiKey = reader.GetString(4),
+                    UseChatCompletions = reader.GetInt32(10) == 1,
                     IsActive = reader.GetInt32(5) == 1,
                     SortOrder = reader.GetInt32(6),
                     TestStatus = reader.GetInt32(7),
@@ -233,8 +234,8 @@ ORDER BY SortOrder ASC, Id ASC;";
 
             using var command = connection.CreateCommand();
             command.CommandText = @"
-INSERT INTO Providers (ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark)
-VALUES ($toolType, $name, $baseUrl, $apiKey, $isActive, $sortOrder, $testStatus, $testModel, $remark);
+INSERT INTO Providers (ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark, UseChatCompletions)
+VALUES ($toolType, $name, $baseUrl, $apiKey, $isActive, $sortOrder, $testStatus, $testModel, $remark, $useChatCompletions);
 SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$toolType", provider.ToolType);
             command.Parameters.AddWithValue("$name", provider.Name);
@@ -245,6 +246,7 @@ SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$testStatus", provider.TestStatus);
             command.Parameters.AddWithValue("$testModel", provider.TestModel);
             command.Parameters.AddWithValue("$remark", provider.Remark);
+            command.Parameters.AddWithValue("$useChatCompletions", provider.UseChatCompletions ? 1 : 0);
 
             var insertedId = command.ExecuteScalar();
             return Convert.ToInt32(insertedId);
@@ -267,7 +269,8 @@ SET Name = $name,
     SortOrder = $sortOrder,
     TestStatus = $testStatus,
     TestModel = $testModel,
-    Remark = $remark
+    Remark = $remark,
+    UseChatCompletions = $useChatCompletions
 WHERE Id = $id;";
             command.Parameters.AddWithValue("$id", provider.Id);
             command.Parameters.AddWithValue("$name", provider.Name);
@@ -277,6 +280,7 @@ WHERE Id = $id;";
             command.Parameters.AddWithValue("$testStatus", provider.TestStatus);
             command.Parameters.AddWithValue("$testModel", provider.TestModel);
             command.Parameters.AddWithValue("$remark", provider.Remark);
+            command.Parameters.AddWithValue("$useChatCompletions", provider.UseChatCompletions ? 1 : 0);
             command.ExecuteNonQuery();
         }
     }
@@ -447,6 +451,10 @@ WHERE Id = $id AND ToolType = $toolType;";
             connection,
             "Remark",
             "ALTER TABLE Providers ADD COLUMN Remark TEXT;");
+        EnsureProviderColumn(
+            connection,
+            "UseChatCompletions",
+            "ALTER TABLE Providers ADD COLUMN UseChatCompletions INTEGER NOT NULL DEFAULT 0;");
     }
 
     private static void EnsureProviderColumn(SqliteConnection connection, string columnName, string alterSql)

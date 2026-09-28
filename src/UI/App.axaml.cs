@@ -19,6 +19,7 @@ public partial class App : Application
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
     private TrayIcon? _trayIcon;
+    private CodexChatProxyService? _codexChatProxyService;
     private DispatcherTimer? _macDockVisibilityTimer;
     private bool? _isMacDockVisible;
 
@@ -46,8 +47,14 @@ public partial class App : Application
             databaseService.Initialize();
             var configWriterService = new ConfigWriterService();
             var appSettingsService = new AppSettingsService(databaseService);
+            _codexChatProxyService = new CodexChatProxyService();
+            var activeCodexProvider = databaseService.GetProviders(0).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
+            if (activeCodexProvider is not null)
+            {
+                _codexChatProxyService.Start(activeCodexProvider);
+            }
 
-            var mainWindow = new MainWindow(databaseService, configWriterService, appSettingsService);
+            var mainWindow = new MainWindow(databaseService, configWriterService, appSettingsService, _codexChatProxyService);
             desktop.MainWindow = mainWindow;
 
             desktop.Exit += (_, _) =>
@@ -63,6 +70,9 @@ public partial class App : Application
                     _trayIcon.Dispose();
                     _trayIcon = null;
                 }
+
+                _codexChatProxyService?.Dispose();
+                _codexChatProxyService = null;
 
                 if (_ownsSingleInstanceMutex)
                 {

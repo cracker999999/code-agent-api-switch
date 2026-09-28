@@ -6,6 +6,8 @@ public class ProviderClipboardData
 
     public string BaseUrl { get; set; } = string.Empty;
 
+    public bool UseChatCompletions { get; set; }
+
     public string ApiKey { get; set; } = string.Empty;
 
     public string TestModel { get; set; } = string.Empty;

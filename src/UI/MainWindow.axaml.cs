@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private readonly ConfigWriterService _configWriterService;
     private readonly AppSettingsService _appSettingsService;
     private readonly ApiTestService _apiTestService;
+    private readonly CodexChatProxyService _codexChatProxyService;
     private readonly TranslateTransform _providerDropIndicatorTransform;
     private readonly DispatcherTimer _providerAutoScrollTimer;
     private readonly ProviderDragController _providerDragController;
@@ -36,11 +37,12 @@ public partial class MainWindow : Window
     private static readonly DataFormat<string> ProviderDragFormat =
         DataFormat.CreateStringApplicationFormat("APISwitch.Provider");
 
-    public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService, AppSettingsService appSettingsService)
+    public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService, AppSettingsService appSettingsService, CodexChatProxyService codexChatProxyService)
     {
         _databaseService = databaseService;
         _configWriterService = configWriterService;
         _appSettingsService = appSettingsService;
+        _codexChatProxyService = codexChatProxyService;
         _apiTestService = new ApiTestService(_appSettingsService);
         _cachedSettings = _appSettingsService.Load();
 
@@ -234,7 +236,7 @@ public partial class MainWindow : Window
         try
         {
             _databaseService.ActivateProvider(provider.Id, provider.ToolType);
-            _configWriterService.ApplyProvider(provider);
+            ApplyProviderConfig(provider);
             LoadProviders();
         }
         catch (Exception ex)
@@ -304,6 +306,7 @@ public partial class MainWindow : Window
         var hasConnectionChanged =
             !string.Equals(provider.BaseUrl, updatedProvider.BaseUrl, StringComparison.Ordinal) ||
             !string.Equals(provider.ApiKey, updatedProvider.ApiKey, StringComparison.Ordinal);
+        var hasAdapterChanged = provider.UseChatCompletions != updatedProvider.UseChatCompletions;
 
         if (hasConnectionChanged)
         {
@@ -311,12 +314,37 @@ public partial class MainWindow : Window
         }
 
         _databaseService.UpdateProvider(updatedProvider);
-        if (updatedProvider.IsActive && hasConnectionChanged)
+        if (updatedProvider.IsActive && (hasConnectionChanged || hasAdapterChanged))
         {
-            _configWriterService.ApplyProvider(updatedProvider);
+            ApplyProviderConfig(updatedProvider);
         }
 
         LoadProviders();
+    }
+
+    private void ApplyProviderConfig(Provider provider)
+    {
+        if (provider.ToolType == 0 && provider.UseChatCompletions)
+        {
+            _codexChatProxyService.Start(provider);
+            try
+            {
+                _configWriterService.ApplyProvider(provider, CodexChatProxyService.LocalBaseUrl);
+            }
+            catch
+            {
+                _codexChatProxyService.Stop();
+                throw;
+            }
+            return;
+        }
+
+        if (provider.ToolType == 0)
+        {
+            _codexChatProxyService.Stop();
+        }
+
+        _configWriterService.ApplyProvider(provider);
     }
 
     private async void DeleteProviderButton_Click(object? sender, RoutedEventArgs e)

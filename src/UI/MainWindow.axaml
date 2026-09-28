@@ -151,6 +151,17 @@
                                FontWeight="{OnPlatform Default=Bold, macOS=SemiBold}"
                                FontFamily="{OnPlatform Default='Microsoft YaHei UI, Segoe UI', macOS='PingFang SC, Hiragino Sans GB, Noto Sans CJK SC'}"
                                Foreground="#111827" />
+                    <Border Background="#DBEAFE"
+                            CornerRadius="4"
+                            Padding="5,1"
+                            Margin="8,0,0,0"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding UseChatCompletions}">
+                      <TextBlock Text="Chat 适配"
+                                 Foreground="#1D4ED8"
+                                 FontSize="10"
+                                 FontWeight="SemiBold" />
+                    </Border>
                     <TextBlock Text="{Binding Remark}"
                                Margin="8,0,0,0"
                                Foreground="#9CA3AF"

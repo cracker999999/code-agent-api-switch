@@ -27,6 +27,7 @@ public partial class ProviderDialog : Window
             ToolType = toolType,
             IsActive = false
         };
+        UseChatCompletionsCheckBox.Visibility = toolType == 0 ? Visibility.Visible : Visibility.Collapsed;
         Title = toolType switch
         {
             0 => "新增供应商（Codex）",
@@ -62,8 +63,10 @@ public partial class ProviderDialog : Window
             SortOrder = provider.SortOrder,
             TestStatus = provider.TestStatus,
             TestModel = provider.TestModel,
-            Remark = provider.Remark
+            Remark = provider.Remark,
+            UseChatCompletions = provider.UseChatCompletions
         };
+        UseChatCompletionsCheckBox.Visibility = Provider.ToolType == 0 ? Visibility.Visible : Visibility.Collapsed;
         Title = "编辑供应商";
 
         NameTextBox.Text = Provider.Name;
@@ -71,6 +74,7 @@ public partial class ProviderDialog : Window
         BaseUrlTextBox.Text = Provider.BaseUrl;
         ApiKeyTextBox.Text = Provider.ApiKey;
         TestModelTextBox.Text = Provider.TestModel;
+        UseChatCompletionsCheckBox.IsChecked = Provider.UseChatCompletions;
         var settings = appSettingsService.Load();
         TestModelPlaceholderTextBlock.Text = Provider.ToolType switch
         {
@@ -103,6 +107,7 @@ public partial class ProviderDialog : Window
         Provider.BaseUrl = baseUrl;
         Provider.ApiKey = apiKey;
         Provider.TestModel = testModel;
+        Provider.UseChatCompletions = UseChatCompletionsCheckBox.IsChecked == true;
 
         DialogResult = true;
         Close();
@@ -128,7 +133,8 @@ public partial class ProviderDialog : Window
                     BaseUrl = BaseUrlTextBox.Text.Trim(),
                     ApiKey = ApiKeyTextBox.Text.Trim(),
                     TestModel = TestModelTextBox.Text.Trim(),
-                    Remark = RemarkTextBox.Text.Trim()
+                    Remark = RemarkTextBox.Text.Trim(),
+                    UseChatCompletions = UseChatCompletionsCheckBox.IsChecked == true
                 }
             };
 
@@ -182,6 +188,7 @@ public partial class ProviderDialog : Window
         ApiKeyTextBox.Text = payload.Provider.ApiKey ?? string.Empty;
         TestModelTextBox.Text = payload.Provider.TestModel ?? string.Empty;
         RemarkTextBox.Text = payload.Provider.Remark ?? string.Empty;
+        UseChatCompletionsCheckBox.IsChecked = payload.Provider.UseChatCompletions;
     }
 
     private async void FetchModelsButton_Click(object sender, RoutedEventArgs e)
@@ -279,6 +286,7 @@ public partial class ProviderDialog : Window
             Name = NameTextBox.Text.Trim(),
             BaseUrl = BaseUrlTextBox.Text.Trim(),
             ApiKey = ApiKeyTextBox.Text.Trim(),
+            UseChatCompletions = UseChatCompletionsCheckBox.IsChecked == true,
             TestModel = includeTestModel ? TestModelTextBox.Text.Trim() : string.Empty
         };
     }

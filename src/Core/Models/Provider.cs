@@ -10,6 +10,8 @@ public class Provider
 
     public string BaseUrl { get; set; } = string.Empty;
 
+    public bool UseChatCompletions { get; set; }
+
     public string ApiKey { get; set; } = string.Empty;
 
     public bool IsActive { get; set; }

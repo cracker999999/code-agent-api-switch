@@ -28,11 +28,11 @@ public class ConfigWriterService
         _grokConfigPath = Path.Combine(userProfile, ".grok", "config.toml");
     }
 
-    public void ApplyProvider(Provider provider)
+    public void ApplyProvider(Provider provider, string? codexBaseUrlOverride = null)
     {
         if (provider.ToolType == 0)
         {
-            WriteCodexConfig(provider.BaseUrl);
+            WriteCodexConfig(codexBaseUrlOverride ?? provider.BaseUrl);
             WriteCodexAuth(provider.ApiKey);
             return;
         }

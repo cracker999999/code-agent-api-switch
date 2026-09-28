@@ -17,6 +17,7 @@ public partial class App : System.Windows.Application
     private Forms.NotifyIcon? _notifyIcon;
     private MainWindow? _mainWindow;
     private DatabaseService? _databaseService;
+    private CodexChatProxyService? _codexChatProxyService;
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
     private EventWaitHandle? _showMainWindowEvent;
@@ -44,7 +45,13 @@ public partial class App : System.Windows.Application
 
             var configWriterService = new ConfigWriterService();
             var appSettingsService = new AppSettingsService(_databaseService);
-            _mainWindow = new MainWindow(_databaseService, configWriterService, appSettingsService);
+            _codexChatProxyService = new CodexChatProxyService();
+            var activeCodexProvider = _databaseService.GetProviders(0).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
+            if (activeCodexProvider is not null)
+            {
+                _codexChatProxyService.Start(activeCodexProvider);
+            }
+            _mainWindow = new MainWindow(_databaseService, configWriterService, appSettingsService, _codexChatProxyService);
             MainWindow = _mainWindow;
             StartShowMainWindowSignalListener();
             InitializeTrayIcon();
@@ -64,6 +71,9 @@ public partial class App : System.Windows.Application
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
         }
+
+        _codexChatProxyService?.Dispose();
+        _codexChatProxyService = null;
 
         if (_ownsSingleInstanceMutex)
         {

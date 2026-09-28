@@ -52,7 +52,13 @@
                      VerticalContentAlignment="Center" />
         </Grid>
 
-        <TextBlock Grid.Row="2" Text="BaseUrl" FontWeight="SemiBold" />
+        <Grid Grid.Row="2">
+            <TextBlock Text="BaseUrl" FontWeight="SemiBold" />
+            <CheckBox x:Name="UseChatCompletionsCheckBox"
+                      Content="适配/chat/completions"
+                      HorizontalAlignment="Right"
+                      Visibility="Collapsed" />
+        </Grid>
         <TextBox x:Name="BaseUrlTextBox" Grid.Row="3" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
 
         <TextBlock Grid.Row="4" Text="ApiKey" FontWeight="SemiBold" />

@@ -72,13 +72,27 @@ public class ApiTestService
     private async Task<ApiTestResult> TestCodexAsync(Provider provider)
     {
         var settings = _settingsService.Load();
-        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.CodexEndpointPath}";
         var model = provider.GetEffectiveTestModel(settings);
 
         // 每次请求生成新的会话标识,避免硬编码值被服务端识别为"重放/伪造"
         var sessionId = Guid.NewGuid().ToString();
         var turnId = Guid.NewGuid().ToString();
         var body = BuildCodexRequestBody(model, sessionId, settings.CodexPromptText);
+
+        if (provider.UseChatCompletions)
+        {
+            var transformed = CodexChatTransform.ToChatCompletions(JsonNode.Parse(body)!.AsObject());
+            var chatUrl = $"{provider.BaseUrl.TrimEnd('/')}/chat/completions";
+            using var chatRequest = new HttpRequestMessage(HttpMethod.Post, chatUrl)
+            {
+                Content = new StringContent(transformed.Body.ToJsonString(), Encoding.UTF8, "application/json")
+            };
+
+            AddCodexRequestHeaders(chatRequest, provider, settings, sessionId, turnId);
+            return await SendAndReadFirstChunkAsync(chatRequest, allowJsonResponse: true);
+        }
+
+        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.CodexEndpointPath}";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -217,7 +231,8 @@ public class ApiTestService
 
     private static async Task<ApiTestResult> SendAndReadFirstChunkAsync(
         HttpRequestMessage request,
-        bool waitForTerminalEvent = false)
+        bool waitForTerminalEvent = false,
+        bool allowJsonResponse = false)
     {
         using var client = new HttpClient
         {
@@ -256,6 +271,28 @@ public class ApiTestService
             {
                 var jsonBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 var extracted = TryExtractErrorMessage(jsonBody);
+
+                if (allowJsonResponse && extracted is null)
+                {
+                    try
+                    {
+                        if (JsonNode.Parse(jsonBody) is not null)
+                        {
+                            stopwatch.Stop();
+                            return new ApiTestResult
+                            {
+                                Success = true,
+                                Message = string.Empty,
+                                ResponseTimeMs = stopwatch.ElapsedMilliseconds
+                            };
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        // fall through to the normal invalid-response error
+                    }
+                }
+
                 return Fail(extracted ?? (string.IsNullOrWhiteSpace(jsonBody) ? "未收到有效流式数据" : jsonBody));
             }
 

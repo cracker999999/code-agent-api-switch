@@ -11,7 +11,7 @@ APISwitch 用于可视化管理 **Codex**、**Claude Code** 和 **Grok Build** �
 
 - 供应商管理：按工具类型（Codex / Claude Code / Grok）分别管理供应商，激活状态与排序按分类隔离
 - 数据持久化：使用 SQLite 存储 Name、BaseUrl、ApiKey、激活状态、排序与测试状态（`TestStatus`）
-- 供应商连通性测试：卡片支持“测试”按钮，分别请求 Codex / Claude / Grok 对应接口
+- 供应商连通性测试：卡片支持“测试”按钮，分别请求 Codex / Claude / Grok 对应接口；启用 Codex Chat Completions 适配时测试请求发送到供应商的 `/chat/completions`
 - 测试状态点：供应商名称前显示状态点（绿色=可用，红色=失败，无文字），状态持久化到数据库
 - 配置写入：
   - Codex：写入 `~/.codex/config.toml` 的 `[model_providers.OpenAI]` 段下 `base_url`，并写入 `~/.codex/auth.json` 的 `OPENAI_API_KEY`
@@ -21,6 +21,16 @@ APISwitch 用于可视化管理 **Codex**、**Claude Code** 和 **Grok Build** �
 - 设置页：可分别为三类工具配置默认测试模型、端点路径、Prompt 与客户端版本，并打开对应配置目录
 - 自动备份：写入前自动生成 `.bak` 备份
 - 系统托盘：关闭窗口后隐藏到托盘，支持托盘菜单显示主窗口与退出；托盘提示展示当前激活的供应商（含 Grok）
+
+### Codex Chat Completions 适配
+
+在 Codex 供应商编辑页勾选“适配/chat/completions”后，APISwitch 会把 Codex 使用的 Responses API 请求转换为上游供应商的 Chat Completions API 请求，并把响应转换回 Responses API。
+
+- 本地代理地址固定为 `http://127.0.0.1:24821`
+- 只有当前激活且勾选适配的 Codex 供应商会启动代理并写入 Codex 配置
+- 多个供应商可以保存勾选状态，但不会启动多个代理；切换激活供应商时复用同一个本地代理
+- 没有激活的 Codex 供应商勾选适配时，代理不会启动或会被关闭
+- 代理支持非流式和 SSE 流式响应，并保留 Codex 工具调用的名称映射
 
 ## 技术栈
 
