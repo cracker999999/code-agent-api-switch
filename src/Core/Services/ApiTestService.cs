@@ -571,7 +571,7 @@ public class ApiTestService
         var payload = new JsonObject
         {
             ["model"] = model,
-            ["max_tokens"] = 1,
+            ["max_tokens"] = 1000,
             ["stream"] = true,
             ["system"] = new JsonArray
             {
