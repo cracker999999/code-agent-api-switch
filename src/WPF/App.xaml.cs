@@ -18,6 +18,7 @@ public partial class App : System.Windows.Application
     private MainWindow? _mainWindow;
     private DatabaseService? _databaseService;
     private CodexChatProxyService? _codexChatProxyService;
+    private ClaudeChatProxyService? _claudeChatProxyService;
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
     private EventWaitHandle? _showMainWindowEvent;
@@ -46,12 +47,23 @@ public partial class App : System.Windows.Application
             var configWriterService = new ConfigWriterService();
             var appSettingsService = new AppSettingsService(_databaseService);
             _codexChatProxyService = new CodexChatProxyService();
+            _claudeChatProxyService = new ClaudeChatProxyService();
             var activeCodexProvider = _databaseService.GetProviders(0).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
             if (activeCodexProvider is not null)
             {
                 _codexChatProxyService.Start(activeCodexProvider);
             }
-            _mainWindow = new MainWindow(_databaseService, configWriterService, appSettingsService, _codexChatProxyService);
+            var activeClaudeProvider = _databaseService.GetProviders(1).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
+            if (activeClaudeProvider is not null)
+            {
+                _claudeChatProxyService.Start(activeClaudeProvider);
+            }
+            _mainWindow = new MainWindow(
+                _databaseService,
+                configWriterService,
+                appSettingsService,
+                _codexChatProxyService,
+                _claudeChatProxyService);
             MainWindow = _mainWindow;
             StartShowMainWindowSignalListener();
             InitializeTrayIcon();
@@ -74,6 +86,8 @@ public partial class App : System.Windows.Application
 
         _codexChatProxyService?.Dispose();
         _codexChatProxyService = null;
+        _claudeChatProxyService?.Dispose();
+        _claudeChatProxyService = null;
 
         if (_ownsSingleInstanceMutex)
         {

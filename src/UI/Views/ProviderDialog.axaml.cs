@@ -30,7 +30,7 @@ public partial class ProviderDialog : Window
             ToolType = toolType,
             IsActive = false
         };
-        UseChatCompletionsCheckBox.IsVisible = toolType == 0;
+        UseChatCompletionsCheckBox.IsVisible = toolType is 0 or 1;
 
         Title = toolType switch
         {
@@ -70,7 +70,7 @@ public partial class ProviderDialog : Window
             Remark = provider.Remark,
             UseChatCompletions = provider.UseChatCompletions
         };
-        UseChatCompletionsCheckBox.IsVisible = _provider.ToolType == 0;
+        UseChatCompletionsCheckBox.IsVisible = _provider.ToolType is 0 or 1;
 
         Title = "编辑供应商";
 

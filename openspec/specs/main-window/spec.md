@@ -75,6 +75,10 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **WHEN** 用户点击某供应商卡片的启用按钮
 - **THEN** 系统将该供应商设为激活，写入配置文件，UI 更新高亮状态
 
+#### Scenario: 启用 Claude Code Chat Completions 适配
+- **WHEN** 用户启用一个 `UseChatCompletions=true` 的 Claude Code 供应商
+- **THEN** 系统启动本地 Messages-to-Chat 代理，并将 Claude Code 配置指向该代理
+
 ### Requirement: 新增按钮
 主窗口右上角 SHALL 显示 `+` 按钮，点击弹出新增供应商对话框。
 

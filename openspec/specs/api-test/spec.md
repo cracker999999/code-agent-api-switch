@@ -25,6 +25,10 @@ TBD - created by archiving change test-model. Update Purpose after archive.
 - **WHEN** 用户测试一个 ToolType=1（Claude Code）的供应商且 TestModel 为空
 - **THEN** 系统发送 POST 请求，body 中 `model` 字段使用默认值 `claude-opus-4-6`
 
+#### Scenario: Claude Code 测试 Chat Completions 适配
+- **WHEN** 用户测试一个 ToolType=1 且 `UseChatCompletions=true` 的供应商
+- **THEN** 系统将 Claude Messages 请求转换后发送到 `{BaseUrl}/chat/completions`，并接受流式或 JSON 成功响应
+
 ### Requirement: Grok 供应商测试请求
 系统 SHALL 向 Grok 供应商发送 Responses API 流式 POST 请求验证连通性，使用供应商配置的 TestModel 作为模型 ID。
 
@@ -78,4 +82,3 @@ TBD - created by archiving change test-model. Update Purpose after archive.
 #### Scenario: 测试失败映射
 - **WHEN** `TestProviderAsync` 返回 `Success=false`
 - **THEN** 调用方 MUST 将该供应商状态写入 `TestStatus=2`（失败）
-

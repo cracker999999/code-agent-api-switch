@@ -25,6 +25,10 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **WHEN** settings.json 中不存在 `env` 节点
 - **THEN** 系统 SHALL 自动创建 `env` 节点并写入对应字段
 
+#### Scenario: Claude Code 使用 Chat Completions 适配
+- **WHEN** 用户激活已开启 Chat Completions 适配的 Claude Code 供应商
+- **THEN** 系统将 `env.ANTHROPIC_BASE_URL` 写为 `http://127.0.0.1:24822`，并保留供应商 ApiKey 作为 `env.ANTHROPIC_AUTH_TOKEN`
+
 ### Requirement: 写入前备份
 系统 SHALL 在写入任何配置文件前先备份原文件。
 
@@ -75,4 +79,3 @@ auth.json 和 settings.json 不存在时系统 SHALL 自动创建。
 #### Scenario: Grok config.toml 已存在
 - **WHEN** 用户激活 Grok 供应商且 `config.toml` 已存在
 - **THEN** 系统先备份为 `.bak`，再仅更新或插入顶层 Grok 字段
-

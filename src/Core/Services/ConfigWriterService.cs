@@ -28,18 +28,18 @@ public class ConfigWriterService
         _grokConfigPath = Path.Combine(userProfile, ".grok", "config.toml");
     }
 
-    public void ApplyProvider(Provider provider, string? codexBaseUrlOverride = null)
+    public void ApplyProvider(Provider provider, string? baseUrlOverride = null)
     {
         if (provider.ToolType == 0)
         {
-            WriteCodexConfig(codexBaseUrlOverride ?? provider.BaseUrl);
+            WriteCodexConfig(baseUrlOverride ?? provider.BaseUrl);
             WriteCodexAuth(provider.ApiKey);
             return;
         }
 
         if (provider.ToolType == 1)
         {
-            WriteClaudeSettings(provider.BaseUrl, provider.ApiKey);
+            WriteClaudeSettings(baseUrlOverride ?? provider.BaseUrl, provider.ApiKey);
             return;
         }
 
@@ -225,4 +225,3 @@ public class ConfigWriterService
         return beforeSection + section + afterSection;
     }
 }
-

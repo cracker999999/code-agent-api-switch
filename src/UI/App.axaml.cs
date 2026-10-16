@@ -20,6 +20,7 @@ public partial class App : Application
     private bool _ownsSingleInstanceMutex;
     private TrayIcon? _trayIcon;
     private CodexChatProxyService? _codexChatProxyService;
+    private ClaudeChatProxyService? _claudeChatProxyService;
     private DispatcherTimer? _macDockVisibilityTimer;
     private bool? _isMacDockVisible;
 
@@ -48,13 +49,24 @@ public partial class App : Application
             var configWriterService = new ConfigWriterService();
             var appSettingsService = new AppSettingsService(databaseService);
             _codexChatProxyService = new CodexChatProxyService();
+            _claudeChatProxyService = new ClaudeChatProxyService();
             var activeCodexProvider = databaseService.GetProviders(0).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
             if (activeCodexProvider is not null)
             {
                 _codexChatProxyService.Start(activeCodexProvider);
             }
+            var activeClaudeProvider = databaseService.GetProviders(1).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
+            if (activeClaudeProvider is not null)
+            {
+                _claudeChatProxyService.Start(activeClaudeProvider);
+            }
 
-            var mainWindow = new MainWindow(databaseService, configWriterService, appSettingsService, _codexChatProxyService);
+            var mainWindow = new MainWindow(
+                databaseService,
+                configWriterService,
+                appSettingsService,
+                _codexChatProxyService,
+                _claudeChatProxyService);
             desktop.MainWindow = mainWindow;
 
             desktop.Exit += (_, _) =>
@@ -73,6 +85,8 @@ public partial class App : Application
 
                 _codexChatProxyService?.Dispose();
                 _codexChatProxyService = null;
+                _claudeChatProxyService?.Dispose();
+                _claudeChatProxyService = null;
 
                 if (_ownsSingleInstanceMutex)
                 {

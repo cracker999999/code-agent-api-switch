@@ -27,7 +27,7 @@ public partial class ProviderDialog : Window
             ToolType = toolType,
             IsActive = false
         };
-        UseChatCompletionsCheckBox.Visibility = toolType == 0 ? Visibility.Visible : Visibility.Collapsed;
+        UseChatCompletionsCheckBox.Visibility = toolType is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
         Title = toolType switch
         {
             0 => "新增供应商（Codex）",
@@ -66,7 +66,7 @@ public partial class ProviderDialog : Window
             Remark = provider.Remark,
             UseChatCompletions = provider.UseChatCompletions
         };
-        UseChatCompletionsCheckBox.Visibility = Provider.ToolType == 0 ? Visibility.Visible : Visibility.Collapsed;
+        UseChatCompletionsCheckBox.Visibility = Provider.ToolType is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
         Title = "编辑供应商";
 
         NameTextBox.Text = Provider.Name;

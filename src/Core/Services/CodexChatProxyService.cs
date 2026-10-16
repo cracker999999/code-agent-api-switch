@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -13,80 +12,29 @@ public sealed class CodexChatProxyService : IDisposable
 {
     public const string LocalBaseUrl = "http://127.0.0.1:24821";
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
-    private readonly object _syncRoot = new();
-    private readonly HttpClient _httpClient = new() { Timeout = Timeout.InfiniteTimeSpan };
-    private HttpListener? _listener;
-    private CancellationTokenSource? _cancellation;
-    private Provider? _provider;
+    private readonly ChatProxyHost _host;
+
+    public CodexChatProxyService()
+    {
+        _host = new ChatProxyHost(LocalBaseUrl, 0, "Codex", HandleRequestAsync);
+    }
 
     public void Start(Provider provider)
     {
-        if (provider.ToolType != 0)
-        {
-            throw new InvalidOperationException("Chat Completions 适配只支持 Codex 供应商");
-        }
-
-        lock (_syncRoot)
-        {
-            _provider = provider;
-            if (_listener is not null)
-            {
-                return;
-            }
-
-            var listener = new HttpListener();
-            listener.Prefixes.Add($"{LocalBaseUrl}/");
-            listener.IgnoreWriteExceptions = true;
-            listener.Start();
-            _listener = listener;
-            _cancellation = new CancellationTokenSource();
-        }
+        _host.Start(provider);
     }
 
     public void Stop()
     {
-        lock (_syncRoot)
-        {
-            _provider = null;
-            _cancellation?.Cancel();
-            _cancellation?.Dispose();
-            _cancellation = null;
-            _listener?.Stop();
-            _listener?.Close();
-            _listener = null;
-        }
+        _host.Stop();
     }
 
     public void Dispose()
     {
-        Stop();
-        _httpClient.Dispose();
+        _host.Dispose();
     }
 
-    private async Task AcceptLoopAsync(HttpListener listener, CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            HttpListenerContext context;
-            try
-            {
-                context = await listener.GetContextAsync().WaitAsync(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (HttpListenerException) when (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-
-            _ = Task.Run(() => HandleRequestAsync(context), cancellationToken);
-        }
-    }
-
-    private async Task HandleRequestAsync(HttpListenerContext context)
+    private async Task HandleRequestAsync(HttpListenerContext context, Provider? provider)
     {
         try
         {
@@ -95,12 +43,6 @@ public sealed class CodexChatProxyService : IDisposable
             {
                 await WriteErrorAsync(context.Response, 404, "仅支持 POST /responses");
                 return;
-            }
-
-            Provider? provider;
-            lock (_syncRoot)
-            {
-                provider = _provider;
             }
 
             if (provider is null)
@@ -118,18 +60,11 @@ public sealed class CodexChatProxyService : IDisposable
 
             var requestBody = JsonNode.Parse(document.RootElement.GetRawText())!.AsObject();
             var transformed = CodexChatTransform.ToChatCompletions(requestBody);
-            using var upstreamRequest = new HttpRequestMessage(HttpMethod.Post, BuildChatUrl(provider.BaseUrl))
-            {
-                Content = new StringContent(transformed.Body.ToJsonString(JsonOptions), Encoding.UTF8, "application/json")
-            };
-            upstreamRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", provider.ApiKey);
-            upstreamRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(
-                transformed.Stream ? "text/event-stream" : "application/json"));
-
-            using var upstreamResponse = await _httpClient.SendAsync(
-                upstreamRequest,
-                HttpCompletionOption.ResponseHeadersRead,
-                CancellationToken.None);
+            using var upstreamResponse = await ChatProxyTransport.SendAsync(
+                _host.HttpClient,
+                provider,
+                transformed.Body,
+                transformed.Stream);
 
             if (!upstreamResponse.IsSuccessStatusCode)
             {
@@ -144,7 +79,7 @@ public sealed class CodexChatProxyService : IDisposable
                 var chatResponse = JsonNode.Parse(responseText)?.AsObject()
                     ?? throw new InvalidOperationException("上游 Chat Completions 响应不是 JSON 对象");
                 var response = CodexChatTransform.ToResponses(chatResponse, transformed.Context);
-                await WriteJsonAsync(context.Response, response);
+                await ChatProxyTransport.WriteJsonAsync(context.Response, response);
                 return;
             }
 
@@ -157,7 +92,10 @@ public sealed class CodexChatProxyService : IDisposable
                 return;
             }
 
-            await StreamResponsesAsync(context.Response, upstreamResponse, transformed.Context);
+            await ChatProxyTransport.RelaySseAsync(
+                context.Response,
+                upstreamResponse.Content,
+                new ChatToResponsesStream(transformed.Context));
         }
         catch (JsonException ex)
         {
@@ -178,83 +116,9 @@ public sealed class CodexChatProxyService : IDisposable
         }
     }
 
-    private async Task StreamResponsesAsync(
-        HttpListenerResponse response,
-        HttpResponseMessage upstreamResponse,
-        CodexToolContext toolContext)
-    {
-        response.StatusCode = 200;
-        response.ContentType = "text/event-stream";
-        response.SendChunked = true;
-        response.KeepAlive = false;
-        response.Headers["Cache-Control"] = "no-cache";
-
-        var state = new ChatToResponsesStream(toolContext);
-        await using var upstream = await upstreamResponse.Content.ReadAsStreamAsync();
-        using var reader = new StreamReader(upstream, Encoding.UTF8);
-        var data = new List<string>();
-        while (await reader.ReadLineAsync() is { } line)
-        {
-            if (!string.IsNullOrEmpty(line))
-            {
-                if (line.StartsWith("data:", StringComparison.Ordinal))
-                {
-                    data.Add(line[5..].TrimStart());
-                }
-
-                continue;
-            }
-
-            if (data.Count == 0)
-            {
-                continue;
-            }
-
-            var payload = string.Join("\n", data);
-            data.Clear();
-            if (payload == "[DONE]")
-            {
-                await WriteEventsAsync(response, state.Complete());
-                continue;
-            }
-
-            JsonObject? chunk;
-            try
-            {
-                chunk = JsonNode.Parse(payload)?.AsObject();
-            }
-            catch (JsonException)
-            {
-                continue;
-            }
-
-            if (chunk is null)
-            {
-                continue;
-            }
-
-            if (chunk["error"] is not null)
-            {
-                await WriteEventsAsync(response, state.Fail(ReadErrorMessage(chunk)));
-                return;
-            }
-
-            await WriteEventsAsync(response, state.Handle(chunk));
-        }
-
-        if (!state.IsCompleted)
-        {
-            await WriteEventsAsync(response, state.Complete());
-        }
-    }
-
     private static async Task StreamSingleResponseAsync(HttpListenerResponse response, JsonObject chatResponse, CodexToolContext context)
     {
-        response.StatusCode = 200;
-        response.ContentType = "text/event-stream";
-        response.SendChunked = true;
-        response.KeepAlive = false;
-        response.Headers["Cache-Control"] = "no-cache";
+        ChatProxyTransport.BeginSse(response);
         var state = new ChatToResponsesStream(context);
         var choices = chatResponse["choices"] as JsonArray;
         var choice = choices?.FirstOrDefault() as JsonObject;
@@ -272,39 +136,12 @@ public sealed class CodexChatProxyService : IDisposable
                 ["finish_reason"] = choice?["finish_reason"]?.DeepClone()
             })
         };
-        await WriteEventsAsync(response, state.Handle(chunk));
-        await WriteEventsAsync(response, state.Complete());
-    }
-
-    private static async Task WriteEventsAsync(HttpListenerResponse response, IEnumerable<string> events)
-    {
-        foreach (var item in events)
-        {
-            var bytes = Encoding.UTF8.GetBytes(item);
-            await response.OutputStream.WriteAsync(bytes);
-            await response.OutputStream.FlushAsync();
-        }
-    }
-
-    private static Uri BuildChatUrl(string baseUrl)
-    {
-        var normalized = baseUrl.TrimEnd('/');
-        return new Uri($"{normalized}/chat/completions", UriKind.Absolute);
-    }
-
-    private static async Task WriteJsonAsync(HttpListenerResponse response, JsonObject body)
-    {
-        response.StatusCode = 200;
-        response.ContentType = "application/json";
-        var bytes = Encoding.UTF8.GetBytes(body.ToJsonString(JsonOptions));
-        response.ContentLength64 = bytes.Length;
-        await response.OutputStream.WriteAsync(bytes);
+        await ChatProxyTransport.WriteEventsAsync(response, state.Handle(chunk));
+        await ChatProxyTransport.WriteEventsAsync(response, state.Complete());
     }
 
     private static async Task WriteErrorAsync(HttpListenerResponse response, int statusCode, string message)
     {
-        response.StatusCode = statusCode;
-        response.ContentType = "application/json";
         var body = new JsonObject
         {
             ["error"] = new JsonObject
@@ -313,43 +150,23 @@ public sealed class CodexChatProxyService : IDisposable
                 ["type"] = "proxy_error"
             }
         };
-        var bytes = Encoding.UTF8.GetBytes(body.ToJsonString(JsonOptions));
-        response.ContentLength64 = bytes.Length;
-        await response.OutputStream.WriteAsync(bytes);
+        await ChatProxyTransport.WriteJsonAsync(response, body, statusCode);
     }
 
     private static async Task WriteUpstreamErrorAsync(HttpListenerResponse response, int statusCode, string text)
     {
-        JsonObject body;
-        try
-        {
-            body = JsonNode.Parse(text)?.AsObject() ?? new JsonObject();
-        }
-        catch (JsonException)
-        {
-            body = new JsonObject();
-        }
-
-        var error = body["error"]?.AsObject();
+        var body = ChatProxyTransport.ParseJsonObject(text);
+        var error = body?["error"] as JsonObject;
+        var errorType = ChatProxyTransport.GetString(error, "type");
         var normalized = new JsonObject
         {
             ["error"] = new JsonObject
             {
-                ["message"] = error?["message"]?.GetValue<string>() ?? body["message"]?.GetValue<string>() ?? text,
-                ["type"] = error?["type"]?.GetValue<string>() ?? "upstream_error"
+                ["message"] = body is null ? text : ChatProxyTransport.ReadErrorMessage(body),
+                ["type"] = string.IsNullOrWhiteSpace(errorType) ? "upstream_error" : errorType
             }
         };
-        response.StatusCode = statusCode;
-        response.ContentType = "application/json";
-        var bytes = Encoding.UTF8.GetBytes(normalized.ToJsonString(JsonOptions));
-        response.ContentLength64 = bytes.Length;
-        await response.OutputStream.WriteAsync(bytes);
-    }
-
-    private static string ReadErrorMessage(JsonObject body)
-    {
-        var error = body["error"]?.AsObject() ?? body;
-        return error["message"]?.GetValue<string>() ?? error["detail"]?.GetValue<string>() ?? error.ToJsonString(JsonOptions);
+        await ChatProxyTransport.WriteJsonAsync(response, normalized, statusCode);
     }
 }
 
@@ -958,7 +775,7 @@ internal static class CodexChatTransform
     private static long GetLong(JsonObject? obj, params string[] keys) { foreach (var key in keys) if (obj?[key] is JsonValue value && value.TryGetValue<long>(out var result)) return result; return 0; }
 }
 
-internal sealed class ChatToResponsesStream
+internal sealed class ChatToResponsesStream : IChatProxyStreamState
 {
     private sealed class ToolState
     {
@@ -993,7 +810,7 @@ internal sealed class ChatToResponsesStream
 
     public ChatToResponsesStream(CodexToolContext context) => _context = context;
 
-    public List<string> Handle(JsonObject chunk)
+    public IEnumerable<string> Handle(JsonObject chunk)
     {
         var events = new List<string>();
         var id = GetString(chunk, "id");
@@ -1023,7 +840,7 @@ internal sealed class ChatToResponsesStream
         return events;
     }
 
-    public List<string> Complete()
+    public IEnumerable<string> Complete()
     {
         if (IsCompleted) return [];
         var events = new List<string>();
@@ -1041,7 +858,7 @@ internal sealed class ChatToResponsesStream
         return events;
     }
 
-    public List<string> Fail(string message)
+    public IEnumerable<string> Fail(string message)
     {
         if (IsCompleted) return [];
         var response = BaseResponse("failed", new JsonArray());

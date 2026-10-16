@@ -107,12 +107,25 @@ public class ApiTestService
     private async Task<ApiTestResult> TestClaudeAsync(Provider provider)
     {
         var settings = _settingsService.Load();
-        // 真实 Claude Code 调用的是 /v1/messages?beta=true,部分中转站会校验该查询参数
-        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.ClaudeEndpointPath}";
         var model = provider.GetEffectiveTestModel(settings);
         var sessionId = Guid.NewGuid().ToString();
         var body = BuildClaudeRequestBody(model, sessionId, settings.ClaudePromptText);
 
+        if (provider.UseChatCompletions)
+        {
+            var transformed = ClaudeChatTransform.ToChatCompletions(JsonNode.Parse(body)!.AsObject());
+            var chatUrl = $"{provider.BaseUrl.TrimEnd('/')}/chat/completions";
+            using var chatRequest = new HttpRequestMessage(HttpMethod.Post, chatUrl)
+            {
+                Content = new StringContent(transformed.Body.ToJsonString(), Encoding.UTF8, "application/json")
+            };
+
+            AddClaudeRequestHeaders(chatRequest, provider, settings, sessionId);
+            return await SendAndReadFirstChunkAsync(chatRequest, allowJsonResponse: true);
+        }
+
+        // 真实 Claude Code 调用的是 /v1/messages?beta=true,部分中转站会校验该查询参数
+        var url = $"{provider.BaseUrl.TrimEnd('/')}{settings.ClaudeEndpointPath}";
         using var request = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json")

@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly AppSettingsService _appSettingsService;
     private readonly ApiTestService _apiTestService;
     private readonly CodexChatProxyService _codexChatProxyService;
+    private readonly ClaudeChatProxyService _claudeChatProxyService;
     private readonly TranslateTransform _providerDropIndicatorTransform;
     private readonly DispatcherTimer _providerAutoScrollTimer;
     private readonly ProviderDragController _providerDragController;
@@ -37,12 +38,18 @@ public partial class MainWindow : Window
     private static readonly DataFormat<string> ProviderDragFormat =
         DataFormat.CreateStringApplicationFormat("APISwitch.Provider");
 
-    public MainWindow(DatabaseService databaseService, ConfigWriterService configWriterService, AppSettingsService appSettingsService, CodexChatProxyService codexChatProxyService)
+    public MainWindow(
+        DatabaseService databaseService,
+        ConfigWriterService configWriterService,
+        AppSettingsService appSettingsService,
+        CodexChatProxyService codexChatProxyService,
+        ClaudeChatProxyService claudeChatProxyService)
     {
         _databaseService = databaseService;
         _configWriterService = configWriterService;
         _appSettingsService = appSettingsService;
         _codexChatProxyService = codexChatProxyService;
+        _claudeChatProxyService = claudeChatProxyService;
         _apiTestService = new ApiTestService(_appSettingsService);
         _cachedSettings = _appSettingsService.Load();
 
@@ -342,6 +349,26 @@ public partial class MainWindow : Window
         if (provider.ToolType == 0)
         {
             _codexChatProxyService.Stop();
+        }
+
+        if (provider.ToolType == 1 && provider.UseChatCompletions)
+        {
+            _claudeChatProxyService.Start(provider);
+            try
+            {
+                _configWriterService.ApplyProvider(provider, ClaudeChatProxyService.LocalBaseUrl);
+            }
+            catch
+            {
+                _claudeChatProxyService.Stop();
+                throw;
+            }
+            return;
+        }
+
+        if (provider.ToolType == 1)
+        {
+            _claudeChatProxyService.Stop();
         }
 
         _configWriterService.ApplyProvider(provider);

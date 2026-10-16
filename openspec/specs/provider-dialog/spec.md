@@ -79,3 +79,13 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **WHEN** 用户编辑 Grok 供应商且 TestModel 为空
 - **THEN** 测试模型输入框占位显示 Grok 全局默认测试模型
 
+### Requirement: Chat Completions 适配开关
+供应商对话框 SHALL 为 Codex 和 Claude Code 供应商显示“适配/chat/completions”开关，并持久化其选择。
+
+#### Scenario: Claude Code 开启适配
+- **WHEN** 用户新增或编辑 Claude Code 供应商并勾选“适配/chat/completions”
+- **THEN** 系统保存 `UseChatCompletions=true`
+
+#### Scenario: Grok 不显示适配开关
+- **WHEN** 用户新增或编辑 Grok 供应商
+- **THEN** 对话框不显示“适配/chat/completions”开关
