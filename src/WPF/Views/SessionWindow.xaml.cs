@@ -617,7 +617,12 @@ public partial class SessionWindow : Window
 
     private static FrameworkElement? CreateImageElementFromDataUrl(string imageDataUrl)
     {
-        var imageSource = DecodeDataUrlImage(imageDataUrl);
+        if (!ImageDataUrlDecoder.TryDecode(imageDataUrl, out var imageBytes, out var fileExtension))
+        {
+            return null;
+        }
+
+        var imageSource = DecodeImage(imageBytes);
         if (imageSource is null)
         {
             return null;
@@ -630,8 +635,12 @@ public partial class SessionWindow : Window
             MaxWidth = 420,
             MaxHeight = 320,
             Cursor = System.Windows.Input.Cursors.Hand,
-            ToolTip = "双击查看原图"
+            ToolTip = "双击查看原图，右键另存为"
         };
+
+        var saveAsMenuItem = new System.Windows.Controls.MenuItem { Header = "另存为..." };
+        saveAsMenuItem.Click += (_, _) => SaveImageAs(imageControl, imageBytes, fileExtension);
+        imageControl.ContextMenu = new System.Windows.Controls.ContextMenu { Items = { saveAsMenuItem } };
 
         imageControl.MouseLeftButtonDown += (_, e) =>
         {
@@ -697,29 +706,38 @@ public partial class SessionWindow : Window
         return new System.Windows.Size(windowWidth, windowHeight);
     }
 
-    private static Media.ImageSource? DecodeDataUrlImage(string imageDataUrl)
+    private static void SaveImageAs(DependencyObject sourceElement, byte[] imageBytes, string fileExtension)
     {
-        if (string.IsNullOrWhiteSpace(imageDataUrl))
+        // 图片控件只挂在会话窗口内,拿不到所属窗口说明调用链有误,直接抛出。
+        var owner = Window.GetWindow(sourceElement)!;
+        var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            return null;
+            Title = "图片另存为",
+            FileName = $"image_{DateTime.Now:yyyyMMdd_HHmmss}.{fileExtension}",
+            DefaultExt = fileExtension,
+            Filter = $"{fileExtension.ToUpperInvariant()} 图片|*.{fileExtension}",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(owner) != true)
+        {
+            return;
         }
 
-        var commaIndex = imageDataUrl.IndexOf(',');
-        if (commaIndex <= 0 || commaIndex >= imageDataUrl.Length - 1)
-        {
-            return null;
-        }
-
-        var prefix = imageDataUrl[..commaIndex];
-        if (!prefix.Contains(";base64", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        var base64Part = imageDataUrl[(commaIndex + 1)..];
         try
         {
-            var imageBytes = Convert.FromBase64String(base64Part);
+            File.WriteAllBytes(dialog.FileName, imageBytes);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            DialogService.ShowError(owner, "错误", $"保存图片失败：{ex.Message}");
+        }
+    }
+
+    private static Media.ImageSource? DecodeImage(byte[] imageBytes)
+    {
+        try
+        {
             using var stream = new MemoryStream(imageBytes);
             var bitmap = new BitmapImage();
             bitmap.BeginInit();

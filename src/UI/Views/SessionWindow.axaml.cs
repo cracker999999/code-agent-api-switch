@@ -10,6 +10,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 
 namespace APISwitch.UI.Views;
 
@@ -672,7 +673,12 @@ public partial class SessionWindow : Window
 
     private static Control? CreateImageElementFromDataUrl(string imageDataUrl)
     {
-        var image = DecodeDataUrlImage(imageDataUrl);
+        if (!ImageDataUrlDecoder.TryDecode(imageDataUrl, out var imageBytes, out var fileExtension))
+        {
+            return null;
+        }
+
+        var image = DecodeImage(imageBytes);
         if (image is null)
         {
             return null;
@@ -686,7 +692,11 @@ public partial class SessionWindow : Window
             MaxHeight = 320,
             Cursor = new Cursor(StandardCursorType.Hand)
         };
-        ToolTip.SetTip(imageControl, "双击查看原图");
+        ToolTip.SetTip(imageControl, "双击查看原图，右键另存为");
+
+        var saveAsMenuItem = new MenuItem { Header = "另存为..." };
+        saveAsMenuItem.Click += async (_, _) => await SaveImageAsAsync(imageControl, imageBytes, fileExtension);
+        imageControl.ContextMenu = new ContextMenu { Items = { saveAsMenuItem } };
 
         imageControl.PointerPressed += (_, e) =>
         {
@@ -755,30 +765,42 @@ public partial class SessionWindow : Window
         return new Size(windowWidth, windowHeight);
     }
 
-    private static Bitmap? DecodeDataUrlImage(string imageDataUrl)
+    private static async Task SaveImageAsAsync(Control sourceElement, byte[] imageBytes, string fileExtension)
     {
-        if (string.IsNullOrWhiteSpace(imageDataUrl))
+        // 图片控件只挂在会话窗口内,拿不到所属窗口说明调用链有误,直接抛出。
+        var owner = (Window)TopLevel.GetTopLevel(sourceElement)!;
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            return null;
+            Title = "图片另存为",
+            SuggestedFileName = $"image_{DateTime.Now:yyyyMMdd_HHmmss}.{fileExtension}",
+            DefaultExtension = fileExtension,
+            ShowOverwritePrompt = true,
+            FileTypeChoices =
+            [
+                new FilePickerFileType($"{fileExtension.ToUpperInvariant()} 图片") { Patterns = [$"*.{fileExtension}"] }
+            ]
+        });
+        if (file is null)
+        {
+            return;
         }
 
-        var commaIndex = imageDataUrl.IndexOf(',');
-        if (commaIndex <= 0 || commaIndex >= imageDataUrl.Length - 1)
-        {
-            return null;
-        }
-
-        var prefix = imageDataUrl[..commaIndex];
-        if (!prefix.Contains(";base64", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        var base64Part = imageDataUrl[(commaIndex + 1)..];
         try
         {
-            var bytes = Convert.FromBase64String(base64Part);
-            return new Bitmap(new MemoryStream(bytes));
+            await using var stream = await file.OpenWriteAsync();
+            await stream.WriteAsync(imageBytes);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(owner, "错误", $"保存图片失败：{ex.Message}");
+        }
+    }
+
+    private static Bitmap? DecodeImage(byte[] imageBytes)
+    {
+        try
+        {
+            return new Bitmap(new MemoryStream(imageBytes));
         }
         catch (Exception)
         {
