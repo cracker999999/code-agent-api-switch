@@ -13,6 +13,7 @@
 - `openspec/` stores proposals/spec/tasks; update it when requirements change.
 
 ## Build, Test, and Development Commands
+- Local environment note: this Mac only has .NET Core SDK 2.2.102 installed, so .NET 8 builds cannot run until a .NET 8 SDK is installed or selected.
 - `dotnet restore APISwitch.sln` - restore NuGet packages.
 - `dotnet build APISwitch.sln` - build all projects.
 - `dotnet build APISwitch.sln --no-restore` - use this for quick verification when restore already ran or NuGet source access is flaky, to avoid unnecessary restore retries.
