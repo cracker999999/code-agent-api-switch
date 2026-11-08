@@ -12,6 +12,7 @@ APISwitch 用于可视化管理 **Codex**、**Claude Code** 和 **Grok Build** �
 - 供应商管理：按工具类型（Codex / Claude Code / Grok）分别管理供应商，激活状态与排序按分类隔离
 - 数据持久化：使用 SQLite 存储 Name、BaseUrl、ApiKey、激活状态、排序与测试状态（`TestStatus`）
 - 供应商连通性测试：卡片支持“测试”按钮，分别请求 Codex / Claude / Grok 对应接口；启用 Chat Completions 适配时测试请求发送到供应商的 `/chat/completions`
+- 模型查询：点击搜索框旁的“查找模型”，输入模型 ID 或片段，按每批最多 10 个并发查询所有分类下的供应商并列出包含该内容的匹配项（忽略大小写）；支持查看失败详情和停止查询
 - 测试状态点：供应商名称前显示状态点（绿色=可用，红色=失败，无文字），状态持久化到数据库
 - 配置写入：
   - Codex：写入 `~/.codex/config.toml` 的 `[model_providers.OpenAI]` 段下 `base_url`，并写入 `~/.codex/auth.json` 的 `OPENAI_API_KEY`

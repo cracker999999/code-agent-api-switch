@@ -149,12 +149,22 @@
             </StackPanel>
         </Grid>
 
-        <TextBox Grid.Row="1"
-                 x:Name="SearchTextBox"
-                 Style="{StaticResource SearchTextBoxStyle}"
-                 Tag="搜索供应商..."
-                 Margin="0,0,0,12"
-                 TextChanged="SearchTextBox_TextChanged" />
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="SearchTextBox"
+                     Style="{StaticResource SearchTextBoxStyle}"
+                     Tag="搜索供应商..."
+                     TextChanged="SearchTextBox_TextChanged" />
+            <Button Grid.Column="1"
+                    Style="{StaticResource RoundedAddButtonStyle}"
+                    Width="88"
+                    Height="36"
+                    Margin="8,0,0,0"
+                    Click="ModelSearchButton_Click">查找模型</Button>
+        </Grid>
 
         <ScrollViewer Grid.Row="2"
                       x:Name="ProvidersScrollViewer"

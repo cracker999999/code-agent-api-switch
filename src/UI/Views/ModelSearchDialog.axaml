@@ -1,0 +1,78 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:APISwitch.Models;assembly=Core"
+        x:Class="APISwitch.UI.Views.ModelSearchDialog"
+        Title="查找模型"
+        Icon="/Assets/app.ico"
+        Width="680"
+        Height="500"
+        MinWidth="480"
+        MinHeight="360"
+        Background="#F3F4F6"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto">
+    <Grid ColumnDefinitions="*,Auto">
+      <TextBox x:Name="ModelIdTextBox"
+               Watermark="模型 ID"
+               AutomationProperties.Name="模型 ID"
+               Height="36"
+               VerticalContentAlignment="Center" />
+      <Button x:Name="SearchButton"
+              Grid.Column="1"
+              Width="80"
+              Height="36"
+              Margin="8,0,0,0"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              IsDefault="True"
+              Click="SearchButton_Click"
+              Content="查询" />
+    </Grid>
+
+    <TextBlock x:Name="ProgressTextBlock"
+               Grid.Row="1"
+               Margin="0,12"
+               Foreground="#6B7280"
+               TextWrapping="Wrap" />
+
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl x:Name="ResultsItemsControl">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="models:ModelSearchResult">
+            <Border Margin="0,0,4,8"
+                    Padding="12"
+                    Background="White"
+                    BorderBrush="#D1D5DB"
+                    BorderThickness="1"
+                    CornerRadius="8">
+              <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding Provider.Name}" FontWeight="SemiBold" FontSize="16" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="1" Text="{Binding ToolName}" Margin="12,0,0,0" Foreground="#6B7280" VerticalAlignment="Center" />
+                </Grid>
+                <SelectableTextBlock Text="{Binding Provider.BaseUrl}" Foreground="#6B7280" TextWrapping="Wrap" />
+                <SelectableTextBlock Text="{Binding MatchingModelsText}" Foreground="#2563EB" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <Expander x:Name="ErrorsExpander"
+              Grid.Row="3"
+              Margin="0,8,0,0"
+              Header="查询失败"
+              HorizontalAlignment="Stretch"
+              IsVisible="False">
+      <TextBox x:Name="ErrorsTextBox"
+               IsReadOnly="True"
+               AcceptsReturn="True"
+               TextWrapping="Wrap"
+               MaxHeight="120"
+               Foreground="#DC2626"
+               ScrollViewer.VerticalScrollBarVisibility="Auto" />
+    </Expander>
+  </Grid>
+</Window>

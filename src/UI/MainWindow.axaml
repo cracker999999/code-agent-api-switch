@@ -103,15 +103,21 @@
       </StackPanel>
     </Grid>
 
-    <TextBox Grid.Row="1"
-             x:Name="SearchTextBox"
-             Watermark="搜索供应商..."
-             Margin="0,0,0,12"
-             Height="36"
-             Padding="12,8"
-             CornerRadius="8"
-             VerticalContentAlignment="Center"
-             TextChanged="SearchTextBox_TextChanged" />
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+      <TextBox x:Name="SearchTextBox"
+               Watermark="搜索供应商..."
+               Height="36"
+               Padding="12,8"
+               CornerRadius="8"
+               VerticalContentAlignment="Center"
+               TextChanged="SearchTextBox_TextChanged" />
+      <Button Grid.Column="1"
+              Classes="header-action"
+              Height="36"
+              Margin="8,0,0,0"
+              Click="ModelSearchButton_Click"
+              Content="查找模型" />
+    </Grid>
 
     <ScrollViewer x:Name="ProvidersScrollViewer"
                   Grid.Row="2"

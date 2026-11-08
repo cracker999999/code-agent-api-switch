@@ -183,6 +183,20 @@ public partial class MainWindow : Window
         LoadProviders();
     }
 
+    private async void ModelSearchButton_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var providers = Enumerable.Range(0, 3).SelectMany(_databaseService.GetProviders).ToList();
+            var dialog = new ModelSearchDialog(providers, new ModelDiscoveryService(_apiTestService));
+            dialog.Show(this);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(this, "查询失败", ex.Message);
+        }
+    }
+
     private async void PromptButton_Click(object? sender, RoutedEventArgs e)
     {
         var window = new PromptWindow(_databaseService);
