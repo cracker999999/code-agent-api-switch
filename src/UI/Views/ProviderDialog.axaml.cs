@@ -15,6 +15,7 @@ public partial class ProviderDialog : Window
 
     private readonly ModelDiscoveryService _modelDiscoveryService;
     private readonly ApiTestService _apiTestService;
+    private readonly SearchDebouncer _modelSearchDebouncer;
     private List<string> _allModels = new();
 
     private readonly Provider _provider;
@@ -24,6 +25,7 @@ public partial class ProviderDialog : Window
         InitializeComponent();
         _apiTestService = new ApiTestService(appSettingsService);
         _modelDiscoveryService = new ModelDiscoveryService(_apiTestService);
+        _modelSearchDebouncer = new SearchDebouncer(ApplyModelFilter);
 
         _provider = new Provider
         {
@@ -55,6 +57,7 @@ public partial class ProviderDialog : Window
         InitializeComponent();
         _apiTestService = new ApiTestService(appSettingsService);
         _modelDiscoveryService = new ModelDiscoveryService(_apiTestService);
+        _modelSearchDebouncer = new SearchDebouncer(ApplyModelFilter);
 
         _provider = new Provider
         {
@@ -262,7 +265,8 @@ public partial class ProviderDialog : Window
 
     private void ModelSearchTextBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
-        ApplyModelFilter();
+        // 输入停顿后再过滤，避免输入法拼写期逐字重建列表。
+        _modelSearchDebouncer.Restart();
     }
 
     private void ModelListBoxItem_DoubleTapped(object? sender, TappedEventArgs e)
@@ -291,6 +295,9 @@ public partial class ProviderDialog : Window
 
     private void ApplyModelFilter()
     {
+        // 已同步到最新关键字，取消待触发的防抖过滤，避免重复刷新列表。
+        _modelSearchDebouncer.Cancel();
+
         var keyword = ModelSearchTextBox.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(keyword))
         {

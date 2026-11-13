@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private SessionWindow? _sessionWindow;
     private int _currentToolType;
     private readonly DispatcherTimer _providerAutoScrollTimer;
+    private readonly SearchDebouncer _searchDebouncer;
     private readonly ProviderDragController _providerDragController;
     private List<Provider> _allProviders = [];
     private string _searchKeyword = string.Empty;
@@ -65,6 +66,8 @@ public partial class MainWindow : Window
             Interval = TimeSpan.FromMilliseconds(80)
         };
         _providerAutoScrollTimer.Tick += ProviderAutoScrollTimer_Tick;
+
+        _searchDebouncer = new SearchDebouncer(ApplySearchFilter);
 
         _providerDragController = new ProviderDragController(
             GetProviderCardGeometry,
@@ -706,6 +709,9 @@ public partial class MainWindow : Window
 
     private void ApplySearchFilter()
     {
+        // 已同步到最新关键字，取消待触发的防抖过滤，避免重复刷新列表。
+        _searchDebouncer.Cancel();
+
         if (string.IsNullOrWhiteSpace(_searchKeyword))
         {
             ProvidersItemsControl.ItemsSource = _allProviders;
@@ -735,7 +741,9 @@ public partial class MainWindow : Window
         }
 
         _searchKeyword = newKeyword;
-        ApplySearchFilter();
+
+        // 输入停顿后再过滤，避免输入法拼写期逐字重建列表。
+        _searchDebouncer.Restart();
     }
 
     private int GetNextSortOrder()

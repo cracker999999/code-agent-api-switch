@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private readonly ClaudeChatProxyService _claudeChatProxyService;
     private readonly TranslateTransform _providerDropIndicatorTransform;
     private readonly DispatcherTimer _providerAutoScrollTimer;
+    private readonly SearchDebouncer _searchDebouncer;
     private readonly ProviderDragController _providerDragController;
     private bool _initialProvidersLoaded;
 
@@ -64,6 +65,8 @@ public partial class MainWindow : Window
             Interval = TimeSpan.FromMilliseconds(80)
         };
         _providerAutoScrollTimer.Tick += ProviderAutoScrollTimer_Tick;
+
+        _searchDebouncer = new SearchDebouncer(ApplySearchFilter);
 
         _providerDragController = new ProviderDragController(
             GetProviderCardGeometry,
@@ -646,6 +649,9 @@ public partial class MainWindow : Window
 
     private void ApplySearchFilter()
     {
+        // 已同步到最新关键字，取消待触发的防抖过滤，避免重复刷新列表。
+        _searchDebouncer.Cancel();
+
         if (string.IsNullOrWhiteSpace(_searchKeyword))
         {
             ProvidersItemsControl.ItemsSource = _allProviders;
@@ -675,7 +681,9 @@ public partial class MainWindow : Window
         }
 
         _searchKeyword = newKeyword;
-        ApplySearchFilter();
+
+        // 输入停顿后再过滤，避免输入法拼写期逐字重建列表。
+        _searchDebouncer.Restart();
     }
 
     private async void ProviderCard_PointerPressed(object? sender, PointerPressedEventArgs e)

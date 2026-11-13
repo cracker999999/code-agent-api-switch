@@ -22,6 +22,7 @@ public partial class SessionWindow : Window
     private List<SessionListItem> _allSessionItems = [];
     private int _allSubagentCount;
     private string _searchKeyword = string.Empty;
+    private readonly SearchDebouncer _searchDebouncer;
 
     public bool IsSessionSearchActive => !string.IsNullOrWhiteSpace(_searchKeyword);
 
@@ -29,6 +30,17 @@ public partial class SessionWindow : Window
     {
         _currentProviderId = SessionService.NormalizeProviderId(initialProviderId);
         InitializeComponent();
+
+        // 关键字变化后当前选中项可能已被过滤掉，先清空详情面板再刷新列表。
+        _searchDebouncer = new SearchDebouncer(() =>
+        {
+            _selectedSession = null;
+            _loadMessagesVersion++;
+            SessionListBox.SelectedItem = null;
+            ResetDetailPanel();
+            ApplySearchFilter();
+        });
+
         UpdateTabButtons();
         _ = ReloadSessionsAsync();
     }
@@ -288,15 +300,16 @@ public partial class SessionWindow : Window
         }
 
         _searchKeyword = newKeyword;
-        _selectedSession = null;
-        _loadMessagesVersion++;
-        SessionListBox.SelectedItem = null;
-        ResetDetailPanel();
-        ApplySearchFilter();
+
+        // 输入停顿后再过滤并重置详情面板，避免输入法拼写期逐字重建列表。
+        _searchDebouncer.Restart();
     }
 
     private void ApplySearchFilter()
     {
+        // 已同步到最新关键字，取消待触发的防抖过滤，避免重复刷新列表。
+        _searchDebouncer.Cancel();
+
         var isSearchActive = IsSessionSearchActive;
         var filteredItems = SessionListBuilder.FilterItems(_allSessionItems, _searchKeyword);
         var subagentCount = isSearchActive
