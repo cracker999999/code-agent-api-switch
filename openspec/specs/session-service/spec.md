@@ -106,15 +106,27 @@ TBD - created by archiving change session-management. Update Purpose after archi
 - **THEN** `SourcePath` MUST 为对应 `.jsonl` 文件的绝对路径
 
 ### Requirement: 删除 Codex 会话
-系统 SHALL 删除 Codex 会话的 `.jsonl` 文件，并递归删除该会话的全部后代子代理文件。
+系统 SHALL 删除 Codex 会话的 `.jsonl` 文件及对应清洗备份，并递归删除该会话的全部后代子代理文件及其清洗备份。
 
 #### Scenario: 删除 Codex 会话
 - **WHEN** 调用 `DeleteSession("codex", sessionId, sourcePath)`
-- **THEN** 删除 `sourcePath` 指向的 `.jsonl` 文件，以及 ParentSessionId 直接或间接指向该会话的全部子代理 `.jsonl` 文件
+- **THEN** 删除 `sourcePath` 指向的 `.jsonl` 文件，以及 ParentSessionId 直接或间接指向该会话的全部子代理 `.jsonl` 文件，并删除这些文件对应的全部清洗备份
 
 #### Scenario: 删除包含后代的子代理
 - **WHEN** 删除的 Codex 子代理自身仍包含下级子代理
-- **THEN** 系统仅递归删除该子代理及其后代，不删除其父会话或兄弟子代理
+- **THEN** 系统仅递归删除该子代理及其后代和对应清洗备份，不删除其父会话、兄弟子代理及其备份
+
+#### Scenario: 精确匹配清洗备份
+- **WHEN** 删除指定 Codex 会话文件的备份
+- **THEN** 系统仅删除同目录下由本工具生成的 `原文件名.jsonl.<32 位 GUID>.bak`，保留其他会话及相近文件名的文件
+
+#### Scenario: 原文件已消失
+- **WHEN** 删除的会话原文件已不存在，但同目录仍有对应清洗备份
+- **THEN** 系统仍清理这些备份
+
+#### Scenario: 备份删除失败
+- **WHEN** 任一清洗备份因占用或权限等原因无法删除
+- **THEN** 系统报告错误并保留对应会话原文件，允许用户重试
 
 ### Requirement: 删除 Claude 会话
 系统 SHALL 删除 Claude 会话的 `.jsonl` 文件及同名 sidecar 目录。
@@ -158,3 +170,29 @@ TBD - created by archiving change session-management. Update Purpose after archi
 #### Scenario: 删除 Grok 会话
 - **WHEN** 调用 `DeleteSession("grok", sessionId, sourcePath)`
 - **THEN** 删除 `sourcePath` 所在的 Grok 会话目录
+
+### Requirement: 清洗 Codex 会话
+系统 SHALL 仅清洗指定 Codex 会话的原始 JSONL 文件，移除影响切换模型供应商后恢复会话的加密记录。
+
+#### Scenario: 清洗加密推理与压缩记录
+- **WHEN** 调用 `CleanSession("codex", sourcePath)`
+- **THEN** 系统移除含 `encrypted_content` 属性的 `response_item` 推理或压缩记录，以及含该属性的 `compacted` 快照，包含嵌套历史中的加密内容
+- **AND** 保留原始用户消息、助手消息、工具调用、纯摘要推理、空行及其他非加密记录，不因正文提到 `encrypted_content` 而删除记录
+- **AND** 删除加密压缩快照后，恢复会话使用前文保留的原始历史
+
+#### Scenario: 备份与安全写回
+- **WHEN** 会话包含需要清洗的记录
+- **THEN** 系统先完整生成 UTF-8 临时文件，再备份并原子替换原文件，返回删除记录数和独立的 `.bak` 备份路径
+- **AND** 保留原文件的修改时间，不覆盖已有备份，不清洗其他会话或子代理文件
+
+#### Scenario: 会话无需清洗
+- **WHEN** 会话不包含需要清洗的加密记录
+- **THEN** 返回零条记录，不改写原文件，不创建备份
+
+#### Scenario: 无效内容或文件访问失败
+- **WHEN** 文件不存在、被占用、包含无效 JSON 或无效 UTF-8，或清洗期间检测到文件发生变化
+- **THEN** 系统报告错误，不用部分清洗结果覆盖原文件，并清理临时文件
+
+#### Scenario: 不支持的会话类型
+- **WHEN** 对非 Codex 会话调用清洗操作
+- **THEN** 系统报告不支持该操作，不修改文件

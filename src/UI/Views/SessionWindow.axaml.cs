@@ -145,6 +145,7 @@ public partial class SessionWindow : Window
         SessionProjectPathButton.Content = _selectedSession.ProjectDir;
         SessionProjectPathButton.IsVisible = !string.IsNullOrWhiteSpace(_selectedSession.ProjectDir);
         SessionActionPanel.IsVisible = true;
+        CleanSessionButton.IsVisible = SessionService.IsCodex(_selectedSession.ProviderId);
         ShowMessagePlaceholder("加载中...");
 
         var currentVersion = ++_loadMessagesVersion;
@@ -193,6 +194,33 @@ public partial class SessionWindow : Window
         e.Handled = true;
     }
 
+    private async void CleanSessionButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selectedSession is not { } selectedSession || !SessionService.IsCodex(selectedSession.ProviderId))
+        {
+            return;
+        }
+
+        SessionActionPanel.IsEnabled = false;
+        try
+        {
+            var (removedRecords, backupPath) = await Task.Run(() =>
+                _sessionService.CleanSession(selectedSession.ProviderId, selectedSession.SourcePath));
+            var message = removedRecords == 0
+                ? "该会话没有需要清洗的加密记录。"
+                : $"已清洗 {removedRecords} 条加密记录。\n原文件备份：{backupPath}";
+            await DialogService.ShowInfoAsync(this, "清洗会话", message);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.ShowErrorAsync(this, "错误", $"清洗会话失败：{ex.Message}");
+        }
+        finally
+        {
+            SessionActionPanel.IsEnabled = true;
+        }
+    }
+
     private async void DeleteSessionButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_selectedSession is null)
@@ -202,7 +230,7 @@ public partial class SessionWindow : Window
 
         var selectedSession = _selectedSession;
         var confirmationMessage = SessionService.IsCodex(selectedSession.ProviderId)
-            ? $"确认删除会话“{selectedSession.Title}”及其所有子代理吗？"
+            ? $"确认删除会话“{selectedSession.Title}”及其所有子代理、清洗备份吗？"
             : $"确认删除会话“{selectedSession.Title}”吗？";
         var confirmed = await DialogService.ConfirmAsync(this, "删除确认", confirmationMessage);
         if (!confirmed)

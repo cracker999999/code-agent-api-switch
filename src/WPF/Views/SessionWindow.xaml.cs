@@ -108,6 +108,8 @@ public partial class SessionWindow : Window
         UpdateSessionIdDisplay(_selectedSession.SessionId);
         UpdateProjectPathDisplay(_selectedSession.ProjectDir);
         SessionActionPanel.Visibility = Visibility.Visible;
+        CleanSessionButton.Visibility = SessionService.IsCodex(_selectedSession.ProviderId)
+            ? Visibility.Visible : Visibility.Collapsed;
         ShowMessagePlaceholder("加载中...");
 
         var currentVersion = ++_loadMessagesVersion;
@@ -171,6 +173,33 @@ public partial class SessionWindow : Window
         ApplyScaledWheel(MessagesScrollViewer, e, 2.0, ref _messagesWheelStepRemainder);
     }
 
+    private async void CleanSessionButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedSession is not { } selectedSession || !SessionService.IsCodex(selectedSession.ProviderId))
+        {
+            return;
+        }
+
+        SessionActionPanel.IsEnabled = false;
+        try
+        {
+            var (removedRecords, backupPath) = await Task.Run(() =>
+                _sessionService.CleanSession(selectedSession.ProviderId, selectedSession.SourcePath));
+            var message = removedRecords == 0
+                ? "该会话没有需要清洗的加密记录。"
+                : $"已清洗 {removedRecords} 条加密记录。\n原文件备份：{backupPath}";
+            DialogService.ShowInfo(this, "清洗会话", message);
+        }
+        catch (Exception ex)
+        {
+            DialogService.ShowError(this, "错误", $"清洗会话失败：{ex.Message}");
+        }
+        finally
+        {
+            SessionActionPanel.IsEnabled = true;
+        }
+    }
+
     private async void DeleteSessionButton_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedSession is null)
@@ -180,7 +209,7 @@ public partial class SessionWindow : Window
 
         var selectedSession = _selectedSession;
         var confirmationMessage = SessionService.IsCodex(selectedSession.ProviderId)
-            ? $"确认删除会话“{selectedSession.Title}”及其所有子代理吗？"
+            ? $"确认删除会话“{selectedSession.Title}”及其所有子代理、清洗备份吗？"
             : $"确认删除会话“{selectedSession.Title}”吗？";
         var result = System.Windows.MessageBox.Show(
             this,

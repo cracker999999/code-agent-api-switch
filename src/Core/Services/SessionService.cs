@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using APISwitch.Models;
 using APISwitch.Services.Parsers;
@@ -200,6 +201,109 @@ public class SessionService
         return new List<SessionMessage>();
     }
 
+    public (int RemovedRecords, string? BackupPath) CleanSession(string providerId, string sourcePath)
+    {
+        if (!IsCodex(providerId))
+        {
+            throw new InvalidOperationException("只有 Codex 会话支持清洗。");
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        sourcePath = Path.GetFullPath(sourcePath);
+
+        // 保持读取句柄直到替换完成，禁止并发写入，同时允许原子替换文件。
+        using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        var originalLength = source.Length;
+        var originalWriteTime = File.GetLastWriteTimeUtc(sourcePath);
+        var temporaryPath = $"{sourcePath}.{Guid.NewGuid():N}.tmp";
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+        var removedRecords = 0;
+
+        try
+        {
+            using (var reader = new StreamReader(source, encoding, detectEncodingFromByteOrderMarks: false, leaveOpen: true))
+            using (var writer = new StreamWriter(new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write), encoding)
+                   { NewLine = "\n" })
+            {
+                var lineNumber = 0;
+                while (reader.ReadLine() is { } line)
+                {
+                    lineNumber++;
+                    // 只在解析首行时忽略 UTF-8 BOM，保留的记录仍使用原文。
+                    var jsonLine = lineNumber == 1 && line.StartsWith('\uFEFF') ? line[1..] : line;
+                    if (!string.IsNullOrWhiteSpace(jsonLine))
+                    {
+                        try
+                        {
+                            using var document = JsonDocument.Parse(jsonLine);
+                            if (IsEncryptedCodexRecord(document.RootElement))
+                            {
+                                removedRecords++;
+                                continue;
+                            }
+                        }
+                        catch (JsonException ex)
+                        {
+                            // 原文件必须完整解析成功后才可替换，不能静默丢弃损坏的对话。
+                            throw new InvalidDataException($"会话第 {lineNumber} 行不是有效 JSON，已取消清洗。", ex);
+                        }
+                    }
+
+                    writer.WriteLine(line);
+                }
+            }
+
+            if (removedRecords == 0)
+            {
+                return (0, null);
+            }
+
+            var currentFile = new FileInfo(sourcePath);
+            if (currentFile.Length != originalLength || currentFile.LastWriteTimeUtc != originalWriteTime)
+            {
+                throw new IOException("会话文件在清洗期间发生变化，请关闭该会话后重试。");
+            }
+
+            // 清洗不应改变会话活动时间；每次保留独立备份，避免覆盖更早的原始内容。
+            File.SetLastWriteTimeUtc(temporaryPath, originalWriteTime);
+            var backupPath = $"{sourcePath}.{Guid.NewGuid():N}.bak";
+            File.Replace(temporaryPath, sourcePath, backupPath);
+            return (removedRecords, backupPath);
+        }
+        finally
+        {
+            File.Delete(temporaryPath);
+        }
+    }
+
+    private static bool IsEncryptedCodexRecord(JsonElement record)
+    {
+        if (!JsonFieldExtractor.TryGetString(record, "type", out var recordType) ||
+            !JsonFieldExtractor.TryGetProperty(record, "payload", out var payload))
+        {
+            return false;
+        }
+
+        var isEncryptedItem = recordType == "response_item" &&
+            JsonFieldExtractor.TryGetString(payload, "type", out var itemType) &&
+            itemType is "reasoning" or "compaction";
+
+        // 压缩快照会覆盖前文；整条移除后才能重新使用原始历史，且不能留下缺少密文的 compaction 项。
+        return (isEncryptedItem || recordType == "compacted") && ContainsEncryptedContent(payload);
+    }
+
+    private static bool ContainsEncryptedContent(JsonElement element)
+    {
+        // 按 JSON 属性匹配，避免误删正文中仅提到 encrypted_content 的记录。
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject().Any(property =>
+                property.NameEquals("encrypted_content") || ContainsEncryptedContent(property.Value)),
+            JsonValueKind.Array => element.EnumerateArray().Any(ContainsEncryptedContent),
+            _ => false
+        };
+    }
+
     public void DeleteSession(string providerId, string sessionId, string sourcePath)
     {
         if (string.IsNullOrWhiteSpace(sourcePath))
@@ -272,6 +376,24 @@ public class SessionService
         // 后代优先删除；任一子代理删除失败时保留尚未删除的父会话。
         foreach (var path in sourcePaths)
         {
+            // 先删备份，失败时保留会话文件，避免列表项消失后无法重试。
+            var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+            var backupPrefix = Path.GetFileName(path) + ".";
+            if (Directory.Exists(directory))
+            {
+                foreach (var backupPath in Directory.EnumerateFiles(directory, backupPrefix + "*.bak"))
+                {
+                    var backupStem = Path.GetFileNameWithoutExtension(backupPath);
+                    // 精确匹配原文件名和本工具的 GUID，避免误删相近文件名的备份。
+                    if (backupStem.Length > backupPrefix.Length &&
+                        pathComparer.Equals(backupStem[..backupPrefix.Length], backupPrefix) &&
+                        Guid.TryParseExact(backupStem.AsSpan(backupPrefix.Length), "N", out _))
+                    {
+                        File.Delete(backupPath);
+                    }
+                }
+            }
+
             File.Delete(path);
         }
     }

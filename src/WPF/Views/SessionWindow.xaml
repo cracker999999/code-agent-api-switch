@@ -351,6 +351,13 @@
                                     Margin="0,0,8,0"
                                     Cursor="Hand"
                                     Click="ResumeSessionButton_Click">恢复会话</Button>
+                            <Button x:Name="CleanSessionButton"
+                                    Width="56"
+                                    Height="30"
+                                    Margin="0,0,8,0"
+                                    Cursor="Hand"
+                                    Visibility="Collapsed"
+                                    Click="CleanSessionButton_Click">清洗</Button>
                             <Button x:Name="DeleteSessionButton"
                                     Width="76"
                                     Height="30"
