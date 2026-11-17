@@ -62,19 +62,32 @@ public class ConfigWriterService
         BackupFile(_codexConfigPath);
 
         var content = File.ReadAllText(_codexConfigPath, Encoding.UTF8);
-        var sectionMatch = Regex.Match(content, @"(?ms)^\[model_providers\.OpenAI\]\s*$.*?(?=^\[|\z)");
+        // 只读取首个表之前的顶层配置，避免误用 profile 等表内的同名字段。
+        var firstSection = Regex.Match(content, @"(?m)^[ \t]*\[");
+        var rootContent = firstSection.Success ? content[..firstSection.Index] : content;
+        var providerMatch = Regex.Match(rootContent,
+            @"(?m)^[ \t]*model_provider[ \t]*=[ \t]*(?:""(?<name>[^""\r\n]+)""|'(?<name>[^'\r\n]+)')[ \t]*(?:#[^\r\n]*)?\r?$");
+        if (!providerMatch.Success)
+        {
+            throw new InvalidOperationException("config.toml 中未找到有效的顶层 model_provider");
+        }
+
+        var sectionName = $"model_providers.{providerMatch.Groups["name"].Value}";
+        var sectionMatch = Regex.Match(content,
+            $@"(?ms)^[ \t]*\[{Regex.Escape(sectionName)}\][ \t]*(?:#[^\r\n]*)?\r?$.*?(?=^[ \t]*\[|\z)");
         if (!sectionMatch.Success)
         {
-            throw new InvalidOperationException("config.toml 中未找到 [model_providers.OpenAI] 段");
+            throw new InvalidOperationException($"config.toml 中未找到 [{sectionName}] 段");
         }
 
         var escapedBaseUrl = EscapeToml(baseUrl);
         var replacementLine = $"base_url = \"{escapedBaseUrl}\"";
 
-        var baseUrlPattern = @"(?m)^\s*base_url\s*=\s*""[^""]*""\s*$";
+        // 保留行尾换行和注释，防止替换后与下一个表头连在一起。
+        var baseUrlPattern = @"(?m)^[ \t]*base_url[ \t]*=[ \t]*(?:""[^""\r\n]*""|'[^'\r\n]*')(?=[ \t]*(?:#[^\r\n]*)?\r?$)";
         // 新旧值相同时替换结果不变，因此必须单独判断字段是否存在。
         var updatedSection = Regex.IsMatch(sectionMatch.Value, baseUrlPattern)
-            ? Regex.Replace(sectionMatch.Value, baseUrlPattern, replacementLine)
+            ? Regex.Replace(sectionMatch.Value, baseUrlPattern, _ => replacementLine)
             : sectionMatch.Value.TrimEnd() + Environment.NewLine + replacementLine + Environment.NewLine;
 
         var updatedContent = content.Remove(sectionMatch.Index, sectionMatch.Length)

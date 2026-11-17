@@ -8,7 +8,20 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 
 #### Scenario: 写入 config.toml 的 base_url
 - **WHEN** 用户激活一个 Codex 供应商
-- **THEN** 系统使用正则表达式定位 `%USERPROFILE%\.codex\config.toml` 中 `[model_providers.OpenAI]` 段下的 `base_url` 行并替换其值
+- **THEN** 系统读取 `%USERPROFILE%\.codex\config.toml` 的顶层 `model_provider` 字符串，定位对应的 `[model_providers.<model_provider>]` 段并更新或补上 `base_url`
+- **AND** 保留其他供应商段、配置字段及注释，不修改 `model_provider`
+
+#### Scenario: 自定义供应商段名
+- **WHEN** 顶层配置为 `model_provider = "Custom"`，且存在 `[model_providers.Custom]` 段
+- **THEN** 系统仅更新该段的 `base_url`，不修改 `[model_providers.OpenAI]` 等其他段
+
+#### Scenario: 缺少顶层 model_provider
+- **WHEN** config.toml 中未配置有效的顶层 `model_provider` 字符串，即使其他表中存在同名字段
+- **THEN** 系统明确报错，不修改 config.toml 或 auth.json，不回退到固定的供应商段
+
+#### Scenario: 对应供应商段不存在
+- **WHEN** 顶层 `model_provider` 指定的供应商段不存在
+- **THEN** 系统报错并显示缺失的段名，不自动创建该段，不修改 config.toml 或 auth.json
 
 #### Scenario: 写入 auth.json 的 OPENAI_API_KEY
 - **WHEN** 用户激活一个 Codex 供应商
