@@ -85,7 +85,7 @@ WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样�
 - **THEN** 右侧页眉显示会话标题和删除按钮，通过 Task.Run 异步加载消息并以聊天气泡形式显示
 
 ### Requirement: 聊天气泡样式
-右侧详情面板 SHALL 以不同样式显示用户、助手、工具三种角色的消息。
+右侧详情面板 SHALL 以不同样式显示用户、助手、工具和错误消息。
 
 #### Scenario: 用户消息样式
 - **WHEN** 渲染 role=user 的消息
@@ -98,6 +98,10 @@ WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样�
 #### Scenario: 工具消息样式
 - **WHEN** 渲染 role=tool 的消息
 - **THEN** 默认折叠显示，点击可展开查看内容
+
+#### Scenario: 错误消息样式
+- **WHEN** WPF 或 Avalonia 渲染 role=error 的消息，包括 Codex 任务完成事件中的错误
+- **THEN** 在原消息位置直接显示红色错误文字，并保留完整错误正文和发生时间
 
 ### Requirement: 删除会话交互
 右侧页眉的删除按钮 SHALL 弹出确认对话框，确认后删除会话文件并刷新列表。Codex 的确认文案 SHALL 说明同时删除全部子代理和清洗备份。

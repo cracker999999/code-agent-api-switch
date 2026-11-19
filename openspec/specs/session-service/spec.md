@@ -44,6 +44,14 @@ TBD - created by archiving change session-management. Update Purpose after archi
 - **WHEN** 遇到 `type=response_item` 且 `payload.type=message` 的行
 - **THEN** 角色从 `payload.role` 获取，内容从 `payload.content` 获取
 
+#### Scenario: 过滤独立环境上下文消息
+- **WHEN** 加载 Codex 会话详情，user 消息不含图片，正文除首尾空白外仅包含一个完整的 `<environment_context>…</environment_context>` 块
+- **THEN** 不将该消息加入详情消息流；原始会话文件和会话列表扫描行为保持不变
+
+#### Scenario: 保留环境标签相关的正常消息
+- **WHEN** 环境块前后或多个环境块之间有正文、消息含图片、标签不完整，或消息角色不是 user
+- **THEN** 保留该消息的正文、图片、角色和原有顺序
+
 #### Scenario: 解析 response_item function_call
 - **WHEN** 遇到 `type=response_item` 且 `payload.type=function_call` 的行
 - **THEN** 角色设为 assistant，内容设为 `[Tool: {name}]`
@@ -55,6 +63,14 @@ TBD - created by archiving change session-management. Update Purpose after archi
 #### Scenario: 解析 event_msg context_compacted
 - **WHEN** 遇到 `type=event_msg` 且 `payload.type=context_compacted` 的行
 - **THEN** 在消息流的对应位置插入一条角色为 assistant、内容为 `Context compacted` 的消息
+
+#### Scenario: 解析 event_msg task_complete 错误
+- **WHEN** 遇到 `type=event_msg` 且 `payload.type=task_complete` 的行，`payload.error.message` 为非空白字符串
+- **THEN** 在消息流的对应位置插入一条角色为 error 的消息，完整保留错误原文和事件时间，即使 `last_agent_message` 为 null
+
+#### Scenario: 任务完成事件没有有效错误正文
+- **WHEN** `task_complete` 的 error 缺失、为 null 或非对象，或 error.message 不是非空白字符串
+- **THEN** 不插入错误消息，继续加载后续消息
 
 #### Scenario: 会话 ID 回退
 - **WHEN** 未找到 `session_meta` 行

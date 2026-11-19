@@ -205,7 +205,7 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
                     continue;
                 }
 
-                // event_msg 中只关心上下文压缩事件：它本身没有正文，按发生顺序插入一条提示消息
+                // event_msg 中的上下文压缩和任务失败不属于 response_item，需按发生顺序插入详情消息。
                 if (string.Equals(eventType, "event_msg", StringComparison.OrdinalIgnoreCase))
                 {
                     if (IsContextCompactedEvent(payload))
@@ -214,6 +214,18 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
                         {
                             Role = "assistant",
                             Content = ContextCompactedNotice,
+                            Timestamp = ResolveMessageTimestamp(root, payload, filePath)
+                        });
+                    }
+                    else if (JsonFieldExtractor.TryGetString(payload, "type", out var payloadType) &&
+                             string.Equals(payloadType, "task_complete", StringComparison.OrdinalIgnoreCase) &&
+                             TryGetObject(payload, "error", out var error) &&
+                             JsonFieldExtractor.TryGetString(error, "message", out var errorMessage))
+                    {
+                        messages.Add(new SessionMessage
+                        {
+                            Role = "error",
+                            Content = errorMessage,
                             Timestamp = ResolveMessageTimestamp(root, payload, filePath)
                         });
                     }
@@ -227,6 +239,18 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
                 }
 
                 if (!TryExtractMessage(payload, out var role, out var content, out var imageDataUrls))
+                {
+                    continue;
+                }
+
+                // 环境元数据也使用 user 角色；仅过滤独立环境块，首个结束标签后有正文时仍须显示。
+                var trimmedContent = content.AsSpan().Trim();
+                if (string.Equals(role, "user", StringComparison.OrdinalIgnoreCase) &&
+                    imageDataUrls.Count == 0 &&
+                    trimmedContent.StartsWith("<environment_context>", StringComparison.Ordinal) &&
+                    trimmedContent.EndsWith("</environment_context>", StringComparison.Ordinal) &&
+                    trimmedContent.IndexOf("</environment_context>", StringComparison.Ordinal) ==
+                        trimmedContent.Length - "</environment_context>".Length)
                 {
                     continue;
                 }
