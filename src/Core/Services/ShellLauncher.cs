@@ -67,12 +67,21 @@ public static class ShellLauncher
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                // ShellExecute 可能把 wt.exe 解析到 App Paths 中的安装路径；商店版应通过应用别名启动。
+                var terminalPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "WindowsApps", "wt.exe");
                 // Windows 这里必须传真实目录，不能传 %V 这类仅限资源管理器上下文菜单的占位符。
+                // 在最近使用的管理员终端中新增标签页；没有管理员窗口时由 Windows Terminal 新建。
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c wt -w 0 new-tab -d \"{normalizedWorkingDirectory}\" pwsh -NoExit -Command {command}",
+                    FileName = File.Exists(terminalPath) ? terminalPath : "wt.exe",
+                    ArgumentList =
+                    {
+                        "-w", "0", "new-tab", "-d", normalizedWorkingDirectory,
+                        "pwsh.exe", "-NoExit", "-Command", command,
+                    },
                     UseShellExecute = true,
+                    Verb = "runas",
                 });
                 return new OpenTerminalResult(OpenTerminalStatus.Ok, null);
             }

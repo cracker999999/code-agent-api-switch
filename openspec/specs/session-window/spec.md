@@ -103,6 +103,30 @@ WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样�
 - **WHEN** WPF 或 Avalonia 渲染 role=error 的消息，包括 Codex 任务完成事件中的错误
 - **THEN** 在原消息位置直接显示红色错误文字，并保留完整错误正文和发生时间
 
+### Requirement: 以管理员身份恢复会话
+WPF 与 Avalonia 在 Windows 上恢复 Codex、Claude Code 或 Grok 会话时 SHALL 请求管理员权限，使用 `-w 0 new-tab` 在最近使用的管理员 Windows Terminal 窗口中新增 PowerShell 标签页并执行对应恢复命令。
+
+#### Scenario: 恢复三个 Agent 的会话
+- **WHEN** 用户选中 Codex、Claude Code 或 Grok 会话并点击“恢复会话”
+- **THEN** Windows 请求管理员授权，授权后在最近使用的管理员终端窗口中新增标签页并执行该 Agent 的恢复命令
+- **AND** 保留所选会话的 Session ID 和项目工作目录
+
+#### Scenario: 没有管理员终端窗口
+- **WHEN** 当前没有可复用的管理员 Windows Terminal 窗口
+- **THEN** Windows Terminal 新建管理员窗口承载该标签页，不将管理员会话加入普通权限窗口
+
+#### Scenario: 拒绝管理员授权或启动失败
+- **WHEN** 用户取消 Windows 管理员授权或终端启动失败
+- **THEN** 系统显示恢复失败原因，不降级为普通权限启动
+
+#### Scenario: 使用 Windows Terminal 应用别名
+- **WHEN** Windows Terminal 在当前用户的 WindowsApps 目录中提供 wt.exe 应用别名
+- **THEN** 系统使用该别名的完整路径请求管理员启动，避免名称解析到 App Paths 中的安装路径后未执行命令
+
+#### Scenario: 在非 Windows 平台恢复会话
+- **WHEN** 用户在 macOS 或 Linux 上点击“恢复会话”
+- **THEN** 保持原有终端启动方式和恢复命令，不请求 Windows 管理员权限
+
 ### Requirement: 删除会话交互
 右侧页眉的删除按钮 SHALL 弹出确认对话框，确认后删除会话文件并刷新列表。Codex 的确认文案 SHALL 说明同时删除全部子代理和清洗备份。
 
