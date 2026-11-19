@@ -11,6 +11,7 @@
     <AssemblyName>APISwitch</AssemblyName>
     <RootNamespace>WPF</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>

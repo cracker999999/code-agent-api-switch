@@ -32,6 +32,18 @@
 - **WHEN** 开发者执行 Windows 目标构建/发布
 - **THEN** 应用可在 Windows 上正常启动并完成核心操作（供应商增删改、启用、配置写入）
 
+### Requirement: Windows 发布程序默认请求管理员权限
+Windows WPF 入口 SHALL 将 `requestedExecutionLevel=requireAdministrator` 的程序清单嵌入 exe，使现有打包流程生成的 APISwitch 默认以管理员权限运行。
+
+#### Scenario: 从普通权限环境启动发布程序
+- **WHEN** 用户双击打包后的 `APISwitch.exe`
+- **THEN** Windows 在启动应用前请求管理员授权，无需用户配置兼容性或快捷方式
+- **AND** 拒绝授权时不启动应用
+
+#### Scenario: 从管理员权限环境启动发布程序
+- **WHEN** 已提权的进程启动打包后的 `APISwitch.exe`
+- **THEN** 应用使用已有的管理员权限运行，无需重复提权
+
 ### Requirement: UI 架构保持事件驱动
 系统 MUST 在本次迁移中继续使用 XAML + code-behind 交互方式，不强制引入 MVVM。
 
