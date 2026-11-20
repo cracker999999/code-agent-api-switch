@@ -1,4 +1,5 @@
 using System.Windows;
+using WPF.Services;
 
 namespace WPF.Views;
 
@@ -18,7 +19,7 @@ public partial class PromptDialog : Window
         var content = PromptTextBox.Text;
         if (string.IsNullOrWhiteSpace(content))
         {
-            System.Windows.MessageBox.Show(this, "Prompt 内容不能为空", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            DialogService.ShowInfo(this, "提示", "Prompt 内容不能为空");
             return;
         }
 

@@ -1,6 +1,7 @@
 using System.Windows;
 using APISwitch.Models;
 using APISwitch.Services;
+using WPF.Services;
 
 namespace WPF.Views;
 
@@ -52,13 +53,7 @@ public partial class PromptWindow : Window
             return;
         }
 
-        var result = System.Windows.MessageBox.Show(
-            this,
-            "确认删除这条 Prompt 吗？",
-            "删除确认",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        if (result != MessageBoxResult.Yes)
+        if (!DialogService.Confirm(this, "删除确认", "确认删除这条 Prompt 吗？"))
         {
             return;
         }
@@ -80,7 +75,7 @@ public partial class PromptWindow : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"复制失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"复制失败：{ex.Message}");
         }
     }
 

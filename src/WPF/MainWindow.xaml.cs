@@ -233,12 +233,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(
-                this,
-                $"打开链接失败：{ex.Message}",
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"打开链接失败：{ex.Message}");
         }
     }
 
@@ -257,7 +252,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, ex.Message, "启用失败", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "启用失败", ex.Message);
         }
     }
 
@@ -440,14 +435,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var result = System.Windows.MessageBox.Show(
-            this,
-            $"确认删除供应商“{provider.Name}”吗？",
-            "删除确认",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
-
-        if (result != System.Windows.MessageBoxResult.Yes)
+        if (!DialogService.Confirm(this, "删除确认", $"确认删除供应商“{provider.Name}”吗？"))
         {
             return;
         }

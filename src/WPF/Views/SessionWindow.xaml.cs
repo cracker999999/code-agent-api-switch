@@ -125,12 +125,7 @@ public partial class SessionWindow : Window
                 return;
             }
 
-            System.Windows.MessageBox.Show(
-                this,
-                $"加载会话失败：{ex.Message}",
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"加载会话失败：{ex.Message}");
             ShowMessagePlaceholder("加载失败");
             return;
         }
@@ -211,14 +206,7 @@ public partial class SessionWindow : Window
         var confirmationMessage = SessionService.IsCodex(selectedSession.ProviderId)
             ? $"确认删除会话“{selectedSession.Title}”及其所有子代理、清洗备份吗？"
             : $"确认删除会话“{selectedSession.Title}”吗？";
-        var result = System.Windows.MessageBox.Show(
-            this,
-            confirmationMessage,
-            "删除确认",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
-
-        if (result != System.Windows.MessageBoxResult.Yes)
+        if (!DialogService.Confirm(this, "删除确认", confirmationMessage))
         {
             return;
         }
@@ -232,12 +220,7 @@ public partial class SessionWindow : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(
-                this,
-                $"删除会话失败：{ex.Message}",
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"删除会话失败：{ex.Message}");
             return;
         }
 
@@ -300,12 +283,7 @@ public partial class SessionWindow : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(
-                this,
-                $"扫描会话失败：{ex.Message}",
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"扫描会话失败：{ex.Message}");
             items = new List<SessionListItem>();
             subagentCount = 0;
         }
@@ -399,20 +377,10 @@ public partial class SessionWindow : Window
         switch (result.Status)
         {
             case OpenDirectoryStatus.NotFound:
-                System.Windows.MessageBox.Show(
-                    this,
-                    notFoundMessage,
-                    "提示",
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Information);
+                DialogService.ShowInfo(this, "提示", notFoundMessage);
                 break;
             case OpenDirectoryStatus.Failed:
-                System.Windows.MessageBox.Show(
-                    this,
-                    $"{failurePrefix}：{result.ErrorMessage}",
-                    "错误",
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Error);
+                DialogService.ShowError(this, "错误", $"{failurePrefix}：{result.ErrorMessage}");
                 break;
         }
     }
@@ -546,8 +514,8 @@ public partial class SessionWindow : Window
         {
             DocumentStyle = (Style)FindResource("SessionMarkdownDocumentStyle"),
             Plugins = new MdXaml.Plugins.MdXamlPlugins(MdXaml.Plugins.SyntaxManager.Standard),
-            HyperlinkCommand = new MarkdownLinkCommand(ex => System.Windows.MessageBox.Show(
-                this, $"打开链接失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error))
+            HyperlinkCommand = new MarkdownLinkCommand(ex => DialogService.ShowError(
+                this, "错误", $"打开链接失败：{ex.Message}"))
         };
         var document = markdown.Transform(content);
         document.FontSize = 13;

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using APISwitch.Models;
 using APISwitch.Services;
+using WPF.Services;
 
 namespace WPF.Views;
 
@@ -45,12 +46,7 @@ public partial class SettingsDialog : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(
-                this,
-                $"保存设置失败：{ex.Message}",
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"保存设置失败：{ex.Message}");
         }
     }
 
@@ -100,21 +96,11 @@ public partial class SettingsDialog : Window
             var message = result.Status == OpenDirectoryStatus.NotFound
                 ? "目录不存在或无法访问"
                 : $"打开目录失败：{result.ErrorMessage}";
-            System.Windows.MessageBox.Show(
-                this,
-                message,
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", message);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(
-                this,
-                $"打开目录失败：{ex.Message}",
-                "错误",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"打开目录失败：{ex.Message}");
         }
     }
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using APISwitch.Services;
+using WPF.Services;
 using Forms = System.Windows.Forms;
 
 namespace WPF;
@@ -71,7 +72,7 @@ public partial class App : System.Windows.Application
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"启动失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            DialogService.ShowError(null, "错误", $"启动失败：{ex.Message}");
             Shutdown(-1);
         }
     }

@@ -101,7 +101,7 @@ public partial class ProviderDialog : Window
             string.IsNullOrWhiteSpace(baseUrl) ||
             string.IsNullOrWhiteSpace(apiKey))
         {
-            System.Windows.MessageBox.Show(this, "Name、BaseUrl、ApiKey 不能为空", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            DialogService.ShowInfo(this, "提示", "Name、BaseUrl、ApiKey 不能为空");
             return;
         }
 
@@ -149,7 +149,7 @@ public partial class ProviderDialog : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"复制失败：{ex.Message}", "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"复制失败：{ex.Message}");
         }
     }
 
@@ -158,7 +158,7 @@ public partial class ProviderDialog : Window
         var clipboardContent = System.Windows.Clipboard.GetText();
         if (string.IsNullOrWhiteSpace(clipboardContent))
         {
-            System.Windows.MessageBox.Show(this, "剪贴板为空", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            DialogService.ShowInfo(this, "提示", "剪贴板为空");
             return;
         }
 
@@ -172,7 +172,7 @@ public partial class ProviderDialog : Window
         }
         catch (JsonException ex)
         {
-            System.Windows.MessageBox.Show(this, $"粘贴失败：结构化内容格式错误。{ex.Message}", "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", $"粘贴失败：结构化内容格式错误。{ex.Message}");
             return;
         }
 
@@ -182,7 +182,7 @@ public partial class ProviderDialog : Window
             !string.Equals(payload.Type, ProviderClipboardType, StringComparison.Ordinal) ||
             payload.Version != ProviderClipboardVersion)
         {
-            System.Windows.MessageBox.Show(this, "粘贴失败：剪贴板内容不是有效的供应商结构化数据", "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            DialogService.ShowError(this, "错误", "粘贴失败：剪贴板内容不是有效的供应商结构化数据");
             return;
         }
 

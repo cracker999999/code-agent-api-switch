@@ -50,3 +50,15 @@ Windows WPF 入口 SHALL 将 `requestedExecutionLevel=requireAdministrator` 的�
 #### Scenario: 交互逻辑位于 code-behind
 - **WHEN** 开发者检查 Avalonia 窗口事件处理
 - **THEN** 主要交互（按钮点击、窗口切换、对话框确认）在 code-behind 中实现
+
+### Requirement: 应用消息弹窗静音
+应用的提示、错误和删除确认弹窗 SHALL 通过自定义对话框显示，弹出时不得播放系统提示音。
+Windows 消息弹窗 SHALL 使用至少 32 个逻辑像素高的按钮，内容上下留白各 28 个逻辑像素，正文与按钮间距为 20 个逻辑像素。
+
+#### Scenario: 显示提示或错误
+- **WHEN** 应用显示表单校验、操作结果或错误信息，包括主窗口尚未创建时的启动失败提示
+- **THEN** 静音显示对应标题和完整消息，并允许用户关闭弹窗
+
+#### Scenario: 删除确认
+- **WHEN** 用户请求删除供应商、Prompt 或会话
+- **THEN** 静音显示确认弹窗，仅在用户确认时执行删除；拒绝、按 Esc 或关闭弹窗均不执行删除
