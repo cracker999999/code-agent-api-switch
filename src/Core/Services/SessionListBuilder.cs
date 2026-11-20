@@ -33,6 +33,7 @@ public static class SessionListBuilder
         return items
             .Where(item =>
                 item.Title.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase) ||
+                item.Session.SessionId.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase) ||
                 item.Session.ProjectDir.Contains(normalizedKeyword, StringComparison.OrdinalIgnoreCase))
             // 搜索结果按会话平铺，确保折叠中的 subagent 命中后也能直接显示，且不改变原树的展开状态。
             .Select(item => new SessionListItem(

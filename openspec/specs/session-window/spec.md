@@ -63,7 +63,7 @@ WPF 与 Avalonia 的 Codex 会话列表 SHALL 根据 ParentSessionId 将子代�
 - **THEN** 系统调用 ScanClaudeSessions() 并刷新左侧会话列表
 
 ### Requirement: 会话搜索
-WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样式一致的搜索框，并按会话标题或完整 `ProjectDir` 进行不区分大小写的本地过滤。
+WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样式一致的搜索框，并按会话标题、会话 UUID（`SessionId`）或完整 `ProjectDir` 进行不区分大小写的本地过滤。
 
 #### Scenario: 按会话标题搜索
 - **WHEN** 用户输入会话标题的部分文本
@@ -72,6 +72,11 @@ WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样�
 #### Scenario: 按项目目录搜索
 - **WHEN** 用户输入 `ProjectDir` 的部分路径
 - **THEN** 列表仅显示项目目录包含该路径的会话
+
+#### Scenario: 按会话 UUID 搜索
+- **WHEN** 用户输入完整会话 UUID 或其部分文本，允许大小写差异和首尾空白
+- **THEN** 列表显示 `SessionId` 包含该文本的会话，即使标题和项目目录均不包含该文本
+- **AND** 命中的折叠子代理会话平铺显示，原有展开状态保持不变
 
 #### Scenario: 清空搜索
 - **WHEN** 用户清空搜索框
