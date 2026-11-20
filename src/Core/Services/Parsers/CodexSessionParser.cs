@@ -238,19 +238,39 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
                     continue;
                 }
 
+                var plans = CodexPlanParser.Extract(payload).ToList();
+                if (plans.Count > 0)
+                {
+                    foreach (var plan in plans)
+                    {
+                        plan.Timestamp = ResolveMessageTimestamp(root, payload, filePath);
+                        messages.Add(plan);
+                    }
+
+                    continue;
+                }
+
                 if (!TryExtractMessage(payload, out var role, out var content, out var imageDataUrls))
                 {
                     continue;
                 }
 
                 // 环境元数据也使用 user 角色；仅过滤独立环境块，首个结束标签后有正文时仍须显示。
+                // 中断提示同样只过滤独立完整块，保留附带正文或图片的正常消息。
+                // 新旧会话分别使用 developer 或 user 角色写入中断提示，两种都需过滤。
                 var trimmedContent = content.AsSpan().Trim();
-                if (string.Equals(role, "user", StringComparison.OrdinalIgnoreCase) &&
-                    imageDataUrls.Count == 0 &&
-                    trimmedContent.StartsWith("<environment_context>", StringComparison.Ordinal) &&
-                    trimmedContent.EndsWith("</environment_context>", StringComparison.Ordinal) &&
-                    trimmedContent.IndexOf("</environment_context>", StringComparison.Ordinal) ==
-                        trimmedContent.Length - "</environment_context>".Length)
+                if (imageDataUrls.Count == 0 &&
+                    ((string.Equals(role, "user", StringComparison.OrdinalIgnoreCase) &&
+                      trimmedContent.StartsWith("<environment_context>", StringComparison.Ordinal) &&
+                      trimmedContent.EndsWith("</environment_context>", StringComparison.Ordinal) &&
+                      trimmedContent.IndexOf("</environment_context>", StringComparison.Ordinal) ==
+                          trimmedContent.Length - "</environment_context>".Length) ||
+                     ((string.Equals(role, "developer", StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(role, "user", StringComparison.OrdinalIgnoreCase)) &&
+                      trimmedContent.StartsWith("<turn_aborted>", StringComparison.Ordinal) &&
+                      trimmedContent.EndsWith("</turn_aborted>", StringComparison.Ordinal) &&
+                      trimmedContent.IndexOf("</turn_aborted>", StringComparison.Ordinal) ==
+                          trimmedContent.Length - "</turn_aborted>".Length)))
                 {
                     continue;
                 }

@@ -36,6 +36,17 @@ public static class SessionMessageViewBuilder
             ? message.Timestamp.Value.ToString(TimestampFormat)
             : string.Empty;
 
+        if (message.Plan is not null)
+        {
+            return new PlanMessageView
+            {
+                Title = "Updated Plan",
+                Content = message.Content,
+                TimestampText = timestampText,
+                Steps = message.Plan
+            };
+        }
+
         if (string.Equals(message.Role, "tool", StringComparison.OrdinalIgnoreCase))
         {
             // 带图片的工具结果必须直接可见,折叠起来用户看不到图。

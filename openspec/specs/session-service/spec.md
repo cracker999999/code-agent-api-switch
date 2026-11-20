@@ -52,6 +52,14 @@ TBD - created by archiving change session-management. Update Purpose after archi
 - **WHEN** 环境块前后或多个环境块之间有正文、消息含图片、标签不完整，或消息角色不是 user
 - **THEN** 保留该消息的正文、图片、角色和原有顺序
 
+#### Scenario: 过滤独立回合中断提示
+- **WHEN** 加载 Codex 会话详情，user 或 developer 消息不含图片，正文除首尾空白外仅包含一个完整的 turn_aborted 标签块
+- **THEN** 不将该中断提示加入详情消息流，保留前后消息及其顺序，不修改原始会话文件
+
+#### Scenario: 保留中断标签相关的正常消息
+- **WHEN** 中断块前后或多个中断块之间有正文、消息含图片、标签不完整，或消息角色既不是 user 也不是 developer
+- **THEN** 保留该消息的正文、图片、角色和原有顺序
+
 #### Scenario: 解析 response_item function_call
 - **WHEN** 遇到 `type=response_item` 且 `payload.type=function_call` 的行
 - **THEN** 角色设为 assistant，内容设为 `[Tool: {name}]`
@@ -59,6 +67,15 @@ TBD - created by archiving change session-management. Update Purpose after archi
 #### Scenario: 解析 response_item function_call_output
 - **WHEN** 遇到 `type=response_item` 且 `payload.type=function_call_output` 的行
 - **THEN** 角色设为 tool，内容从 `payload.output` 获取
+
+#### Scenario: 解析 Codex 计划更新
+- **WHEN** response_item 直接调用 update_plan，或 exec 脚本中调用 tools.update_plan / functions.update_plan 并传入含 JSON 字符串的字面量对象
+- **THEN** 按调用顺序提取 explanation、plan 中的 step 和 status，以及行级时间戳，生成独立计划消息
+- **AND** 支持脚本中的未加引号属性名、注释和尾逗号，不执行脚本，不把字符串或注释中的示例调用当成计划
+
+#### Scenario: 计划参数无法提取
+- **WHEN** 参数依赖脚本变量或表达式，或计划结构、步骤状态无效
+- **THEN** 保留原有工具消息处理行为并继续加载后续消息，不因单个计划参数无效而丢弃整段会话
 
 #### Scenario: 解析 event_msg context_compacted
 - **WHEN** 遇到 `type=event_msg` 且 `payload.type=context_compacted` 的行

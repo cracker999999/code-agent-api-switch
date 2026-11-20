@@ -470,6 +470,7 @@ public partial class SessionWindow : Window
                 BubbleMessageView bubble => CreateBubbleMessageElement(bubble),
                 ErrorMessageView error => CreateErrorMessageElement(error),
                 CollapsedMessageView collapsed => CreateCollapsedMessageElement(collapsed),
+                PlanMessageView plan => new ContentControl { Content = plan },
                 _ => throw new NotSupportedException($"未知的消息展示类型:{view.GetType().Name}")
             });
         }

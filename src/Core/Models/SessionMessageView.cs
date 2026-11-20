@@ -34,3 +34,10 @@ public sealed class ErrorMessageView : SessionMessageView
 public sealed class CollapsedMessageView : SessionMessageView
 {
 }
+
+public sealed class PlanMessageView : SessionMessageView
+{
+    public IReadOnlyList<SessionPlanStep> Steps { get; init; } = Array.Empty<SessionPlanStep>();
+
+    public bool HasExplanation => !string.IsNullOrWhiteSpace(Content);
+}

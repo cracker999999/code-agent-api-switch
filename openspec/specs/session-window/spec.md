@@ -118,6 +118,18 @@ WPF 与 Avalonia 的会话详情 SHALL 渲染助手回复中的标题、强调�
 - **WHEN** 用户点击 Markdown 链接
 - **THEN** 仅允许打开 HTTP 或 HTTPS 网页，禁止启动本地文件或自定义协议，打开失败时提示错误
 
+### Requirement: Codex 计划更新显示
+WPF 与 Avalonia SHALL 在会话详情中按原始消息顺序直接显示计划更新，使用浅色背景和 Updated Plan 标题，文本支持选择与复制。
+
+#### Scenario: 显示计划说明与步骤
+- **WHEN** 计划包含 explanation 和多个步骤
+- **THEN** 在标题下以斜体显示说明，再以缩进列表显示步骤；pending 使用空复选框，in_progress 使用空复选框和蓝色加粗文字，completed 使用勾选框
+- **AND** 保留计划时间供悬停查看，缺少说明时不保留空说明行
+
+#### Scenario: 多次更新计划
+- **WHEN** 会话中多次调用 update_plan
+- **THEN** 每次更新在对应位置显示当时的完整计划，不覆盖历史计划，也不折叠为普通工具结果
+
 ### Requirement: 以管理员身份恢复会话
 WPF 与 Avalonia 在 Windows 上恢复 Codex、Claude Code 或 Grok 会话时 SHALL 请求管理员权限，使用 `-w 0 new-tab` 在最近使用的管理员 Windows Terminal 窗口中新增 PowerShell 标签页并执行对应恢复命令。
 
