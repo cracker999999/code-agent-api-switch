@@ -4,7 +4,15 @@ setlocal
 cd /d "%~dp0"
 
 echo [1/5] Stopping running APISwitch.exe ...
-taskkill /F /T /IM APISwitch.exe >nul 2>&1
+rem APISwitch runs elevated; do not continue if it cannot be terminated.
+tasklist /FI "IMAGENAME eq APISwitch.exe" /NH | findstr /I /C:"APISwitch.exe" >nul
+if not errorlevel 1 (
+  taskkill /F /T /IM APISwitch.exe
+  if errorlevel 1 (
+    echo [ERROR] Cannot stop APISwitch. Run this script as administrator or exit APISwitch from the system tray.
+    goto :error
+  )
+)
 
 echo [2/5] Checking dotnet ...
 dotnet --version >nul 2>&1
@@ -21,7 +29,13 @@ if errorlevel 1 (
 )
 
 echo [4/5] Publishing single-file executable to root Release ...
-if exist "%~dp0Release" rmdir /s /q "%~dp0Release"
+if exist "%~dp0Release" (
+  rmdir /s /q "%~dp0Release"
+  if exist "%~dp0Release" (
+    echo [ERROR] Cannot clear Release. Close programs using its files and retry.
+    goto :error
+  )
+)
 dotnet publish "src\WPF\WPF.csproj" -c Release -r win-x64 --self-contained false -p:IncludeNativeLibrariesForSelfExtract=true -o "%~dp0Release"
 if errorlevel 1 (
   echo [ERROR] dotnet publish failed.

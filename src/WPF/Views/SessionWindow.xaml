@@ -1,6 +1,7 @@
 <Window x:Class="WPF.Views.SessionWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:md="clr-namespace:MdXaml;assembly=MdXaml"
         Title="会话管理"
         Width="900"
         Height="640"
@@ -9,6 +10,18 @@
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+        <Style x:Key="SessionMarkdownDocumentStyle"
+               TargetType="FlowDocument"
+               BasedOn="{x:Static md:MarkdownStyle.Compact}">
+            <Style.Resources>
+                <Style TargetType="List">
+                    <Setter Property="Margin" Value="0" />
+                    <Setter Property="Padding" Value="24,0,0,0" />
+                    <Setter Property="MarkerOffset" Value="2" />
+                </Style>
+            </Style.Resources>
+        </Style>
 
         <Style x:Key="TabButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="36" />
@@ -346,11 +359,11 @@
                                     Orientation="Horizontal"
                                     Visibility="Collapsed">
                             <Button x:Name="ResumeSessionButton"
-                                    Width="76"
+                                    Width="56"
                                     Height="30"
                                     Margin="0,0,8,0"
                                     Cursor="Hand"
-                                    Click="ResumeSessionButton_Click">恢复会话</Button>
+                                    Click="ResumeSessionButton_Click">恢复</Button>
                             <Button x:Name="CleanSessionButton"
                                     Width="56"
                                     Height="30"
@@ -359,10 +372,10 @@
                                     Visibility="Collapsed"
                                     Click="CleanSessionButton_Click">清洗</Button>
                             <Button x:Name="DeleteSessionButton"
-                                    Width="76"
+                                    Width="56"
                                     Height="30"
                                     Cursor="Hand"
-                                    Click="DeleteSessionButton_Click">删除会话</Button>
+                                    Click="DeleteSessionButton_Click">删除</Button>
                         </StackPanel>
                     </Grid>
 

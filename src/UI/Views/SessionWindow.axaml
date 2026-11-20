@@ -324,13 +324,13 @@
                         Orientation="Horizontal"
                         IsVisible="False">
               <Button x:Name="ResumeSessionButton"
-                      Width="76"
+                      Width="56"
                       Height="30"
                       Margin="0,0,8,0"
                       HorizontalContentAlignment="Center"
                       VerticalContentAlignment="Center"
                       Click="ResumeSessionButton_Click"
-                      Content="恢复会话" />
+                      Content="恢复" />
               <Button x:Name="CleanSessionButton"
                       Width="56"
                       Height="30"
@@ -341,12 +341,12 @@
                       Click="CleanSessionButton_Click"
                       Content="清洗" />
               <Button x:Name="DeleteSessionButton"
-                      Width="76"
+                      Width="56"
                       Height="30"
                       HorizontalContentAlignment="Center"
                       VerticalContentAlignment="Center"
                       Click="DeleteSessionButton_Click"
-                      Content="删除会话" />
+                      Content="删除" />
             </StackPanel>
 
             <Button x:Name="SessionProjectPathButton"

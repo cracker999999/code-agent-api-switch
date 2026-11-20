@@ -478,7 +478,7 @@ public partial class SessionWindow : Window
         MessagesScrollViewer.ScrollToHome();
     }
 
-    private static FrameworkElement CreateBubbleMessageElement(BubbleMessageView view)
+    private FrameworkElement CreateBubbleMessageElement(BubbleMessageView view)
     {
         var isUser = view.IsUser;
         var bubble = new Border
@@ -525,16 +525,49 @@ public partial class SessionWindow : Window
 
         if (view.HasContent)
         {
-            container.Children.Add(CreateSelectableTextElement(
-                view.Content,
-                13,
-                isUser ? Media.Brushes.White : CreateBrush("#111827"),
-                textWrapping: TextWrapping.Wrap));
+            container.Children.Add(view.IsMarkdown
+                ? CreateMarkdownElement(view.Content)
+                : CreateSelectableTextElement(
+                    view.Content,
+                    13,
+                    isUser ? Media.Brushes.White : CreateBrush("#111827"),
+                    textWrapping: TextWrapping.Wrap));
         }
 
         bubble.Child = container;
 
         return bubble;
+    }
+
+    private FrameworkElement CreateMarkdownElement(string content)
+    {
+        var markdown = new MdXaml.Markdown
+        {
+            DocumentStyle = (Style)FindResource("SessionMarkdownDocumentStyle"),
+            Plugins = new MdXaml.Plugins.MdXamlPlugins(MdXaml.Plugins.SyntaxManager.Standard),
+            HyperlinkCommand = new MarkdownLinkCommand(ex => System.Windows.MessageBox.Show(
+                this, $"打开链接失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error))
+        };
+        var document = markdown.Transform(content);
+        document.FontSize = 13;
+        document.FontFamily = FontFamily;
+        document.Foreground = CreateBrush("#111827");
+        document.PagePadding = new Thickness(0);
+
+        // 使用只读富文本框保留选择、复制，并让外层会话面板负责纵向滚动。
+        return new System.Windows.Controls.RichTextBox
+        {
+            Document = document,
+            IsReadOnly = true,
+            IsReadOnlyCaretVisible = false,
+            IsDocumentEnabled = true,
+            IsUndoEnabled = false,
+            Background = Media.Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
     }
 
     private static FrameworkElement CreateErrorMessageElement(ErrorMessageView view)

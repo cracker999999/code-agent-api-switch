@@ -108,6 +108,7 @@ dotnet run --project src/WPF/WPF.csproj
 repack.bat
 ```
 
+- WPF 程序以管理员权限运行；打包时请右键以管理员身份运行 `repack.bat`，或先从系统托盘退出 APISwitch。
 - 项目：`src\WPF\WPF.csproj`
 - 输出：`.\Release\APISwitch.exe`
 - 参数：`win-x64`、单文件、`--self-contained false`

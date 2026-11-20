@@ -103,11 +103,26 @@ WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样�
 - **WHEN** WPF 或 Avalonia 渲染 role=error 的消息，包括 Codex 任务完成事件中的错误
 - **THEN** 在原消息位置直接显示红色错误文字，并保留完整错误正文和发生时间
 
+### Requirement: 助手回复 Markdown 渲染
+WPF 与 Avalonia 的会话详情 SHALL 渲染助手回复中的标题、强调、列表、引用、代码块、链接和表格，并支持选择与复制文本。
+
+#### Scenario: Markdown 回复
+- **WHEN** role=assistant 的正文包含 Markdown 格式
+- **THEN** 使用富文本呈现格式，保留消息角色、时间和已有图片附件
+
+#### Scenario: 纯文本及其他消息
+- **WHEN** 助手回复为纯文本，或消息角色为 user、tool、developer、error
+- **THEN** 继续使用原有文本显示方式，保留原始正文、换行与空白，不修改会话文件
+
+#### Scenario: 打开回复中的链接
+- **WHEN** 用户点击 Markdown 链接
+- **THEN** 仅允许打开 HTTP 或 HTTPS 网页，禁止启动本地文件或自定义协议，打开失败时提示错误
+
 ### Requirement: 以管理员身份恢复会话
 WPF 与 Avalonia 在 Windows 上恢复 Codex、Claude Code 或 Grok 会话时 SHALL 请求管理员权限，使用 `-w 0 new-tab` 在最近使用的管理员 Windows Terminal 窗口中新增 PowerShell 标签页并执行对应恢复命令。
 
 #### Scenario: 恢复三个 Agent 的会话
-- **WHEN** 用户选中 Codex、Claude Code 或 Grok 会话并点击“恢复会话”
+- **WHEN** 用户选中 Codex、Claude Code 或 Grok 会话并点击“恢复”
 - **THEN** Windows 请求管理员授权，授权后在最近使用的管理员终端窗口中新增标签页并执行该 Agent 的恢复命令
 - **AND** 保留所选会话的 Session ID 和项目工作目录
 
@@ -124,11 +139,11 @@ WPF 与 Avalonia 在 Windows 上恢复 Codex、Claude Code 或 Grok 会话时 SH
 - **THEN** 系统使用该别名的完整路径请求管理员启动，避免名称解析到 App Paths 中的安装路径后未执行命令
 
 #### Scenario: 在非 Windows 平台恢复会话
-- **WHEN** 用户在 macOS 或 Linux 上点击“恢复会话”
+- **WHEN** 用户在 macOS 或 Linux 上点击“恢复”
 - **THEN** 保持原有终端启动方式和恢复命令，不请求 Windows 管理员权限
 
 ### Requirement: 删除会话交互
-右侧页眉的删除按钮 SHALL 弹出确认对话框，确认后删除会话文件并刷新列表。Codex 的确认文案 SHALL 说明同时删除全部子代理和清洗备份。
+右侧页眉的“删除”按钮 SHALL 弹出确认对话框，确认后删除会话文件并刷新列表。Codex 的确认文案 SHALL 说明同时删除全部子代理和清洗备份。
 
 #### Scenario: 确认删除会话
 - **WHEN** 用户点击删除按钮并在确认对话框中确认
@@ -181,7 +196,7 @@ WPF 与 Avalonia 的会话详情操作区 SHALL 在选中 Codex 会话时显示�
 #### Scenario: 清洗所选 Codex 会话
 - **WHEN** 用户点击“清洗”
 - **THEN** 系统异步清洗点击时选中的会话原文件，期间禁用详情操作按钮，完成后恢复按钮并显示清洗记录数及备份路径
-- **AND** 保持选中的会话和现有对话详情，用户可继续点击“恢复会话”
+- **AND** 保持选中的会话和现有对话详情，用户可继续点击“恢复”
 
 #### Scenario: 无需清洗或清洗失败
 - **WHEN** 会话没有加密记录或清洗发生错误

@@ -5,6 +5,7 @@ using APISwitch.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -474,7 +475,7 @@ public partial class SessionWindow : Window
         }
     }
 
-    private static Control CreateBubbleMessageElement(BubbleMessageView view)
+    private Control CreateBubbleMessageElement(BubbleMessageView view)
     {
         var isUser = view.IsUser;
         var bubble = new Border
@@ -521,15 +522,35 @@ public partial class SessionWindow : Window
 
         if (view.HasContent)
         {
-            container.Children.Add(CreateSelectableTextElement(
-                view.Content,
-                13,
-                isUser ? Brushes.White : CreateBrush("#111827"),
-                textWrapping: TextWrapping.Wrap));
+            container.Children.Add(view.IsMarkdown
+                ? CreateMarkdownElement(view.Content)
+                : CreateSelectableTextElement(
+                    view.Content,
+                    13,
+                    isUser ? Brushes.White : CreateBrush("#111827"),
+                    textWrapping: TextWrapping.Wrap));
         }
 
         bubble.Child = container;
         return bubble;
+    }
+
+    private Control CreateMarkdownElement(string content)
+    {
+        var viewer = new Markdown.Avalonia.MarkdownScrollViewer
+        {
+            Engine = new Markdown.Avalonia.Markdown
+            {
+                HyperlinkCommand = new MarkdownLinkCommand(ex =>
+                    _ = DialogService.ShowErrorAsync(this, "错误", $"打开链接失败：{ex.Message}"))
+            },
+            MarkdownStyle = Markdown.Avalonia.MarkdownStyle.GithubLike,
+            SelectionEnabled = true,
+            Markdown = content
+        };
+        TextElement.SetFontSize(viewer, 13);
+        TextElement.SetForeground(viewer, CreateBrush("#111827"));
+        return viewer;
     }
 
     private static Control CreateErrorMessageElement(ErrorMessageView view)

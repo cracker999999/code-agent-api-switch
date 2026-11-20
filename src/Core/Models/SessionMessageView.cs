@@ -19,6 +19,8 @@ public sealed class BubbleMessageView : SessionMessageView
 {
     public bool IsUser { get; init; }
 
+    public bool IsMarkdown { get; init; }
+
     public IReadOnlyList<string> ImageDataUrls { get; init; } = Array.Empty<string>();
 
     // 只有图片没有文字的消息不应留出空文本行。

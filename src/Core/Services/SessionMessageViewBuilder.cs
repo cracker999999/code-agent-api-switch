@@ -1,4 +1,8 @@
 using APISwitch.Models;
+using Markdig;
+using Markdig.Extensions.EmphasisExtras;
+using Markdig.Syntax;
+using Markdig.Syntax.Inlines;
 
 namespace APISwitch.Services;
 
@@ -6,6 +10,11 @@ namespace APISwitch.Services;
 public static class SessionMessageViewBuilder
 {
     private const string TimestampFormat = "yyyy/M/d HH:mm:ss";
+    private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder()
+        .DisableHtml()
+        .UsePipeTables()
+        .UseEmphasisExtras(EmphasisExtraOptions.Strikethrough)
+        .Build();
 
     public static List<SessionMessageView> Build(string? providerId, IReadOnlyList<SessionMessage> messages)
     {
@@ -61,8 +70,16 @@ public static class SessionMessageViewBuilder
         Content = message.Content,
         TimestampText = timestampText,
         IsUser = isUser,
+        // 只渲染助手回复；纯文本沿用原控件，保留原有空白和换行。
+        IsMarkdown = string.Equals(message.Role, "assistant", StringComparison.OrdinalIgnoreCase)
+            && ContainsMarkdown(message.Content),
         ImageDataUrls = message.ImageDataUrls
     };
+
+    private static bool ContainsMarkdown(string content) =>
+        Markdown.Parse(content, MarkdownPipeline).Any(block =>
+            block is not ParagraphBlock paragraph ||
+            paragraph.Inline?.Any(inline => inline is not (LiteralInline or LineBreakInline)) == true);
 
     private static CollapsedMessageView NewCollapsed(string title, string content, string timestampText) => new()
     {
