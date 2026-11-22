@@ -24,7 +24,7 @@ public readonly record struct OpenTerminalResult(OpenTerminalStatus Status, stri
 public static class ShellLauncher
 {
     // 用系统 shell 打开目录：Windows 走 explorer，macOS 走 open，Linux 走 xdg-open。
-    public static OpenDirectoryResult OpenDirectory(string? path)
+    public static OpenDirectoryResult OpenDirectory(string? path, string? selectFilePath = null)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -39,11 +39,40 @@ public static class ShellLauncher
 
         try
         {
-            Process.Start(new ProcessStartInfo
+            var startInfo = new ProcessStartInfo
             {
                 FileName = trimmed,
                 UseShellExecute = true,
-            });
+            };
+            // 文件已被删除时仍打开目录；只有文件存在时才请求文件管理器选中它。
+            if (File.Exists(selectFilePath))
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    // 由 Windows Shell 定位并激活窗口，避免 explorer.exe 转交请求后丢失前台焦点。
+                    var itemIdList = IntPtr.Zero;
+                    try
+                    {
+                        SHParseDisplayName(Path.GetFullPath(selectFilePath), IntPtr.Zero, out itemIdList, 0, out _);
+                        SHOpenFolderAndSelectItems(itemIdList, 0, IntPtr.Zero, 0);
+                    }
+                    finally
+                    {
+                        Marshal.FreeCoTaskMem(itemIdList);
+                    }
+
+                    return new OpenDirectoryResult(OpenDirectoryStatus.Ok, null);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    startInfo.FileName = "/usr/bin/open";
+                    startInfo.ArgumentList.Add("-R");
+                    startInfo.ArgumentList.Add(Path.GetFullPath(selectFilePath));
+                }
+                // shortcut: Linux 暂时只打开目录，需选中文件时接入文件管理器的定位接口。
+            }
+
+            Process.Start(startInfo);
             return new OpenDirectoryResult(OpenDirectoryStatus.Ok, null);
         }
         catch (Exception ex)
@@ -51,6 +80,13 @@ public static class ShellLauncher
             return new OpenDirectoryResult(OpenDirectoryStatus.Failed, ex.Message);
         }
     }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, PreserveSig = false)]
+    private static extern void SHParseDisplayName(string name, IntPtr bindContext, out IntPtr itemIdList,
+        uint attributesIn, out uint attributesOut);
+
+    [DllImport("shell32.dll", ExactSpelling = true, PreserveSig = false)]
+    private static extern void SHOpenFolderAndSelectItems(IntPtr itemIdList, uint itemCount, IntPtr items, uint flags);
 
     public static OpenTerminalResult OpenTerminalCommand(string command, string? workingDirectory = null)
     {

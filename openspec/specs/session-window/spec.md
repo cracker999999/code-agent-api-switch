@@ -89,6 +89,30 @@ WPF 与 Avalonia 的会话列表 SHALL 提供与主窗口供应商搜索框样�
 - **WHEN** 用户点击左侧列表中的某个会话
 - **THEN** 右侧页眉显示会话标题和删除按钮，通过 Task.Run 异步加载消息并以聊天气泡形式显示
 
+### Requirement: 点击会话 UUID 定位文件
+WPF 与 Avalonia 的会话详情 SHALL 在点击会话 UUID 时打开 `SourcePath` 所在目录，并在 Windows 资源管理器或 macOS Finder 中选中对应会话文件。
+
+#### Scenario: 定位现有会话文件
+- **WHEN** 用户点击会话 UUID，且会话文件存在
+- **THEN** Windows 或 macOS 打开会话文件所在目录并选中该文件，路径包含空格或中文时仍可正确定位
+
+#### Scenario: Windows 目录窗口显示在前台
+- **WHEN** 用户在 APISwitch 前台窗口点击会话 UUID，且会话文件存在
+- **THEN** 资源管理器打开或复用对应目录窗口、选中该文件，并将窗口激活到 APISwitch 前面
+- **AND** 目录窗口已最小化时恢复显示，不将窗口设为永久置顶
+
+#### Scenario: 会话文件已删除或移动
+- **WHEN** 用户点击会话 UUID，会话文件已不存在但父目录仍存在
+- **THEN** 保持原有行为，仅打开父目录
+
+#### Scenario: 会话目录不存在或打开失败
+- **WHEN** 会话文件父目录不存在、无法访问或文件管理器启动失败
+- **THEN** 显示原有的目录不可访问提示或打开失败原因
+
+#### Scenario: Linux 查看会话文件目录
+- **WHEN** 用户在 Linux 上点击会话 UUID
+- **THEN** 保持原有的打开会话文件所在目录行为
+
 ### Requirement: 聊天气泡样式
 右侧详情面板 SHALL 以不同样式显示用户、助手、工具和错误消息。
 

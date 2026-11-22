@@ -368,12 +368,13 @@ public partial class SessionWindow : Window
 
         // 会话文件可能被删除或移动，只要父目录仍存在，就打开文件所在文件夹。
         var sessionFileDirectory = Path.GetDirectoryName(_selectedSession.SourcePath.Trim());
-        OpenDirectoryWithDialog(sessionFileDirectory, "会话文件目录不存在或无法访问", "打开会话文件目录失败");
+        OpenDirectoryWithDialog(sessionFileDirectory, "会话文件目录不存在或无法访问", "打开会话文件目录失败",
+            selectFilePath: _selectedSession.SourcePath.Trim());
     }
 
-    private void OpenDirectoryWithDialog(string? directory, string notFoundMessage, string failurePrefix)
+    private void OpenDirectoryWithDialog(string? directory, string notFoundMessage, string failurePrefix, string? selectFilePath = null)
     {
-        var result = ShellLauncher.OpenDirectory(directory);
+        var result = ShellLauncher.OpenDirectory(directory, selectFilePath);
         switch (result.Status)
         {
             case OpenDirectoryStatus.NotFound:
