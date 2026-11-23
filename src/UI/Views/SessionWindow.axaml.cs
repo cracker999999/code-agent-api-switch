@@ -230,9 +230,10 @@ public partial class SessionWindow : Window
         }
 
         var selectedSession = _selectedSession;
+        var trashName = OperatingSystem.IsMacOS() ? "废纸篓" : "回收站";
         var confirmationMessage = SessionService.IsCodex(selectedSession.ProviderId)
-            ? $"确认删除会话“{selectedSession.Title}”及其所有子代理、清洗备份吗？"
-            : $"确认删除会话“{selectedSession.Title}”吗？";
+            ? $"确认将会话“{selectedSession.Title}”及其所有子代理、清洗备份移入{trashName}吗？"
+            : $"确认将会话“{selectedSession.Title}”移入{trashName}吗？";
         var confirmed = await DialogService.ConfirmAsync(this, "删除确认", confirmationMessage);
         if (!confirmed)
         {

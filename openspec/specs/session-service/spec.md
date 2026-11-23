@@ -138,6 +138,17 @@ TBD - created by archiving change session-management. Update Purpose after archi
 - **WHEN** 扫描并生成 `SessionMeta`
 - **THEN** `SourcePath` MUST 为对应 `.jsonl` 文件的绝对路径
 
+### Requirement: 会话删除可恢复
+系统 SHALL 在 Windows 上将会话文件和关联目录移入系统回收站，在 macOS 上移入系统废纸篓，保留完整内容供用户还原。
+
+#### Scenario: 系统回收失败
+- **WHEN** 文件或目录因权限、占用、系统不支持回收等原因无法移入回收站或废纸篓
+- **THEN** 系统报告错误，不降级为永久删除，并停止处理尚未移动的文件
+
+#### Scenario: 同名文件与特殊路径
+- **WHEN** 不同目录中的会话文件同名，或路径包含中文、空格、引号
+- **THEN** 系统回收各自的文件并保留内容，不覆盖其他已回收的文件
+
 ### Requirement: 删除 Codex 会话
 系统 SHALL 删除 Codex 会话的 `.jsonl` 文件及对应清洗备份，并递归删除该会话的全部后代子代理文件及其清洗备份。
 

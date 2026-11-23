@@ -184,11 +184,11 @@ WPF 与 Avalonia 在 Windows 上恢复 Codex、Claude Code 或 Grok 会话时 SH
 - **THEN** 保持原有终端启动方式和恢复命令，不请求 Windows 管理员权限
 
 ### Requirement: 删除会话交互
-右侧页眉的“删除”按钮 SHALL 弹出确认对话框，确认后删除会话文件并刷新列表。Codex 的确认文案 SHALL 说明同时删除全部子代理和清洗备份。
+右侧页眉的“删除”按钮 SHALL 弹出确认对话框，Windows 文案说明移入回收站，macOS 文案说明移入废纸篓。确认后回收会话文件并刷新列表。Codex 的确认文案 SHALL 说明同时回收全部子代理和清洗备份。
 
 #### Scenario: 确认删除会话
 - **WHEN** 用户点击删除按钮并在确认对话框中确认
-- **THEN** 系统调用 DeleteSession 删除文件，Codex 会话同时删除其全部后代子代理及对应清洗备份，然后刷新左侧会话列表并清空右侧详情面板
+- **THEN** 系统调用 DeleteSession 将文件移入系统回收站或废纸篓，Codex 会话同时回收其全部后代子代理及对应清洗备份，然后刷新左侧会话列表并清空右侧详情面板
 
 #### Scenario: 取消删除
 - **WHEN** 用户点击删除按钮后在确认对话框中取消

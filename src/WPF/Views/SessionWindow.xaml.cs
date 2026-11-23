@@ -204,8 +204,8 @@ public partial class SessionWindow : Window
 
         var selectedSession = _selectedSession;
         var confirmationMessage = SessionService.IsCodex(selectedSession.ProviderId)
-            ? $"确认删除会话“{selectedSession.Title}”及其所有子代理、清洗备份吗？"
-            : $"确认删除会话“{selectedSession.Title}”吗？";
+            ? $"确认将会话“{selectedSession.Title}”及其所有子代理、清洗备份移入回收站吗？"
+            : $"确认将会话“{selectedSession.Title}”移入回收站吗？";
         if (!DialogService.Confirm(this, "删除确认", confirmationMessage))
         {
             return;

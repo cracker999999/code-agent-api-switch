@@ -325,7 +325,7 @@ public class SessionService
 
         if (File.Exists(sourcePath))
         {
-            File.Delete(sourcePath);
+            SessionTrash.Move(sourcePath);
         }
 
         var sourceDirectory = Path.GetDirectoryName(sourcePath);
@@ -337,7 +337,7 @@ public class SessionService
         var sidecarDirectory = Path.Combine(sourceDirectory, Path.GetFileNameWithoutExtension(sourcePath));
         if (Directory.Exists(sidecarDirectory))
         {
-            Directory.Delete(sidecarDirectory, recursive: true);
+            SessionTrash.Move(sidecarDirectory);
         }
     }
 
@@ -389,12 +389,12 @@ public class SessionService
                         pathComparer.Equals(backupStem[..backupPrefix.Length], backupPrefix) &&
                         Guid.TryParseExact(backupStem.AsSpan(backupPrefix.Length), "N", out _))
                     {
-                        File.Delete(backupPath);
+                        SessionTrash.Move(backupPath);
                     }
                 }
             }
 
-            File.Delete(path);
+            SessionTrash.Move(path);
         }
     }
 
@@ -443,7 +443,7 @@ public class SessionService
         {
             if (File.Exists(sourcePath))
             {
-                File.Delete(sourcePath);
+                SessionTrash.Move(sourcePath);
             }
 
             return;
@@ -459,13 +459,13 @@ public class SessionService
 
         if (Directory.Exists(sessionDirectory))
         {
-            Directory.Delete(sessionDirectory, recursive: true);
+            SessionTrash.Move(sessionDirectory);
             return;
         }
 
         if (File.Exists(sourcePath))
         {
-            File.Delete(sourcePath);
+            SessionTrash.Move(sourcePath);
         }
     }
 }
