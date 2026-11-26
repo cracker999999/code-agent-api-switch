@@ -119,14 +119,14 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
         };
     }
 
-    public List<SessionMessage> LoadMessages(string filePath)
+    public List<SessionMessage> LoadMessages(string filePath, CancellationToken cancellationToken = default)
     {
         var parsedMessages = new List<ParsedMessage>();
         var pendingReasoningMessages = new List<ParsedMessage>();
 
         try
         {
-            foreach (var line in SessionFileUtils.ReadAllLinesShared(filePath))
+            foreach (var line in SessionFileUtils.EnumerateLinesShared(filePath, cancellationToken))
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {
@@ -182,11 +182,12 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
             return new List<SessionMessage>();
         }
 
-        ApplySidecarMessageTimestamps(filePath, parsedMessages);
+        ApplySidecarMessageTimestamps(filePath, parsedMessages, cancellationToken);
         return parsedMessages.Select(static parsed => parsed.Message).ToList();
     }
 
-    private static void ApplySidecarMessageTimestamps(string filePath, IReadOnlyList<ParsedMessage> parsedMessages)
+    private static void ApplySidecarMessageTimestamps(
+        string filePath, IReadOnlyList<ParsedMessage> parsedMessages, CancellationToken cancellationToken)
     {
         var sessionDirectory = TryGetGrokSessionDirectory(filePath);
         if (string.IsNullOrWhiteSpace(sessionDirectory))
@@ -194,22 +195,22 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
             return;
         }
 
-        var timestampSources = LoadUpdateTimestampSources(sessionDirectory);
-        ApplyUpdateTimestampCandidates(parsedMessages, timestampSources.MessageCandidates);
+        var timestampSources = LoadUpdateTimestampSources(sessionDirectory, cancellationToken);
+        ApplyUpdateTimestampCandidates(parsedMessages, timestampSources.MessageCandidates, cancellationToken);
 
         // rewind_points 的 created_at 是发送前的文件快照时间，比真实发送时间早数秒，只当 updates 匹配不上时的兜底。
-        ApplyRewindPointTimestamps(sessionDirectory, parsedMessages);
+        ApplyRewindPointTimestamps(sessionDirectory, parsedMessages, cancellationToken);
         ApplyLinkedReasoningTimestamps(parsedMessages, timestampSources.ToolCallTimestamps);
     }
 
     /// <summary>
     /// 逐行解析 JSONL 侧车文件 - 容忍单行残缺（Grok 运行期持续追加），文件缺失或不可读时静默跳过。
     /// </summary>
-    private static void ForEachJsonLine(string filePath, Action<JsonElement> handleLine)
+    private static void ForEachJsonLine(string filePath, Action<JsonElement> handleLine, CancellationToken cancellationToken)
     {
         try
         {
-            foreach (var line in SessionFileUtils.EnumerateLinesShared(filePath))
+            foreach (var line in SessionFileUtils.EnumerateLinesShared(filePath, cancellationToken))
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {
@@ -235,7 +236,8 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
 
     private static void ApplyRewindPointTimestamps(
         string sessionDirectory,
-        IReadOnlyList<ParsedMessage> parsedMessages)
+        IReadOnlyList<ParsedMessage> parsedMessages,
+        CancellationToken cancellationToken)
     {
         var timestampsByPromptIndex = new Dictionary<int, DateTime>();
         ForEachJsonLine(Path.Combine(sessionDirectory, RewindPointsFileName), root =>
@@ -246,7 +248,7 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
             {
                 timestampsByPromptIndex[promptIndex.Value] = timestamp.Value;
             }
-        });
+        }, cancellationToken);
 
         foreach (var parsedMessage in parsedMessages)
         {
@@ -264,7 +266,7 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
         }
     }
 
-    private static TimestampSources LoadUpdateTimestampSources(string sessionDirectory)
+    private static TimestampSources LoadUpdateTimestampSources(string sessionDirectory, CancellationToken cancellationToken)
     {
         var sources = new TimestampSources();
         var assistantContent = new StringBuilder();
@@ -314,7 +316,7 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
                 assistantStartedAt ??= timestamp.Value;
                 assistantContent.Append(assistantChunk);
             }
-        });
+        }, cancellationToken);
 
         FlushAssistantTimestampCandidate(sources.MessageCandidates, assistantContent, ref assistantStartedAt);
         return sources;
@@ -359,7 +361,8 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
 
     private static void ApplyUpdateTimestampCandidates(
         IReadOnlyList<ParsedMessage> parsedMessages,
-        IReadOnlyList<TimestampCandidate> candidates)
+        IReadOnlyList<TimestampCandidate> candidates,
+        CancellationToken cancellationToken)
     {
         var targets = parsedMessages
             .Where(static parsed => IsTimestampedMessageRole(parsed.Message.Role) &&
@@ -376,9 +379,11 @@ public class GrokSessionParser : BaseSessionParser, ISessionParser
         }
 
         // updates.jsonl 会保留回退分支。使用当前 chat_history 消息序列做 LCS 对齐，只采纳仍在当前分支中的候选时间。
+        cancellationToken.ThrowIfCancellationRequested();
         var matches = new int[targets.Count + 1, candidates.Count + 1];
         for (var targetIndex = targets.Count - 1; targetIndex >= 0; targetIndex--)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             for (var candidateIndex = candidates.Count - 1; candidateIndex >= 0; candidateIndex--)
             {
                 matches[targetIndex, candidateIndex] = IsTimestampMatch(targets[targetIndex], candidates[candidateIndex])

@@ -131,7 +131,8 @@ public partial class MainWindow : Window
             }
 
             await _sessionWindow.SelectProviderAsync(providerId);
-            _sessionWindow.ShowAndActivate();
+            // 等待加载期间用户可能已经关闭窗口。
+            _sessionWindow?.ShowAndActivate();
         }
         catch (Exception ex)
         {

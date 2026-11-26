@@ -18,6 +18,7 @@ public interface ISessionParser
     /// 加载会话所有消息
     /// </summary>
     /// <param name="filePath">会话文件路径</param>
+    /// <param name="cancellationToken">关闭会话窗口时取消读取</param>
     /// <returns>消息列表</returns>
-    List<SessionMessage> LoadMessages(string filePath);
+    List<SessionMessage> LoadMessages(string filePath, CancellationToken cancellationToken = default);
 }

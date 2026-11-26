@@ -127,8 +127,10 @@ public class SessionService
         string directory,
         string searchPattern,
         Func<string, SessionMeta?> parse,
-        Func<string, bool>? shouldSkip = null)
+        Func<string, bool>? shouldSkip = null,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!Directory.Exists(directory))
         {
             return new List<SessionMeta>();
@@ -137,6 +139,7 @@ public class SessionService
         var sessions = new List<SessionMeta>();
         foreach (var filePath in Directory.EnumerateFiles(directory, searchPattern, SearchOption.AllDirectories))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (shouldSkip?.Invoke(filePath) == true)
             {
                 continue;
@@ -162,22 +165,24 @@ public class SessionService
             .ToList();
     }
 
-    public List<SessionMeta> ScanCodexSessions() =>
-        Scan(_codexSessionsDirectory, "*.jsonl", _codexParser.ParseSession);
+    public List<SessionMeta> ScanCodexSessions(CancellationToken cancellationToken = default) =>
+        Scan(_codexSessionsDirectory, "*.jsonl", _codexParser.ParseSession, cancellationToken: cancellationToken);
 
-    public List<SessionMeta> ScanClaudeSessions() =>
+    public List<SessionMeta> ScanClaudeSessions(CancellationToken cancellationToken = default) =>
         Scan(
             _claudeProjectsDirectory,
             "*.jsonl",
             _claudeParser.ParseSession,
             // agent-*.jsonl 是子代理日志,不作为独立会话列出。
-            filePath => Path.GetFileName(filePath).StartsWith("agent-", StringComparison.OrdinalIgnoreCase));
+            filePath => Path.GetFileName(filePath).StartsWith("agent-", StringComparison.OrdinalIgnoreCase),
+            cancellationToken);
 
-    public List<SessionMeta> ScanGrokSessions() =>
-        Scan(_grokSessionsDirectory, "chat_history.jsonl", _grokParser.ParseSession);
+    public List<SessionMeta> ScanGrokSessions(CancellationToken cancellationToken = default) =>
+        Scan(_grokSessionsDirectory, "chat_history.jsonl", _grokParser.ParseSession, cancellationToken: cancellationToken);
 
-    public List<SessionMessage> LoadMessages(string providerId, string sourcePath)
+    public List<SessionMessage> LoadMessages(string providerId, string sourcePath, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!File.Exists(sourcePath))
         {
             return new List<SessionMessage>();
@@ -185,17 +190,17 @@ public class SessionService
 
         if (IsCodex(providerId))
         {
-            return _codexParser.LoadMessages(sourcePath);
+            return _codexParser.LoadMessages(sourcePath, cancellationToken);
         }
 
         if (IsClaude(providerId))
         {
-            return _claudeParser.LoadMessages(sourcePath);
+            return _claudeParser.LoadMessages(sourcePath, cancellationToken);
         }
 
         if (IsGrok(providerId))
         {
-            return _grokParser.LoadMessages(sourcePath);
+            return _grokParser.LoadMessages(sourcePath, cancellationToken);
         }
 
         return new List<SessionMessage>();

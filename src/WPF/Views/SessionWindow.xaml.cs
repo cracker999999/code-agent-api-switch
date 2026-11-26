@@ -1,9 +1,11 @@
 ﻿using System.IO;
 using System.Windows.Data;
+using System.Runtime;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using APISwitch.Models;
 using APISwitch.Services;
 using WPF.Services;
@@ -14,9 +16,12 @@ namespace WPF.Views;
 public partial class SessionWindow : Window
 {
     private readonly SessionService _sessionService = new();
+    private readonly CancellationTokenSource _windowCancellation = new();
     private string _currentProviderId = SessionService.ProviderCodex;
     private SessionMeta? _selectedSession;
+    private int _reloadSessionsVersion;
     private int _loadMessagesVersion;
+    private int _activeLoads;
     private double _sessionListWheelStepRemainder;
     private double _messagesWheelStepRemainder;
     private List<SessionListItem> _allSessionItems = [];
@@ -45,8 +50,45 @@ public partial class SessionWindow : Window
         _ = ReloadSessionsAsync();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        // 先让异步结果失效，再断开控件和数据引用，避免关闭后重新构建详情。
+        _loadMessagesVersion++;
+        _reloadSessionsVersion++;
+        _windowCancellation.Cancel();
+        _searchDebouncer.Cancel();
+        SessionListBox.ItemsSource = null;
+        _selectedSession = null;
+        _allSessionItems = [];
+        MessagesPanel.Children.Clear();
+        Content = null;
+        _windowCancellation.Dispose();
+        base.OnClosed(e);
+        ReleaseMemoryAfterClose();
+    }
+
+    private void ReleaseMemoryAfterClose()
+    {
+        if (!_windowCancellation.IsCancellationRequested || _activeLoads != 0)
+        {
+            return;
+        }
+
+        // 等待读取退出、关闭事件返回后再压缩大对象堆，真正归还扫描和详情留下的临时内存。
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(static () =>
+        {
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        }));
+    }
+
     public async Task SelectProviderAsync(string providerId)
     {
+        if (_windowCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
         var targetProviderId = SessionService.NormalizeProviderId(providerId);
         if (string.Equals(_currentProviderId, targetProviderId, StringComparison.OrdinalIgnoreCase))
         {
@@ -96,8 +138,14 @@ public partial class SessionWindow : Window
 
     private async void SessionListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_windowCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
         if (SessionListBox.SelectedItem is not SessionListItem item)
         {
+            _loadMessagesVersion++;
             _selectedSession = null;
             ResetDetailPanel();
             return;
@@ -113,10 +161,18 @@ public partial class SessionWindow : Window
         ShowMessagePlaceholder("加载中...");
 
         var currentVersion = ++_loadMessagesVersion;
+        var selectedSession = item.Session;
+        var cancellationToken = _windowCancellation.Token;
         List<SessionMessage> messages;
+        _activeLoads++;
         try
         {
-            messages = await Task.Run(() => _sessionService.LoadMessages(_selectedSession.ProviderId, _selectedSession.SourcePath));
+            messages = await Task.Run(() => _sessionService.LoadMessages(
+                selectedSession.ProviderId, selectedSession.SourcePath, cancellationToken), cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -128,6 +184,11 @@ public partial class SessionWindow : Window
             DialogService.ShowError(this, "错误", $"加载会话失败：{ex.Message}");
             ShowMessagePlaceholder("加载失败");
             return;
+        }
+        finally
+        {
+            _activeLoads--;
+            ReleaseMemoryAfterClose();
         }
 
         if (currentVersion != _loadMessagesVersion)
@@ -256,6 +317,13 @@ public partial class SessionWindow : Window
 
     private async Task ReloadSessionsAsync()
     {
+        if (_windowCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var reloadVersion = ++_reloadSessionsVersion;
+        var cancellationToken = _windowCancellation.Token;
         var targetProviderId = _currentProviderId;
         _selectedSession = null;
         _loadMessagesVersion++;
@@ -269,23 +337,44 @@ public partial class SessionWindow : Window
 
         List<SessionListItem> items;
         int subagentCount;
+        _activeLoads++;
         try
         {
             (items, subagentCount) = await Task.Run(() =>
             {
                 var scannedSessions = SessionService.IsCodex(targetProviderId)
-                    ? _sessionService.ScanCodexSessions()
+                    ? _sessionService.ScanCodexSessions(cancellationToken)
                     : SessionService.IsClaude(targetProviderId)
-                        ? _sessionService.ScanClaudeSessions()
-                        : _sessionService.ScanGrokSessions();
+                        ? _sessionService.ScanClaudeSessions(cancellationToken)
+                        : _sessionService.ScanGrokSessions(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 return SessionListBuilder.BuildItems(targetProviderId, scannedSessions);
-            });
+            }, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
         }
         catch (Exception ex)
         {
+            if (reloadVersion != _reloadSessionsVersion)
+            {
+                return;
+            }
+
             DialogService.ShowError(this, "错误", $"扫描会话失败：{ex.Message}");
             items = new List<SessionListItem>();
             subagentCount = 0;
+        }
+        finally
+        {
+            _activeLoads--;
+            ReleaseMemoryAfterClose();
+        }
+
+        if (reloadVersion != _reloadSessionsVersion)
+        {
+            return;
         }
 
         _allSessionItems = items;
@@ -413,6 +502,11 @@ public partial class SessionWindow : Window
 
     private void ShowMessagePlaceholder(string text)
     {
+        if (_windowCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
         MessagesPanel.Children.Clear();
         var placeholder = CreateSelectableTextElement(
             text,

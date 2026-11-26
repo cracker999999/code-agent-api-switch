@@ -116,13 +116,13 @@ public class ClaudeSessionParser : BaseSessionParser, ISessionParser
         };
     }
 
-    public List<SessionMessage> LoadMessages(string filePath)
+    public List<SessionMessage> LoadMessages(string filePath, CancellationToken cancellationToken = default)
     {
         var messages = new List<SessionMessage>();
 
         try
         {
-            foreach (var line in SessionFileUtils.ReadAllLinesShared(filePath))
+            foreach (var line in SessionFileUtils.EnumerateLinesShared(filePath, cancellationToken))
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {

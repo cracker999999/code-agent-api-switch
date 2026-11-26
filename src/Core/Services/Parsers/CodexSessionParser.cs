@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using APISwitch.Models;
@@ -57,7 +58,8 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
                 continue;
             }
 
-            using var document = JsonDocument.Parse(line);
+            // 扫描可能遇到带图片的大记录，避免 Parse(string) 把其 UTF-8 缓冲长期留在共享池中。
+            using var document = JsonDocument.Parse(Encoding.UTF8.GetBytes(line));
             var root = document.RootElement;
 
             if (!JsonFieldExtractor.TryGetString(root, "type", out var eventType))
@@ -120,7 +122,7 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
                 customTitle = threadName;
             }
             // 检查是否有消息
-            else if (string.Equals(eventType, "response_item", StringComparison.OrdinalIgnoreCase) &&
+            else if (!hasMessage && string.Equals(eventType, "response_item", StringComparison.OrdinalIgnoreCase) &&
                      TryGetObject(root, "payload", out var responsePayload) &&
                      TryExtractMessage(responsePayload, out _, out _))
             {
@@ -179,13 +181,13 @@ public class CodexSessionParser : BaseSessionParser, ISessionParser
         };
     }
 
-    public List<SessionMessage> LoadMessages(string filePath)
+    public List<SessionMessage> LoadMessages(string filePath, CancellationToken cancellationToken = default)
     {
         var messages = new List<SessionMessage>();
 
         try
         {
-            foreach (var line in SessionFileUtils.ReadAllLinesShared(filePath))
+            foreach (var line in SessionFileUtils.EnumerateLinesShared(filePath, cancellationToken))
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {

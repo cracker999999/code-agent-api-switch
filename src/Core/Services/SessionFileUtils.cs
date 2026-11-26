@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 
 namespace APISwitch.Services;
 
@@ -20,10 +21,7 @@ public static class SessionFileUtils
             var allLines = new List<string>();
             using (var smallReader = new StreamReader(file))
             {
-                while (smallReader.ReadLine() is { } line)
-                {
-                    allLines.Add(line);
-                }
+                allLines.AddRange(ReadLines(smallReader));
             }
 
             var head = allLines
@@ -40,10 +38,7 @@ public static class SessionFileUtils
         using (var headStream = OpenReadShared(filePath))
         using (var headReader = new StreamReader(headStream))
         {
-            while (headLines.Count < headLineCount && headReader.ReadLine() is { } line)
-            {
-                headLines.Add(line);
-            }
+            headLines.AddRange(ReadLines(headReader).Take(headLineCount));
         }
 
         var tailReadWindowBytes = (long)TailReadWindowBytes;
@@ -56,10 +51,7 @@ public static class SessionFileUtils
             {
                 tailStream.Seek(seekPosition, SeekOrigin.Begin);
                 using var tailReader = new StreamReader(tailStream);
-                while (tailReader.ReadLine() is { } line)
-                {
-                    tailCandidateLines.Add(line);
-                }
+                tailCandidateLines.AddRange(ReadLines(tailReader));
             }
 
             if (seekPosition > 0 && tailCandidateLines.Count > 0)
@@ -92,13 +84,73 @@ public static class SessionFileUtils
     /// <summary>
     /// 流式逐行读取 - 会话日志单行可达上百 KB，全量读入会把大量字符串推进大对象堆。
     /// </summary>
-    public static IEnumerable<string> EnumerateLinesShared(string filePath)
+    public static IEnumerable<string> EnumerateLinesShared(string filePath, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         using var stream = OpenReadShared(filePath);
         using var reader = new StreamReader(stream);
-        while (reader.ReadLine() is { } line)
+        foreach (var line in ReadLines(reader, cancellationToken))
         {
             yield return line;
+        }
+    }
+
+    private static IEnumerable<string> ReadLines(StreamReader reader, CancellationToken cancellationToken = default)
+    {
+        // ReadLine 对长记录使用共享字符池；固定小块配合 StringBuilder，避免关闭后仍缓存数十 MB。
+        var buffer = new char[4096];
+        StringBuilder? remainder = null;
+        var skipLineFeed = false;
+        while (true)
+        {
+            // 在读下一条大记录前响应窗口关闭，避免继续分配日志和图片字符串。
+            cancellationToken.ThrowIfCancellationRequested();
+            var length = reader.Read(buffer, 0, buffer.Length);
+            if (length == 0)
+            {
+                break;
+            }
+
+            // CRLF 可能跨越缓冲区边界；独立 CR、LF 也保留 StreamReader.ReadLine 的语义。
+            var start = skipLineFeed && buffer[0] == '\n' ? 1 : 0;
+            skipLineFeed = false;
+            for (var index = start; index < length; index++)
+            {
+                if (buffer[index] is not ('\r' or '\n'))
+                {
+                    continue;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                var line = remainder is null
+                    ? new string(buffer, start, index - start)
+                    : remainder.Append(buffer, start, index - start).ToString();
+                remainder = null;
+                if (buffer[index] == '\r')
+                {
+                    if (index + 1 < length && buffer[index + 1] == '\n')
+                    {
+                        index++;
+                    }
+                    else if (index == length - 1)
+                    {
+                        skipLineFeed = true;
+                    }
+                }
+
+                start = index + 1;
+                yield return line;
+            }
+
+            if (start < length)
+            {
+                (remainder ??= new StringBuilder()).Append(buffer, start, length - start);
+            }
+        }
+
+        if (remainder is not null)
+        {
+            yield return remainder.ToString();
         }
     }
 

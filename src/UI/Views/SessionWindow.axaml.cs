@@ -18,6 +18,8 @@ namespace APISwitch.UI.Views;
 public partial class SessionWindow : Window
 {
     private readonly SessionService _sessionService = new();
+    private readonly CancellationTokenSource _windowCancellation = new();
+    private readonly List<Bitmap> _messageImages = [];
 
     private string _currentProviderId = SessionService.ProviderCodex;
     private SessionMeta? _selectedSession;
@@ -46,6 +48,23 @@ public partial class SessionWindow : Window
         _ = ReloadSessionsAsync();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        // 先让异步结果失效，再断开控件和数据引用，避免关闭后重新构建详情。
+        _loadMessagesVersion++;
+        _reloadSessionsVersion++;
+        _windowCancellation.Cancel();
+        _searchDebouncer.Cancel();
+        SessionGroupsItemsControl.ItemsSource = null;
+        _selectedGroupListBox = null;
+        _selectedSession = null;
+        _allSessionItems = [];
+        ClearMessages();
+        Content = null;
+        _windowCancellation.Dispose();
+        base.OnClosed(e);
+    }
+
     public void ShowAndActivate()
     {
         if (!IsVisible)
@@ -59,6 +78,11 @@ public partial class SessionWindow : Window
 
     public async Task SelectProviderAsync(string providerId)
     {
+        if (_windowCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
         var targetProviderId = SessionService.NormalizeProviderId(providerId);
         if (string.Equals(_currentProviderId, targetProviderId, StringComparison.OrdinalIgnoreCase))
         {
@@ -108,7 +132,7 @@ public partial class SessionWindow : Window
 
     private async void SessionGroupListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (sender is not ListBox listBox)
+        if (_windowCancellation.IsCancellationRequested || sender is not ListBox listBox)
         {
             return;
         }
@@ -127,6 +151,7 @@ public partial class SessionWindow : Window
 
             _selectedGroupListBox = null;
             _selectedSession = null;
+            _loadMessagesVersion++;
             ResetDetailPanel();
             return;
         }
@@ -150,11 +175,18 @@ public partial class SessionWindow : Window
         ShowMessagePlaceholder("加载中...");
 
         var currentVersion = ++_loadMessagesVersion;
+        var selectedSession = item.Session;
+        var cancellationToken = _windowCancellation.Token;
         List<SessionMessage> messages;
 
         try
         {
-            messages = await Task.Run(() => _sessionService.LoadMessages(_selectedSession.ProviderId, _selectedSession.SourcePath));
+            messages = await Task.Run(() => _sessionService.LoadMessages(
+                selectedSession.ProviderId, selectedSession.SourcePath, cancellationToken), cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -322,7 +354,13 @@ public partial class SessionWindow : Window
 
     private async Task ReloadSessionsAsync()
     {
+        if (_windowCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
         var reloadVersion = ++_reloadSessionsVersion;
+        var cancellationToken = _windowCancellation.Token;
         var targetProviderId = _currentProviderId;
 
         _selectedSession = null;
@@ -344,12 +382,17 @@ public partial class SessionWindow : Window
             (items, subagentCount) = await Task.Run(() =>
             {
                 var scannedSessions = SessionService.IsCodex(targetProviderId)
-                    ? _sessionService.ScanCodexSessions()
+                    ? _sessionService.ScanCodexSessions(cancellationToken)
                     : SessionService.IsClaude(targetProviderId)
-                        ? _sessionService.ScanClaudeSessions()
-                        : _sessionService.ScanGrokSessions();
+                        ? _sessionService.ScanClaudeSessions(cancellationToken)
+                        : _sessionService.ScanGrokSessions(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 return SessionListBuilder.BuildItems(targetProviderId, scannedSessions);
-            });
+            }, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -451,13 +494,18 @@ public partial class SessionWindow : Window
 
     private void ShowMessagePlaceholder(string text)
     {
-        MessagesPanel.Children.Clear();
+        if (_windowCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        ClearMessages();
         MessagesPanel.Children.Add(CreateSelectableTextElement(text, 13, CreateBrush("#9CA3AF"), textWrapping: TextWrapping.Wrap));
     }
 
     private void RenderMessages(IReadOnlyList<SessionMessage> messages)
     {
-        MessagesPanel.Children.Clear();
+        ClearMessages();
 
         if (messages.Count == 0)
         {
@@ -735,7 +783,19 @@ public partial class SessionWindow : Window
         return textBlock;
     }
 
-    private static Control? CreateImageElementFromDataUrl(string imageDataUrl)
+    private void ClearMessages()
+    {
+        MessagesPanel.Children.Clear();
+        // Bitmap 持有原生像素内存，移除控件后应立即释放。
+        foreach (var image in _messageImages)
+        {
+            image.Dispose();
+        }
+
+        _messageImages.Clear();
+    }
+
+    private Control? CreateImageElementFromDataUrl(string imageDataUrl)
     {
         if (!ImageDataUrlDecoder.TryDecode(imageDataUrl, out var imageBytes, out var fileExtension))
         {
@@ -748,6 +808,7 @@ public partial class SessionWindow : Window
             return null;
         }
 
+        _messageImages.Add(image);
         var imageControl = new Image
         {
             Source = image,
@@ -769,7 +830,7 @@ public partial class SessionWindow : Window
                 return;
             }
 
-            ShowOriginalImageWindow(image, imageControl);
+            ShowOriginalImageWindow(imageBytes, imageControl);
             e.Handled = true;
         };
 
@@ -782,8 +843,15 @@ public partial class SessionWindow : Window
         };
     }
 
-    private static void ShowOriginalImageWindow(Bitmap image, Control sourceElement)
+    private static void ShowOriginalImageWindow(byte[] imageBytes, Control sourceElement)
     {
+        // 预览拥有独立位图，切换会话释放详情图片时仍能继续查看原图。
+        var image = DecodeImage(imageBytes);
+        if (image is null)
+        {
+            return;
+        }
+
         var previewImage = new Image
         {
             Source = image,
@@ -811,6 +879,13 @@ public partial class SessionWindow : Window
             MinHeight = 240,
             Content = scrollViewer,
             WindowStartupLocation = owner is null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner
+        };
+
+        window.Closed += (_, _) =>
+        {
+            previewImage.Source = null;
+            window.Content = null;
+            image.Dispose();
         };
 
         if (owner is null)
@@ -864,7 +939,8 @@ public partial class SessionWindow : Window
     {
         try
         {
-            return new Bitmap(new MemoryStream(imageBytes));
+            using var stream = new MemoryStream(imageBytes);
+            return new Bitmap(stream);
         }
         catch (Exception)
         {

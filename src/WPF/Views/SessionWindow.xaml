@@ -12,9 +12,10 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
+        <!-- 计划是不可变快照，单次绑定避免属性监听长期保留消息数据。 -->
         <DataTemplate DataType="{x:Type models:PlanMessageView}">
             <Border Background="#F5F4EF" Padding="8" Margin="0,0,0,10"
-                    MaxWidth="520" HorizontalAlignment="Left" ToolTip="{Binding TimestampText}">
+                    MaxWidth="520" HorizontalAlignment="Left" ToolTip="{Binding TimestampText, Mode=OneTime}">
                 <StackPanel>
                     <StackPanel.Resources>
                         <Style TargetType="TextBox">
@@ -29,16 +30,16 @@
                             <Setter Property="TextWrapping" Value="Wrap" />
                         </Style>
                     </StackPanel.Resources>
-                    <TextBox Text="{Binding Title, Mode=OneWay}" />
-                    <Grid Visibility="{Binding HasExplanation, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBox Text="{Binding Title, Mode=OneTime}" />
+                    <Grid Visibility="{Binding HasExplanation, Mode=OneTime, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="18" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="└" FontFamily="Consolas" FontSize="13" />
-                        <TextBox Grid.Column="1" Text="{Binding Content, Mode=OneWay}" FontStyle="Italic" />
+                        <TextBox Grid.Column="1" Text="{Binding Content, Mode=OneTime}" FontStyle="Italic" />
                     </Grid>
-                    <ItemsControl ItemsSource="{Binding Steps}" Margin="18,0,0,0">
+                    <ItemsControl ItemsSource="{Binding Steps, Mode=OneTime}" Margin="18,0,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid>
@@ -46,12 +47,12 @@
                                         <ColumnDefinition Width="18" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Marker}" FontFamily="Segoe UI Symbol" FontSize="13"
-                                               AutomationProperties.Name="{Binding Status}" />
-                                    <TextBox x:Name="StepText" Grid.Column="1" Text="{Binding Step, Mode=OneWay}" />
+                                    <TextBlock Text="{Binding Marker, Mode=OneTime}" FontFamily="Segoe UI Symbol" FontSize="13"
+                                               AutomationProperties.Name="{Binding Status, Mode=OneTime}" />
+                                    <TextBox x:Name="StepText" Grid.Column="1" Text="{Binding Step, Mode=OneTime}" />
                                 </Grid>
                                 <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding IsInProgress}" Value="True">
+                                    <DataTrigger Binding="{Binding IsInProgress, Mode=OneTime}" Value="True">
                                         <Setter TargetName="StepText" Property="Foreground" Value="#269AF4" />
                                         <Setter TargetName="StepText" Property="FontWeight" Value="Bold" />
                                     </DataTrigger>
