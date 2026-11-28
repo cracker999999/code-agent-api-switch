@@ -30,8 +30,8 @@ public partial class MainWindow : Window
     private readonly ConfigWriterService _configWriterService;
     private readonly AppSettingsService _appSettingsService;
     private readonly ApiTestService _apiTestService;
-    private readonly CodexChatProxyService _codexChatProxyService;
-    private readonly ClaudeChatProxyService _claudeChatProxyService;
+    private readonly CodexProxyService _codexProxyService;
+    private readonly ClaudeProxyService _claudeProxyService;
     private SessionWindow? _sessionWindow;
     private int _currentToolType;
     private readonly DispatcherTimer _providerAutoScrollTimer;
@@ -47,14 +47,14 @@ public partial class MainWindow : Window
         DatabaseService databaseService,
         ConfigWriterService configWriterService,
         AppSettingsService appSettingsService,
-        CodexChatProxyService codexChatProxyService,
-        ClaudeChatProxyService claudeChatProxyService)
+        CodexProxyService codexProxyService,
+        ClaudeProxyService claudeProxyService)
     {
         _databaseService = databaseService;
         _configWriterService = configWriterService;
         _appSettingsService = appSettingsService;
-        _codexChatProxyService = codexChatProxyService;
-        _claudeChatProxyService = claudeChatProxyService;
+        _codexProxyService = codexProxyService;
+        _claudeProxyService = claudeProxyService;
         _apiTestService = new ApiTestService(_appSettingsService);
         _cachedSettings = _appSettingsService.Load();
         _currentToolType = 0;
@@ -337,9 +337,10 @@ public partial class MainWindow : Window
         var hasConnectionChanged =
             !string.Equals(provider.BaseUrl, updatedProvider.BaseUrl, StringComparison.Ordinal) ||
             !string.Equals(provider.ApiKey, updatedProvider.ApiKey, StringComparison.Ordinal);
-        var hasAdapterChanged = provider.UseChatCompletions != updatedProvider.UseChatCompletions;
+        var hasAdapterChanged = provider.UseChatCompletions != updatedProvider.UseChatCompletions ||
+            provider.UseGeminiNative != updatedProvider.UseGeminiNative;
 
-        if (hasConnectionChanged)
+        if (hasConnectionChanged || hasAdapterChanged)
         {
             updatedProvider.TestStatus = 0;
         }
@@ -356,14 +357,14 @@ public partial class MainWindow : Window
     {
         if (provider.ToolType == 0 && provider.UseChatCompletions)
         {
-            _codexChatProxyService.Start(provider);
+            _codexProxyService.Start(provider);
             try
             {
-                _configWriterService.ApplyProvider(provider, CodexChatProxyService.LocalBaseUrl);
+                _configWriterService.ApplyProvider(provider, CodexProxyService.LocalBaseUrl);
             }
             catch
             {
-                _codexChatProxyService.Stop();
+                _codexProxyService.Stop();
                 throw;
             }
             return;
@@ -371,19 +372,19 @@ public partial class MainWindow : Window
 
         if (provider.ToolType == 0)
         {
-            _codexChatProxyService.Stop();
+            _codexProxyService.Stop();
         }
 
-        if (provider.ToolType == 1 && provider.UseChatCompletions)
+        if (provider.ToolType == 1 && provider.UsesProxy)
         {
-            _claudeChatProxyService.Start(provider);
+            _claudeProxyService.Start(provider);
             try
             {
-                _configWriterService.ApplyProvider(provider, ClaudeChatProxyService.LocalBaseUrl);
+                _configWriterService.ApplyProvider(provider, ClaudeProxyService.LocalBaseUrl);
             }
             catch
             {
-                _claudeChatProxyService.Stop();
+                _claudeProxyService.Stop();
                 throw;
             }
             return;
@@ -391,7 +392,7 @@ public partial class MainWindow : Window
 
         if (provider.ToolType == 1)
         {
-            _claudeChatProxyService.Stop();
+            _claudeProxyService.Stop();
         }
 
         _configWriterService.ApplyProvider(provider);

@@ -79,6 +79,15 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 - **WHEN** 用户启用一个 `UseChatCompletions=true` 的 Claude Code 供应商
 - **THEN** 系统启动本地 Messages-to-Chat 代理，并将 Claude Code 配置指向该代理
 
+#### Scenario: 启用或切换 Gemini Native 适配
+- **WHEN** 用户启用 UseGeminiNative=true 的 Claude Code 供应商，或编辑已激活供应商的协议选择
+- **THEN** 系统复用本地 Claude 代理处理 Gemini 转换，将 Claude Code 配置指向代理，并更新供应商卡片的适配标记
+- **AND** 协议改变时清除旧测试状态，关闭适配时恢复直连
+
+#### Scenario: 重启恢复 Gemini Native 适配
+- **WHEN** 应用启动时存在已激活的 Gemini Native Claude 供应商
+- **THEN** 系统自动启动本地 Claude 代理并恢复该供应商
+
 ### Requirement: 新增按钮
 主窗口右上角 SHALL 显示 `+` 按钮，点击弹出新增供应商对话框。
 

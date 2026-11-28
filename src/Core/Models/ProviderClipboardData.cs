@@ -8,6 +8,8 @@ public class ProviderClipboardData
 
     public bool UseChatCompletions { get; set; }
 
+    public bool UseGeminiNative { get; set; }
+
     public string ApiKey { get; set; } = string.Empty;
 
     public string TestModel { get; set; } = string.Empty;

@@ -195,7 +195,7 @@ SELECT last_insert_rowid();";
 
             using var command = connection.CreateCommand();
             command.CommandText = @"
-SELECT Id, ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark, UseChatCompletions
+SELECT Id, ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark, UseChatCompletions, UseGeminiNative
 FROM Providers
 WHERE ToolType = $toolType
 ORDER BY SortOrder ASC, Id ASC;";
@@ -213,6 +213,7 @@ ORDER BY SortOrder ASC, Id ASC;";
                     BaseUrl = reader.GetString(3),
                     ApiKey = reader.GetString(4),
                     UseChatCompletions = reader.GetInt32(10) == 1,
+                    UseGeminiNative = reader.GetInt32(11) == 1,
                     IsActive = reader.GetInt32(5) == 1,
                     SortOrder = reader.GetInt32(6),
                     TestStatus = reader.GetInt32(7),
@@ -234,8 +235,8 @@ ORDER BY SortOrder ASC, Id ASC;";
 
             using var command = connection.CreateCommand();
             command.CommandText = @"
-INSERT INTO Providers (ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark, UseChatCompletions)
-VALUES ($toolType, $name, $baseUrl, $apiKey, $isActive, $sortOrder, $testStatus, $testModel, $remark, $useChatCompletions);
+INSERT INTO Providers (ToolType, Name, BaseUrl, ApiKey, IsActive, SortOrder, TestStatus, TestModel, Remark, UseChatCompletions, UseGeminiNative)
+VALUES ($toolType, $name, $baseUrl, $apiKey, $isActive, $sortOrder, $testStatus, $testModel, $remark, $useChatCompletions, $useGeminiNative);
 SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$toolType", provider.ToolType);
             command.Parameters.AddWithValue("$name", provider.Name);
@@ -247,6 +248,7 @@ SELECT last_insert_rowid();";
             command.Parameters.AddWithValue("$testModel", provider.TestModel);
             command.Parameters.AddWithValue("$remark", provider.Remark);
             command.Parameters.AddWithValue("$useChatCompletions", provider.UseChatCompletions ? 1 : 0);
+            command.Parameters.AddWithValue("$useGeminiNative", provider.UseGeminiNative ? 1 : 0);
 
             var insertedId = command.ExecuteScalar();
             return Convert.ToInt32(insertedId);
@@ -270,7 +272,8 @@ SET Name = $name,
     TestStatus = $testStatus,
     TestModel = $testModel,
     Remark = $remark,
-    UseChatCompletions = $useChatCompletions
+    UseChatCompletions = $useChatCompletions,
+    UseGeminiNative = $useGeminiNative
 WHERE Id = $id;";
             command.Parameters.AddWithValue("$id", provider.Id);
             command.Parameters.AddWithValue("$name", provider.Name);
@@ -281,6 +284,7 @@ WHERE Id = $id;";
             command.Parameters.AddWithValue("$testModel", provider.TestModel);
             command.Parameters.AddWithValue("$remark", provider.Remark);
             command.Parameters.AddWithValue("$useChatCompletions", provider.UseChatCompletions ? 1 : 0);
+            command.Parameters.AddWithValue("$useGeminiNative", provider.UseGeminiNative ? 1 : 0);
             command.ExecuteNonQuery();
         }
     }
@@ -455,6 +459,10 @@ WHERE Id = $id AND ToolType = $toolType;";
             connection,
             "UseChatCompletions",
             "ALTER TABLE Providers ADD COLUMN UseChatCompletions INTEGER NOT NULL DEFAULT 0;");
+        EnsureProviderColumn(
+            connection,
+            "UseGeminiNative",
+            "ALTER TABLE Providers ADD COLUMN UseGeminiNative INTEGER NOT NULL DEFAULT 0;");
     }
 
     private static void EnsureProviderColumn(SqliteConnection connection, string columnName, string alterSql)

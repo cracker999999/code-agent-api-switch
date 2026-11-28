@@ -19,8 +19,8 @@ public partial class App : Application
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
     private TrayIcon? _trayIcon;
-    private CodexChatProxyService? _codexChatProxyService;
-    private ClaudeChatProxyService? _claudeChatProxyService;
+    private CodexProxyService? _codexProxyService;
+    private ClaudeProxyService? _claudeProxyService;
     private DispatcherTimer? _macDockVisibilityTimer;
     private bool? _isMacDockVisible;
 
@@ -48,25 +48,25 @@ public partial class App : Application
             databaseService.Initialize();
             var configWriterService = new ConfigWriterService();
             var appSettingsService = new AppSettingsService(databaseService);
-            _codexChatProxyService = new CodexChatProxyService();
-            _claudeChatProxyService = new ClaudeChatProxyService();
+            _codexProxyService = new CodexProxyService();
+            _claudeProxyService = new ClaudeProxyService();
             var activeCodexProvider = databaseService.GetProviders(0).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
             if (activeCodexProvider is not null)
             {
-                _codexChatProxyService.Start(activeCodexProvider);
+                _codexProxyService.Start(activeCodexProvider);
             }
-            var activeClaudeProvider = databaseService.GetProviders(1).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
+            var activeClaudeProvider = databaseService.GetProviders(1).FirstOrDefault(provider => provider.IsActive && provider.UsesProxy);
             if (activeClaudeProvider is not null)
             {
-                _claudeChatProxyService.Start(activeClaudeProvider);
+                _claudeProxyService.Start(activeClaudeProvider);
             }
 
             var mainWindow = new MainWindow(
                 databaseService,
                 configWriterService,
                 appSettingsService,
-                _codexChatProxyService,
-                _claudeChatProxyService);
+                _codexProxyService,
+                _claudeProxyService);
             desktop.MainWindow = mainWindow;
 
             desktop.Exit += (_, _) =>
@@ -83,10 +83,10 @@ public partial class App : Application
                     _trayIcon = null;
                 }
 
-                _codexChatProxyService?.Dispose();
-                _codexChatProxyService = null;
-                _claudeChatProxyService?.Dispose();
-                _claudeChatProxyService = null;
+                _codexProxyService?.Dispose();
+                _codexProxyService = null;
+                _claudeProxyService?.Dispose();
+                _claudeProxyService = null;
 
                 if (_ownsSingleInstanceMutex)
                 {

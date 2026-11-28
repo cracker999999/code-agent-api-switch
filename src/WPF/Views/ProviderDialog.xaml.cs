@@ -18,6 +18,8 @@ public partial class ProviderDialog : Window
 
     public Provider Provider { get; }
 
+    private bool IsGeminiNativeSelected => Provider.ToolType == 1 && UseGeminiNativeCheckBox.IsChecked == true;
+
     public ProviderDialog(int toolType, AppSettingsService appSettingsService)
     {
         InitializeComponent();
@@ -30,6 +32,7 @@ public partial class ProviderDialog : Window
             IsActive = false
         };
         UseChatCompletionsCheckBox.Visibility = toolType is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
+        UseGeminiNativeCheckBox.Visibility = toolType == 1 ? Visibility.Visible : Visibility.Collapsed;
         Title = toolType switch
         {
             0 => "新增供应商（Codex）",
@@ -67,9 +70,11 @@ public partial class ProviderDialog : Window
             TestStatus = provider.TestStatus,
             TestModel = provider.TestModel,
             Remark = provider.Remark,
-            UseChatCompletions = provider.UseChatCompletions
+            UseChatCompletions = provider.UseChatCompletions,
+            UseGeminiNative = provider.UseGeminiNative
         };
         UseChatCompletionsCheckBox.Visibility = Provider.ToolType is 0 or 1 ? Visibility.Visible : Visibility.Collapsed;
+        UseGeminiNativeCheckBox.Visibility = Provider.ToolType == 1 ? Visibility.Visible : Visibility.Collapsed;
         Title = "编辑供应商";
 
         NameTextBox.Text = Provider.Name;
@@ -78,6 +83,7 @@ public partial class ProviderDialog : Window
         ApiKeyTextBox.Text = Provider.ApiKey;
         TestModelTextBox.Text = Provider.TestModel;
         UseChatCompletionsCheckBox.IsChecked = Provider.UseChatCompletions;
+        UseGeminiNativeCheckBox.IsChecked = Provider.UseGeminiNative;
         var settings = appSettingsService.Load();
         TestModelPlaceholderTextBlock.Text = Provider.ToolType switch
         {
@@ -111,6 +117,7 @@ public partial class ProviderDialog : Window
         Provider.ApiKey = apiKey;
         Provider.TestModel = testModel;
         Provider.UseChatCompletions = UseChatCompletionsCheckBox.IsChecked == true;
+        Provider.UseGeminiNative = IsGeminiNativeSelected;
 
         DialogResult = true;
         Close();
@@ -137,7 +144,8 @@ public partial class ProviderDialog : Window
                     ApiKey = ApiKeyTextBox.Text.Trim(),
                     TestModel = TestModelTextBox.Text.Trim(),
                     Remark = RemarkTextBox.Text.Trim(),
-                    UseChatCompletions = UseChatCompletionsCheckBox.IsChecked == true
+                    UseChatCompletions = UseChatCompletionsCheckBox.IsChecked == true,
+                    UseGeminiNative = IsGeminiNativeSelected
                 }
             };
 
@@ -192,6 +200,16 @@ public partial class ProviderDialog : Window
         TestModelTextBox.Text = payload.Provider.TestModel ?? string.Empty;
         RemarkTextBox.Text = payload.Provider.Remark ?? string.Empty;
         UseChatCompletionsCheckBox.IsChecked = payload.Provider.UseChatCompletions;
+        UseGeminiNativeCheckBox.IsChecked = Provider.ToolType == 1 && payload.Provider.UseGeminiNative;
+    }
+
+    private void AdapterCheckBox_Checked(object sender, RoutedEventArgs e)
+    {
+        // 两种上游协议互斥，切换时沿用同一个本地 Claude 代理。
+        if (sender == UseGeminiNativeCheckBox && UseGeminiNativeCheckBox.IsChecked == true)
+            UseChatCompletionsCheckBox.IsChecked = false;
+        else if (sender == UseChatCompletionsCheckBox && UseChatCompletionsCheckBox.IsChecked == true)
+            UseGeminiNativeCheckBox.IsChecked = false;
     }
 
     private async void FetchModelsButton_Click(object sender, RoutedEventArgs e)
@@ -291,6 +309,7 @@ public partial class ProviderDialog : Window
             BaseUrl = BaseUrlTextBox.Text.Trim(),
             ApiKey = ApiKeyTextBox.Text.Trim(),
             UseChatCompletions = UseChatCompletionsCheckBox.IsChecked == true,
+            UseGeminiNative = IsGeminiNativeSelected,
             TestModel = includeTestModel ? TestModelTextBox.Text.Trim() : string.Empty
         };
     }

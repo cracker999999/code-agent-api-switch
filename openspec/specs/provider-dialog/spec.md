@@ -89,3 +89,11 @@ TBD - created by archiving change apiswitch-desktop-app. Update Purpose after ar
 #### Scenario: Grok 不显示适配开关
 - **WHEN** 用户新增或编辑 Grok 供应商
 - **THEN** 对话框不显示“适配/chat/completions”开关
+
+### Requirement: Gemini Native 适配开关
+供应商对话框 SHALL 仅为 Claude Code 显示“适配 Gemini generateContent”开关，与 Chat Completions 开关互斥，并在 WPF 和 Avalonia 中保持一致。
+
+#### Scenario: 保存与复制粘贴
+- **WHEN** 用户启用 Gemini Native 适配并保存或快速复制供应商
+- **THEN** 系统保存或导出 UseGeminiNative=true，编辑和快速粘贴时恢复该选择
+- **AND** 未包含该字段的旧供应商和剪贴板数据默认不启用 Gemini Native

@@ -162,8 +162,8 @@
                             Padding="5,1"
                             Margin="8,0,0,0"
                             VerticalAlignment="Center"
-                            IsVisible="{Binding UseChatCompletions}">
-                      <TextBlock Text="Chat 适配"
+                            IsVisible="{Binding UsesProxy}">
+                      <TextBlock Text="{Binding AdapterDisplay}"
                                  Foreground="#1D4ED8"
                                  FontSize="10"
                                  FontWeight="SemiBold" />

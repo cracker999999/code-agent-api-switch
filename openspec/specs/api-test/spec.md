@@ -29,6 +29,25 @@ TBD - created by archiving change test-model. Update Purpose after archive.
 - **WHEN** 用户测试一个 ToolType=1 且 `UseChatCompletions=true` 的供应商
 - **THEN** 系统将 Claude Messages 请求转换后发送到 `{BaseUrl}/chat/completions`，并接受流式或 JSON 成功响应
 
+#### Scenario: Claude Code 测试 Gemini Native 适配
+- **WHEN** 用户测试一个 ToolType=1 且 UseGeminiNative=true 的供应商
+- **THEN** 系统使用相同的 Gemini 请求转换与 x-goog-api-key 鉴权，发送 streamGenerateContent 请求
+- **AND** 测试模型使用供应商 TestModel 或原有全局默认值，接受流式或 JSON 响应并报告上游错误
+
+#### Scenario: Gemini 拒绝或未完成
+- **WHEN** Gemini 返回拒绝、无效 JSON 响应或没有 finishReason 的提前结束流
+- **THEN** 测试结果为失败，完整流读取受 60 秒超时限制
+
+#### Scenario: Gemini 请求构造校验失败
+- **WHEN** Gemini 测试模型名称无效（例如 models/），或 BaseUrl 未通过地址校验
+- **THEN** 系统返回包含校验信息的失败测试结果，不向界面抛出未处理异常
+
+#### Scenario: Gemini 流包含损坏的数据帧
+- **WHEN** Gemini SSE 数据帧不是有效 JSON 对象，无论正常 finishReason 出现在该帧之前还是之后
+- **THEN** 系统立即返回 JSON 错误，与实际代理的失败判断一致
+- **AND** SSE 心跳注释及 event、id、retry 控制字段不作为 JSON 数据帧校验
+- **AND** 同一帧的多个 data 行合并后解析，合法的多行 JSON 不判为损坏帧
+
 ### Requirement: Grok 供应商测试请求
 系统 SHALL 向 Grok 供应商发送 Responses API 流式 POST 请求验证连通性，使用供应商配置的 TestModel 作为模型 ID。
 

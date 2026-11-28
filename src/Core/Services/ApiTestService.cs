@@ -50,6 +50,11 @@ public class ApiTestService
 
     internal void AddRequestHeaders(HttpRequestMessage request, Provider provider)
     {
+        if (provider.ToolType == 1 && provider.UseGeminiNative)
+        {
+            GeminiNativeApi.AddHeaders(request, provider);
+            return;
+        }
         var settings = _settingsService.Load();
         var sessionId = Guid.NewGuid().ToString();
 
@@ -110,6 +115,21 @@ public class ApiTestService
         var model = provider.GetEffectiveTestModel(settings);
         var sessionId = Guid.NewGuid().ToString();
         var body = BuildClaudeRequestBody(model, sessionId, settings.ClaudePromptText);
+
+        if (provider.UseGeminiNative)
+        {
+            try
+            {
+                var transformed = ClaudeGeminiTransform.ToGenerateContent(JsonNode.Parse(body)!.AsObject());
+                using var geminiRequest = GeminiNativeApi.CreateRequest(provider, transformed);
+                return await SendAndReadFirstChunkAsync(geminiRequest, allowJsonResponse: true, waitForGeminiTerminalEvent: true);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // 模型和地址校验先于发送，失败也要返回测试结果，避免 UI 收到未处理异常。
+                return Fail(ex.Message);
+            }
+        }
 
         if (provider.UseChatCompletions)
         {
@@ -245,14 +265,15 @@ public class ApiTestService
     private static async Task<ApiTestResult> SendAndReadFirstChunkAsync(
         HttpRequestMessage request,
         bool waitForTerminalEvent = false,
-        bool allowJsonResponse = false)
+        bool allowJsonResponse = false,
+        bool waitForGeminiTerminalEvent = false)
     {
         using var client = new HttpClient
         {
             Timeout = Timeout
         };
         // ResponseHeadersRead 返回后 HttpClient.Timeout 不再约束流读取,Grok 需要额外限制完整测试时长。
-        using var streamTimeout = waitForTerminalEvent
+        using var streamTimeout = waitForTerminalEvent || waitForGeminiTerminalEvent
             ? new CancellationTokenSource(Timeout)
             : null;
         var cancellationToken = streamTimeout?.Token ?? CancellationToken.None;
@@ -289,8 +310,10 @@ public class ApiTestService
                 {
                     try
                     {
-                        if (JsonNode.Parse(jsonBody) is not null)
+                        if (JsonNode.Parse(jsonBody) is { } node)
                         {
+                            if (waitForGeminiTerminalEvent)
+                                ValidateGeminiChunk(node.AsObject(), requireComplete: true);
                             stopwatch.Stop();
                             return new ApiTestResult
                             {
@@ -310,7 +333,9 @@ public class ApiTestService
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            return await InspectSseAsync(stream, stopwatch, waitForTerminalEvent, cancellationToken);
+            return waitForGeminiTerminalEvent
+                ? await InspectGeminiSseAsync(stream, stopwatch, cancellationToken)
+                : await InspectSseAsync(stream, stopwatch, waitForTerminalEvent, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -324,6 +349,60 @@ public class ApiTestService
         {
             return Fail(ex.Message);
         }
+    }
+
+    private static async Task<ApiTestResult> InspectGeminiSseAsync(
+        Stream stream, Stopwatch stopwatch, CancellationToken cancellationToken)
+    {
+        var terminalEventReceived = false;
+        long? firstPayloadResponseTimeMs = null;
+        // 与代理复用完整 SSE 帧：损坏或空数据帧必须失败，多行 JSON 仍可正常解析。
+        await foreach (var payload in ChatProxyTransport.ReadSsePayloadsAsync(stream, cancellationToken))
+        {
+            if (payload == "[DONE]")
+                break;
+            var node = ChatProxyTransport.ParseJsonObject(payload);
+            if (node is null)
+                return Fail("上游 SSE 数据不是有效 JSON 对象");
+            firstPayloadResponseTimeMs ??= stopwatch.ElapsedMilliseconds;
+
+            // 收到终态后仍逐帧校验，避免漏掉尾部错误或损坏数据。
+            terminalEventReceived |= ValidateGeminiChunk(node);
+        }
+
+        if (!terminalEventReceived)
+            return Fail("Gemini 流提前结束，未收到 finishReason");
+        stopwatch.Stop();
+        return new ApiTestResult
+        {
+            Success = true,
+            Message = string.Empty,
+            ResponseTimeMs = firstPayloadResponseTimeMs
+        };
+    }
+
+    private static bool ValidateGeminiChunk(JsonObject node, bool requireComplete = false)
+    {
+        var errorMessage = TryExtractSseErrorMessage(node);
+        if (errorMessage is not null)
+            throw new InvalidOperationException(errorMessage);
+        var (candidate, blocked, finish) = ClaudeGeminiTransform.ReadResponse(node, requireComplete);
+        if (blocked.Length > 0)
+            throw new InvalidOperationException($"Gemini 拒绝请求：{blocked}");
+        var terminal = finish.Length > 0 && finish != "FINISH_REASON_UNSPECIFIED";
+        if (requireComplete)
+        {
+            // 完整 JSON 保留原有内容和用量校验，但不生成 Claude 消息或缓存工具调用。
+            foreach (var part in ClaudeGeminiTransform.ReadParts(candidate))
+            {
+                if (part["functionCall"] is not null)
+                    ClaudeGeminiTransform.ReadToolCall(part);
+            }
+            ClaudeGeminiTransform.Usage(node["usageMetadata"] as JsonObject);
+        }
+        if (terminal && ClaudeGeminiTransform.FinishReason(finish, false) == "refusal")
+            throw new InvalidOperationException($"Gemini 拒绝请求：{finish}");
+        return terminal;
     }
 
     // Codex/Claude 读取 SSE 流头部若干行,Grok 则持续读取到 Responses API 终态。

@@ -226,13 +226,13 @@
                                                 <Style TargetType="Border">
                                                     <Setter Property="Visibility" Value="Collapsed" />
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding UseChatCompletions}" Value="True">
+                                                        <DataTrigger Binding="{Binding UsesProxy}" Value="True">
                                                             <Setter Property="Visibility" Value="Visible" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Border.Style>
-                                            <TextBlock Text="Chat 适配"
+                                            <TextBlock Text="{Binding AdapterDisplay}"
                                                        Foreground="#1D4ED8"
                                                        FontSize="10"
                                                        FontWeight="SemiBold" />

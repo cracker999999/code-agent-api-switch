@@ -18,8 +18,8 @@ public partial class App : System.Windows.Application
     private Forms.NotifyIcon? _notifyIcon;
     private MainWindow? _mainWindow;
     private DatabaseService? _databaseService;
-    private CodexChatProxyService? _codexChatProxyService;
-    private ClaudeChatProxyService? _claudeChatProxyService;
+    private CodexProxyService? _codexProxyService;
+    private ClaudeProxyService? _claudeProxyService;
     private Mutex? _singleInstanceMutex;
     private bool _ownsSingleInstanceMutex;
     private EventWaitHandle? _showMainWindowEvent;
@@ -47,24 +47,24 @@ public partial class App : System.Windows.Application
 
             var configWriterService = new ConfigWriterService();
             var appSettingsService = new AppSettingsService(_databaseService);
-            _codexChatProxyService = new CodexChatProxyService();
-            _claudeChatProxyService = new ClaudeChatProxyService();
+            _codexProxyService = new CodexProxyService();
+            _claudeProxyService = new ClaudeProxyService();
             var activeCodexProvider = _databaseService.GetProviders(0).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
             if (activeCodexProvider is not null)
             {
-                _codexChatProxyService.Start(activeCodexProvider);
+                _codexProxyService.Start(activeCodexProvider);
             }
-            var activeClaudeProvider = _databaseService.GetProviders(1).FirstOrDefault(provider => provider.IsActive && provider.UseChatCompletions);
+            var activeClaudeProvider = _databaseService.GetProviders(1).FirstOrDefault(provider => provider.IsActive && provider.UsesProxy);
             if (activeClaudeProvider is not null)
             {
-                _claudeChatProxyService.Start(activeClaudeProvider);
+                _claudeProxyService.Start(activeClaudeProvider);
             }
             _mainWindow = new MainWindow(
                 _databaseService,
                 configWriterService,
                 appSettingsService,
-                _codexChatProxyService,
-                _claudeChatProxyService);
+                _codexProxyService,
+                _claudeProxyService);
             MainWindow = _mainWindow;
             StartShowMainWindowSignalListener();
             InitializeTrayIcon();
@@ -85,10 +85,10 @@ public partial class App : System.Windows.Application
             _notifyIcon.Dispose();
         }
 
-        _codexChatProxyService?.Dispose();
-        _codexChatProxyService = null;
-        _claudeChatProxyService?.Dispose();
-        _claudeChatProxyService = null;
+        _codexProxyService?.Dispose();
+        _codexProxyService = null;
+        _claudeProxyService?.Dispose();
+        _claudeProxyService = null;
 
         if (_ownsSingleInstanceMutex)
         {

@@ -3,6 +3,16 @@
 ## Purpose
 TBD - created by archiving change provider-dialog-model-list. Update Purpose after archive.
 ## Requirements
+
+### Requirement: Gemini Native 模型列表
+系统 SHALL 为启用 Gemini Native 的 Claude 供应商使用原生 models 接口和 x-goog-api-key 鉴权。
+
+#### Scenario: 原生分页模型列表
+- **WHEN** Gemini models 接口返回 models 数组和 nextPageToken
+- **THEN** 系统读取各项 name，去除 models/ 前缀后显示，并继续获取后续页面
+- **AND** 请求保留网关前缀和已配置版本；缺少版本时使用 /v1beta
+- **AND** 重复分页令牌明确报错，不无限请求
+
 ### Requirement: 模型列表接口拼接
 系统 SHALL 根据供应商 `BaseUrl` 规则拼接模型列表接口地址。
 

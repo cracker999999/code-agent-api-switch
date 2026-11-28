@@ -73,24 +73,33 @@ public class ModelDiscoveryService
         try
         {
             // 地址错误也属于单个供应商的失败，不能中断整批查询。
-            var requestUrl = BuildModelsUrl(provider.BaseUrl);
+            var isGemini = provider.ToolType == 1 && provider.UseGeminiNative;
             using var client = new HttpClient
             {
                 Timeout = Timeout
             };
-            using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
-
-            // 复用 API 测试的客户端指纹，避免模型请求与实际调用被中转站区别处理。
-            _apiTestService.AddRequestHeaders(request, provider);
-            using var response = await client.SendAsync(request, cancellationToken);
-            var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
+            var models = new List<string>();
+            string? nextPage = null;
+            var visitedPages = new HashSet<string>(StringComparer.Ordinal);
+            do
             {
-                return Fail($"HTTP {(int)response.StatusCode}: {responseText}");
-            }
+                var requestUrl = isGemini
+                    ? GeminiNativeApi.BuildUrl(provider.BaseUrl, "models",
+                        nextPage is null ? null : "pageToken", nextPage)
+                    : new Uri(BuildModelsUrl(provider.BaseUrl));
+                using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
 
-            var models = ParseModels(responseText);
+                // 复用 API 测试的客户端指纹，避免模型请求与实际调用被中转站区别处理。
+                _apiTestService.AddRequestHeaders(request, provider);
+                using var response = await client.SendAsync(request, cancellationToken);
+                var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+                if (!response.IsSuccessStatusCode)
+                    return Fail($"HTTP {(int)response.StatusCode}: {responseText}");
+                models.AddRange(ParseModels(responseText, isGemini, out nextPage));
+                // 错误的重复分页令牌不能导致无限请求。
+                if (nextPage is not null && !visitedPages.Add(nextPage))
+                    return Fail("模型列表返回了重复的 nextPageToken");
+            } while (nextPage is not null);
             return new ModelDiscoveryResult
             {
                 Success = true,
@@ -131,25 +140,28 @@ public class ModelDiscoveryService
         return $"{normalized}/v1/models";
     }
 
-    private static List<string> ParseModels(string json)
+    private static List<string> ParseModels(string json, bool isGemini, out string? nextPage)
     {
+        var (arrayProp, idProp) = isGemini ? ("models", "name") : ("data", "id");
         using var doc = JsonDocument.Parse(json);
         if (doc.RootElement.ValueKind != JsonValueKind.Object ||
-            !doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            !doc.RootElement.TryGetProperty(arrayProp, out var data) || data.ValueKind != JsonValueKind.Array)
         {
             // 异常响应不能当成空模型列表，否则会被误判为不提供目标模型。
-            throw new JsonException("模型列表缺少 data 数组");
+            throw new JsonException($"模型列表缺少 {arrayProp} 数组");
         }
+        nextPage = isGemini && doc.RootElement.TryGetProperty("nextPageToken", out var token)
+            && !string.IsNullOrWhiteSpace(token.GetString()) ? token.GetString() : null;
 
         var models = new List<string>();
         foreach (var item in data.EnumerateArray())
         {
-            if (item.TryGetProperty("id", out var idElement))
+            if (item.TryGetProperty(idProp, out var idElement))
             {
                 var modelId = idElement.GetString();
                 if (!string.IsNullOrWhiteSpace(modelId))
                 {
-                    models.Add(modelId);
+                    models.Add(isGemini ? GeminiNativeApi.NormalizeModel(modelId) : modelId);
                 }
             }
         }

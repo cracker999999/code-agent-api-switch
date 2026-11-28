@@ -43,10 +43,16 @@
 
     <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
       <TextBlock Text="BaseUrl" FontWeight="SemiBold" />
-      <CheckBox x:Name="UseChatCompletionsCheckBox"
-                Grid.Column="1"
-                Content="适配/chat/completions"
-                IsVisible="False" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+        <CheckBox x:Name="UseChatCompletionsCheckBox"
+                  Content="适配/chat/completions"
+                  IsCheckedChanged="AdapterCheckBox_Checked"
+                  IsVisible="False" />
+        <CheckBox x:Name="UseGeminiNativeCheckBox"
+                  Content="适配 Gemini generateContent"
+                  IsCheckedChanged="AdapterCheckBox_Checked"
+                  IsVisible="False" />
+      </StackPanel>
     </Grid>
     <TextBox x:Name="BaseUrlTextBox" Grid.Row="3" Margin="0,8,0,14" Height="32" VerticalContentAlignment="Center" />
 

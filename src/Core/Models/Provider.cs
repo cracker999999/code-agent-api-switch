@@ -12,6 +12,12 @@ public class Provider
 
     public bool UseChatCompletions { get; set; }
 
+    public bool UseGeminiNative { get; set; }
+
+    public bool UsesProxy => UseChatCompletions || (ToolType == 1 && UseGeminiNative);
+
+    public string AdapterDisplay => ToolType == 1 && UseGeminiNative ? "Gemini 适配" : "Chat 适配";
+
     public string ApiKey { get; set; } = string.Empty;
 
     public bool IsActive { get; set; }

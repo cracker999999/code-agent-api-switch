@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -7,7 +8,7 @@ using APISwitch.Models;
 
 namespace APISwitch.Services;
 
-internal sealed class ChatProxyHost : IDisposable
+internal sealed class ProxyHost : IDisposable
 {
     private readonly object _syncRoot = new();
     private readonly string _localBaseUrl;
@@ -18,7 +19,7 @@ internal sealed class ChatProxyHost : IDisposable
     private CancellationTokenSource? _cancellation;
     private Provider? _provider;
 
-    internal ChatProxyHost(
+    internal ProxyHost(
         string localBaseUrl,
         int toolType,
         string toolName,
@@ -36,7 +37,7 @@ internal sealed class ChatProxyHost : IDisposable
     {
         if (provider.ToolType != _toolType)
         {
-            throw new InvalidOperationException($"Chat Completions 适配只支持 {_toolName} 供应商");
+            throw new InvalidOperationException($"此接口适配只支持 {_toolName} 供应商");
         }
 
         HttpListener listener;
@@ -134,6 +135,16 @@ internal static class ChatProxyTransport
         return node.ToJsonString(JsonOptions);
     }
 
+    internal static string Event(string type, JsonObject body) => $"event: {type}\ndata: {Serialize(body)}\n\n";
+
+    internal static string BlockEvent(string type, int index, string? field = null, JsonNode? value = null)
+    {
+        var body = new JsonObject { ["type"] = type, ["index"] = index };
+        if (field is not null)
+            body[field] = value;
+        return Event(type, body);
+    }
+
     private static Uri BuildChatUrl(string baseUrl)
     {
         return new Uri($"{baseUrl.TrimEnd('/')}/chat/completions", UriKind.Absolute);
@@ -152,11 +163,11 @@ internal static class ChatProxyTransport
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", provider.ApiKey);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(
             stream ? "text/event-stream" : "application/json"));
-        return await httpClient.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            CancellationToken.None);
+        return await SendAsync(httpClient, request);
     }
+
+    internal static Task<HttpResponseMessage> SendAsync(HttpClient httpClient, HttpRequestMessage request) =>
+        httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, CancellationToken.None);
 
     internal static void BeginSse(HttpListenerResponse response)
     {
@@ -192,10 +203,12 @@ internal static class ChatProxyTransport
     internal static async Task RelaySseAsync(
         HttpListenerResponse response,
         HttpContent content,
-        IChatProxyStreamState state)
+        IChatProxyStreamState state,
+        bool failOnInvalidJson = false)
     {
         BeginSse(response);
-        await foreach (var payload in ReadSsePayloadsAsync(content))
+        await using var upstream = await content.ReadAsStreamAsync();
+        await foreach (var payload in ReadSsePayloadsAsync(upstream))
         {
             if (state.IsCompleted)
             {
@@ -210,6 +223,11 @@ internal static class ChatProxyTransport
             var chunk = ParseJsonObject(payload);
             if (chunk is null)
             {
+                if (failOnInvalidJson)
+                {
+                    await WriteEventsAsync(response, state.Fail("上游 SSE 数据不是有效 JSON 对象"));
+                    return;
+                }
                 continue;
             }
 
@@ -228,13 +246,13 @@ internal static class ChatProxyTransport
         }
     }
 
-    private static async IAsyncEnumerable<string> ReadSsePayloadsAsync(HttpContent content)
+    internal static async IAsyncEnumerable<string> ReadSsePayloadsAsync(
+        Stream stream, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await using var upstream = await content.ReadAsStreamAsync();
-        using var reader = new StreamReader(upstream, Encoding.UTF8);
+        using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
         var data = new List<string>();
 
-        while (await reader.ReadLineAsync() is { } line)
+        while (await reader.ReadLineAsync(cancellationToken) is { } line)
         {
             if (line.Length == 0)
             {
