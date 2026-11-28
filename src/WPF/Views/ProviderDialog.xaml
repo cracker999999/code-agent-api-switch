@@ -128,12 +128,16 @@
                  TextChanged="ModelSearchTextBox_TextChanged"
                  ToolTip="输入关键字过滤模型" />
 
-        <TextBlock x:Name="ModelErrorTextBlock"
-                   Grid.Row="10"
-                   Margin="0,0,0,8"
-                   Foreground="#DC2626"
-                   TextWrapping="Wrap"
-                   Visibility="Collapsed" />
+        <TextBox x:Name="ModelErrorTextBlock"
+                 Grid.Row="10"
+                 Margin="0,0,0,8"
+                 Padding="0"
+                 IsReadOnly="True"
+                 BorderThickness="0"
+                 Background="Transparent"
+                 Foreground="#DC2626"
+                 TextWrapping="Wrap"
+                 Visibility="Collapsed" />
 
         <Border Grid.Row="11"
                 Height="180"

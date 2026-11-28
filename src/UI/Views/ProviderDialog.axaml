@@ -92,7 +92,7 @@
              TextChanged="ModelSearchTextBox_TextChanged"
              Watermark="输入关键字过滤模型" />
 
-    <TextBlock x:Name="ModelErrorTextBlock" Grid.Row="10" Margin="0,0,0,8" Foreground="#DC2626" TextWrapping="Wrap" IsVisible="False" />
+    <SelectableTextBlock x:Name="ModelErrorTextBlock" Grid.Row="10" Margin="0,0,0,8" Foreground="#DC2626" TextWrapping="Wrap" IsVisible="False" />
 
     <Border Grid.Row="11" Height="180" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="8" Background="White" Padding="8">
       <ListBox x:Name="ModelListBox"

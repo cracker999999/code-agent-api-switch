@@ -48,9 +48,9 @@ public class ApiTestService
         };
     }
 
-    internal void AddRequestHeaders(HttpRequestMessage request, Provider provider)
+    internal void AddRequestHeaders(HttpRequestMessage request, Provider provider, bool? useGeminiNative = null)
     {
-        if (provider.ToolType == 1 && provider.UseGeminiNative)
+        if (useGeminiNative ?? (provider.ToolType == 1 && provider.UseGeminiNative))
         {
             GeminiNativeApi.AddHeaders(request, provider);
             return;

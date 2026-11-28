@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using System.Net;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using APISwitch.Models;
@@ -78,33 +79,7 @@ public class ModelDiscoveryService
             {
                 Timeout = Timeout
             };
-            var models = new List<string>();
-            string? nextPage = null;
-            var visitedPages = new HashSet<string>(StringComparer.Ordinal);
-            do
-            {
-                var requestUrl = isGemini
-                    ? GeminiNativeApi.BuildUrl(provider.BaseUrl, "models",
-                        nextPage is null ? null : "pageToken", nextPage)
-                    : new Uri(BuildModelsUrl(provider.BaseUrl));
-                using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
-
-                // 复用 API 测试的客户端指纹，避免模型请求与实际调用被中转站区别处理。
-                _apiTestService.AddRequestHeaders(request, provider);
-                using var response = await client.SendAsync(request, cancellationToken);
-                var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-                if (!response.IsSuccessStatusCode)
-                    return Fail($"HTTP {(int)response.StatusCode}: {responseText}");
-                models.AddRange(ParseModels(responseText, isGemini, out nextPage));
-                // 错误的重复分页令牌不能导致无限请求。
-                if (nextPage is not null && !visitedPages.Add(nextPage))
-                    return Fail("模型列表返回了重复的 nextPageToken");
-            } while (nextPage is not null);
-            return new ModelDiscoveryResult
-            {
-                Success = true,
-                Models = models
-            };
+            return await FetchModelsAsync(client, provider, isGemini, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -127,6 +102,46 @@ public class ModelDiscoveryService
         {
             return Fail(ex.Message);
         }
+    }
+
+    private async Task<ModelDiscoveryResult> FetchModelsAsync(
+        HttpClient client,
+        Provider provider,
+        bool isGemini,
+        CancellationToken cancellationToken)
+    {
+        var models = new List<string>();
+        string? nextPage = null;
+        var visitedPages = new HashSet<string>(StringComparer.Ordinal);
+        do
+        {
+            var requestUrl = isGemini
+                ? GeminiNativeApi.BuildUrl(provider.BaseUrl, "models",
+                    nextPage is null ? null : "pageToken", nextPage)
+                : new Uri(BuildModelsUrl(provider.BaseUrl));
+            using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+
+            // 复用 API 测试的客户端指纹，避免模型请求与实际调用被中转站区别处理。
+            _apiTestService.AddRequestHeaders(request, provider, isGemini);
+            using var response = await client.SendAsync(request, cancellationToken);
+            var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                // 部分中转站支持 Gemini 原生对话接口但未暴露 /v1beta/models，首页 404 时回退标准 /v1/models。
+                if (isGemini && nextPage is null && response.StatusCode == HttpStatusCode.NotFound)
+                    return await FetchModelsAsync(client, provider, isGemini: false, cancellationToken);
+                return Fail($"HTTP {(int)response.StatusCode}: {responseText}");
+            }
+            models.AddRange(ParseModels(responseText, isGemini, out nextPage));
+            // 错误的重复分页令牌不能导致无限请求。
+            if (nextPage is not null && !visitedPages.Add(nextPage))
+                return Fail("模型列表返回了重复的 nextPageToken");
+        } while (nextPage is not null);
+        return new ModelDiscoveryResult
+        {
+            Success = true,
+            Models = models
+        };
     }
 
     private static string BuildModelsUrl(string baseUrl)
