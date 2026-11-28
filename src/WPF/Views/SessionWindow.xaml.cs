@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Windows.Data;
+using System.Collections.ObjectModel;
 using System.Runtime;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,11 +26,12 @@ public partial class SessionWindow : Window
     private double _sessionListWheelStepRemainder;
     private double _messagesWheelStepRemainder;
     private List<SessionListItem> _allSessionItems = [];
+    private readonly HashSet<string> _expandedProjectGroups = new(StringComparer.Ordinal);
+    private bool _isSyncingGroupExpander;
+    private MdXaml.Markdown? _markdownEngine;
     private int _allSubagentCount;
     private string _searchKeyword = string.Empty;
     private readonly SearchDebouncer _searchDebouncer;
-
-    public bool IsSessionSearchActive => !string.IsNullOrWhiteSpace(_searchKeyword);
 
     public SessionWindow(string? initialProviderId = null)
     {
@@ -60,7 +62,9 @@ public partial class SessionWindow : Window
         SessionListBox.ItemsSource = null;
         _selectedSession = null;
         _allSessionItems = [];
-        MessagesPanel.Children.Clear();
+        _expandedProjectGroups.Clear();
+        _markdownEngine = null;
+        MessagesListControl.ItemsSource = null;
         Content = null;
         _windowCancellation.Dispose();
         base.OnClosed(e);
@@ -77,8 +81,14 @@ public partial class SessionWindow : Window
         // 等待读取退出、关闭事件返回后再压缩大对象堆，真正归还扫描和详情留下的临时内存。
         Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(static () =>
         {
-            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            GC.Collect();
+            // 终结器释放渲染资源后再压缩；后台等待，避免阻塞需要调度器的 WPF 清理。
+            _ = Task.Run(static () =>
+            {
+                GC.WaitForPendingFinalizers();
+                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            });
         }));
     }
 
@@ -226,7 +236,8 @@ public partial class SessionWindow : Window
 
     private void MessagesScrollViewer_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
-        ApplyScaledWheel(MessagesScrollViewer, e, 2.0, ref _messagesWheelStepRemainder);
+        var scrollViewer = FindDescendantScrollViewer(MessagesListControl);
+        ApplyScaledWheel(scrollViewer, e, 2.0, ref _messagesWheelStepRemainder);
     }
 
     private async void CleanSessionButton_Click(object sender, RoutedEventArgs e)
@@ -287,7 +298,7 @@ public partial class SessionWindow : Window
 
         _selectedSession = null;
         _loadMessagesVersion++;
-        await ReloadSessionsAsync();
+        await ReloadSessionsAsync(preserveExpandedGroups: true);
         ResetDetailPanel();
     }
 
@@ -315,11 +326,16 @@ public partial class SessionWindow : Window
         DialogService.ShowError(this, "错误", $"恢复会话失败：{result.ErrorMessage}");
     }
 
-    private async Task ReloadSessionsAsync()
+    private async Task ReloadSessionsAsync(bool preserveExpandedGroups = false)
     {
         if (_windowCancellation.IsCancellationRequested)
         {
             return;
+        }
+
+        if (!preserveExpandedGroups)
+        {
+            _expandedProjectGroups.Clear();
         }
 
         var reloadVersion = ++_reloadSessionsVersion;
@@ -406,7 +422,7 @@ public partial class SessionWindow : Window
         // 已同步到最新关键字，取消待触发的防抖过滤，避免重复刷新列表。
         _searchDebouncer.Cancel();
 
-        var isSearchActive = IsSessionSearchActive;
+        var isSearchActive = !string.IsNullOrWhiteSpace(_searchKeyword);
         var filteredItems = SessionListBuilder.FilterItems(_allSessionItems, _searchKeyword);
         var subagentCount = isSearchActive
             ? filteredItems.Count(item => item.Session.IsSubagent)
@@ -420,6 +436,57 @@ public partial class SessionWindow : Window
         SessionCountTextBlock.Text = SessionListBuilder.BuildCountText(filteredItems.Count, subagentCount);
         SessionEmptyTextBlock.Text = isSearchActive ? "未找到匹配会话" : "暂无会话";
         SessionEmptyTextBlock.Visibility = filteredItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void GroupExpander_Loaded(object sender, RoutedEventArgs e)
+    {
+        SyncGroupExpanderState(sender);
+    }
+
+    private void GroupExpander_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        SyncGroupExpanderState(sender);
+    }
+
+    private void SyncGroupExpanderState(object sender)
+    {
+        if (sender is not Expander { DataContext: CollectionViewGroup { Name: string groupName } } expander)
+        {
+            return;
+        }
+
+        // 搜索时默认展开全部匹配分组；非搜索时恢复已展开的项目分组（如删除会话后重载或容器虚拟化复用）。
+        var shouldExpand = !string.IsNullOrWhiteSpace(_searchKeyword) || _expandedProjectGroups.Contains(groupName);
+        _isSyncingGroupExpander = true;
+        try
+        {
+            expander.IsExpanded = shouldExpand;
+        }
+        finally
+        {
+            _isSyncingGroupExpander = false;
+        }
+    }
+
+    private void GroupExpander_ExpandedChanged(object sender, RoutedEventArgs e)
+    {
+        // 搜索态自动展开和程序同步不覆盖用户手动的展开记忆。
+        if (_isSyncingGroupExpander ||
+            !ReferenceEquals(e.OriginalSource, sender) ||
+            !string.IsNullOrWhiteSpace(_searchKeyword) ||
+            sender is not Expander { DataContext: CollectionViewGroup { Name: string groupName } } expander)
+        {
+            return;
+        }
+
+        if (expander.IsExpanded)
+        {
+            _expandedProjectGroups.Add(groupName);
+        }
+        else
+        {
+            _expandedProjectGroups.Remove(groupName);
+        }
     }
 
     private void ResetDetailPanel()
@@ -507,39 +574,42 @@ public partial class SessionWindow : Window
             return;
         }
 
-        MessagesPanel.Children.Clear();
-        var placeholder = CreateSelectableTextElement(
-            text,
-            13,
-            CreateBrush("#9CA3AF"),
-            textWrapping: TextWrapping.Wrap);
-        placeholder.Margin = new Thickness(0, 10, 0, 0);
-        MessagesPanel.Children.Add(placeholder);
+        MessagesListControl.ItemsSource = new ObservableCollection<string> { text };
     }
 
     private void RenderMessages(IReadOnlyList<SessionMessage> messages)
     {
-        MessagesPanel.Children.Clear();
-
         if (messages.Count == 0)
         {
             ShowMessagePlaceholder("暂无消息");
             return;
         }
 
-        foreach (var view in SessionMessageViewBuilder.Build(_selectedSession?.ProviderId, messages))
-        {
-            MessagesPanel.Children.Add(view switch
-            {
-                BubbleMessageView bubble => CreateBubbleMessageElement(bubble),
-                ErrorMessageView error => CreateErrorMessageElement(error),
-                CollapsedMessageView collapsed => CreateCollapsedMessageElement(collapsed),
-                PlanMessageView plan => new ContentControl { Content = plan },
-                _ => throw new NotSupportedException($"未知的消息展示类型:{view.GetType().Name}")
-            });
-        }
+        // WPF 会保留不支持集合通知的 List 视图，连带使已关闭详情的整份消息无法回收。
+        MessagesListControl.ItemsSource = new ObservableCollection<SessionMessageView>(
+            SessionMessageViewBuilder.Build(_selectedSession?.ProviderId, messages));
+        FindDescendantScrollViewer(MessagesListControl)?.ScrollToHome();
+    }
 
-        MessagesScrollViewer.ScrollToHome();
+    internal object? CreateMessageItemContent(object? item) => item switch
+    {
+        string placeholder => CreatePlaceholderElement(placeholder),
+        BubbleMessageView bubble => CreateBubbleMessageElement(bubble),
+        ErrorMessageView error => CreateErrorMessageElement(error),
+        CollapsedMessageView collapsed => CreateCollapsedMessageElement(collapsed),
+        PlanMessageView plan => plan,
+        _ => null
+    };
+
+    private static FrameworkElement CreatePlaceholderElement(string text)
+    {
+        var placeholder = CreateSelectableTextElement(
+            text,
+            13,
+            CreateBrush("#9CA3AF"),
+            textWrapping: TextWrapping.Wrap);
+        placeholder.Margin = new Thickness(0, 10, 0, 0);
+        return placeholder;
     }
 
     private FrameworkElement CreateBubbleMessageElement(BubbleMessageView view)
@@ -605,14 +675,14 @@ public partial class SessionWindow : Window
 
     private FrameworkElement CreateMarkdownElement(string content)
     {
-        var markdown = new MdXaml.Markdown
+        _markdownEngine ??= new MdXaml.Markdown
         {
             DocumentStyle = (Style)FindResource("SessionMarkdownDocumentStyle"),
             Plugins = new MdXaml.Plugins.MdXamlPlugins(MdXaml.Plugins.SyntaxManager.Standard),
             HyperlinkCommand = new MarkdownLinkCommand(ex => DialogService.ShowError(
                 this, "错误", $"打开链接失败：{ex.Message}"))
         };
-        var document = markdown.Transform(content);
+        var document = _markdownEngine.Transform(content);
         document.FontSize = 13;
         document.FontFamily = FontFamily;
         document.Foreground = CreateBrush("#111827");
@@ -692,22 +762,43 @@ public partial class SessionWindow : Window
         var expander = new Expander
         {
             Header = header,
-            IsExpanded = false,
+            IsExpanded = view.IsExpanded,
             Margin = new Thickness(0, 0, 0, 10),
             HorizontalAlignment = System.Windows.HorizontalAlignment.Left
         };
 
-        expander.Content = new Border
+        void EnsureContent()
         {
-            Background = CreateBrush("#EEF2FF"),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(10, 8, 10, 8),
-            Child = CreateSelectableTextElement(
-                view.Content,
-                12,
-                CreateBrush("#1E3A8A"),
-                textWrapping: TextWrapping.Wrap)
+            if (expander.Content is not null)
+            {
+                return;
+            }
+
+            expander.Content = new Border
+            {
+                Background = CreateBrush("#EEF2FF"),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(10, 8, 10, 8),
+                Child = CreateSelectableTextElement(
+                    view.Content,
+                    12,
+                    CreateBrush("#1E3A8A"),
+                    textWrapping: TextWrapping.Wrap)
+            };
+        }
+
+        // 未展开时不创建超长工具文本控件，避免首屏与窗口 resize 时参与布局。
+        if (view.IsExpanded)
+        {
+            EnsureContent();
+        }
+
+        expander.Expanded += (_, _) =>
+        {
+            view.IsExpanded = true;
+            EnsureContent();
         };
+        expander.Collapsed += (_, _) => view.IsExpanded = false;
 
         return expander;
     }
@@ -976,9 +1067,32 @@ public partial class SessionWindow : Window
         stepRemainder -= isUp ? wholeSteps : -wholeSteps;
     }
 
+    private static readonly Dictionary<string, Media.SolidColorBrush> BrushCache = new(StringComparer.OrdinalIgnoreCase);
+
     private static Media.SolidColorBrush CreateBrush(string hexColor)
     {
-        return new Media.SolidColorBrush((Media.Color)Media.ColorConverter.ConvertFromString(hexColor));
+        if (BrushCache.TryGetValue(hexColor, out var cached))
+        {
+            return cached;
+        }
+
+        var brush = new Media.SolidColorBrush((Media.Color)Media.ColorConverter.ConvertFromString(hexColor));
+        brush.Freeze();
+        BrushCache[hexColor] = brush;
+        return brush;
+    }
+}
+
+// 在 Measure 阶段同步生成消息元素，确保 VirtualizingStackPanel 能测出真实高度、不会因 0 高而一次性实例化全部消息。
+internal sealed class SessionMessageContentConverter : IMultiValueConverter
+{
+    public object? Convert(object[] values, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        return values.Length == 2 && values[1] is SessionWindow window
+            ? window.CreateMessageItemContent(values[0])
+            : null;
     }
 
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, System.Globalization.CultureInfo culture) =>
+        throw new NotSupportedException();
 }

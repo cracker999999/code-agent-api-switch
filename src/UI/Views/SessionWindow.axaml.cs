@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Documents;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -19,7 +20,7 @@ public partial class SessionWindow : Window
 {
     private readonly SessionService _sessionService = new();
     private readonly CancellationTokenSource _windowCancellation = new();
-    private readonly List<Bitmap> _messageImages = [];
+    private readonly Dictionary<string, Bitmap> _messageImages = new(StringComparer.Ordinal);
 
     private string _currentProviderId = SessionService.ProviderCodex;
     private SessionMeta? _selectedSession;
@@ -36,6 +37,8 @@ public partial class SessionWindow : Window
     {
         _currentProviderId = SessionService.NormalizeProviderId(initialProviderId);
         InitializeComponent();
+        // 使用 FuncDataTemplate 在虚拟化面板 Measure 阶段同步生成真实控件，避免 0 高触发全量实例化。
+        MessagesItemsControl.ItemTemplate = new FuncDataTemplate<object>((item, _) => CreateMessageItemControl(item));
 
         // 关键字变化后当前选中项可能已被过滤掉，先清空详情面板再刷新列表。
         _searchDebouncer = new SearchDebouncer(() =>
@@ -60,6 +63,7 @@ public partial class SessionWindow : Window
         _selectedSession = null;
         _allSessionItems = [];
         ClearMessages();
+        MessagesItemsControl.ItemTemplate = null;
         Content = null;
         _windowCancellation.Dispose();
         base.OnClosed(e);
@@ -287,7 +291,7 @@ public partial class SessionWindow : Window
 
         _selectedSession = null;
         _loadMessagesVersion++;
-        await ReloadSessionsAsync();
+        await ReloadSessionsAsync(preserveExpandedGroups: true);
         ResetDetailPanel();
     }
 
@@ -352,12 +356,21 @@ public partial class SessionWindow : Window
         }
     }
 
-    private async Task ReloadSessionsAsync()
+    private async Task ReloadSessionsAsync(bool preserveExpandedGroups = false)
     {
         if (_windowCancellation.IsCancellationRequested)
         {
             return;
         }
+
+        // 删除会话后重载时，先记下当前已展开的项目分组，避免列表重建后全部收起。
+        HashSet<string>? expandedGroups = preserveExpandedGroups &&
+            SessionGroupsItemsControl.ItemsSource is IEnumerable<SessionGroupItem> currentGroups
+                ? currentGroups
+                    .Where(group => group.IsExpanded)
+                    .Select(group => group.GroupName)
+                    .ToHashSet(StringComparer.Ordinal)
+                : null;
 
         var reloadVersion = ++_reloadSessionsVersion;
         var cancellationToken = _windowCancellation.Token;
@@ -415,7 +428,7 @@ public partial class SessionWindow : Window
 
         _allSessionItems = items;
         _allSubagentCount = subagentCount;
-        ApplySearchFilter();
+        ApplySearchFilter(expandedGroups);
     }
 
     private void SessionSearchTextBox_TextChanged(object? sender, TextChangedEventArgs e)
@@ -437,7 +450,7 @@ public partial class SessionWindow : Window
         _searchDebouncer.Restart();
     }
 
-    private void ApplySearchFilter()
+    private void ApplySearchFilter(IReadOnlySet<string>? expandedGroups = null)
     {
         // 已同步到最新关键字，取消待触发的防抖过滤，避免重复刷新列表。
         _searchDebouncer.Cancel();
@@ -448,7 +461,7 @@ public partial class SessionWindow : Window
             ? filteredItems.Count(item => item.Session.IsSubagent)
             : _allSubagentCount;
 
-        SessionGroupsItemsControl.ItemsSource = BuildSessionGroups(filteredItems, isSearchActive);
+        SessionGroupsItemsControl.ItemsSource = BuildSessionGroups(filteredItems, isSearchActive, expandedGroups);
         SessionCountTextBlock.Text = SessionListBuilder.BuildCountText(filteredItems.Count, subagentCount);
         SessionEmptyTextBlock.Text = isSearchActive ? "未找到匹配会话" : "暂无会话";
         SessionEmptyTextBlock.IsVisible = filteredItems.Count == 0;
@@ -500,7 +513,7 @@ public partial class SessionWindow : Window
         }
 
         ClearMessages();
-        MessagesPanel.Children.Add(CreateSelectableTextElement(text, 13, CreateBrush("#9CA3AF"), textWrapping: TextWrapping.Wrap));
+        MessagesItemsControl.ItemsSource = new object[] { text };
     }
 
     private void RenderMessages(IReadOnlyList<SessionMessage> messages)
@@ -513,18 +526,19 @@ public partial class SessionWindow : Window
             return;
         }
 
-        foreach (var view in SessionMessageViewBuilder.Build(_selectedSession?.ProviderId, messages))
-        {
-            MessagesPanel.Children.Add(view switch
-            {
-                BubbleMessageView bubble => CreateBubbleMessageElement(bubble),
-                ErrorMessageView error => CreateErrorMessageElement(error),
-                CollapsedMessageView collapsed => CreateCollapsedMessageElement(collapsed),
-                PlanMessageView plan => new ContentControl { Content = plan },
-                _ => throw new NotSupportedException($"未知的消息展示类型:{view.GetType().Name}")
-            });
-        }
+        MessagesItemsControl.ItemsSource = SessionMessageViewBuilder.Build(_selectedSession?.ProviderId, messages);
+        MessagesScrollViewer.ScrollToHome();
     }
+
+    private Control CreateMessageItemControl(object? item) => item switch
+    {
+        string placeholder => CreateSelectableTextElement(placeholder, 13, CreateBrush("#9CA3AF"), textWrapping: TextWrapping.Wrap),
+        BubbleMessageView bubble => CreateBubbleMessageElement(bubble),
+        ErrorMessageView error => CreateErrorMessageElement(error),
+        CollapsedMessageView collapsed => CreateCollapsedMessageElement(collapsed),
+        PlanMessageView plan => new ContentControl { Content = plan, HorizontalContentAlignment = HorizontalAlignment.Stretch },
+        _ => new Panel()
+    };
 
     private Control CreateBubbleMessageElement(BubbleMessageView view)
     {
@@ -708,17 +722,34 @@ public partial class SessionWindow : Window
             Child = header
         };
 
-        var contentBorder = new Border
+        Border? contentBorder = null;
+        void EnsureContent()
         {
-            Background = CreateBrush("#EEF2FF"),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(10, 8, 10, 8),
-            Child = CreateSelectableTextElement(view.Content, 12, CreateBrush("#1E3A8A"), textWrapping: TextWrapping.Wrap),
-            IsVisible = false,
-            Margin = new Thickness(0, 4, 0, 0)
-        };
+            if (contentBorder is not null)
+            {
+                return;
+            }
 
-        var isExpanded = false;
+            contentBorder = new Border
+            {
+                Background = CreateBrush("#EEF2FF"),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(10, 8, 10, 8),
+                Child = CreateSelectableTextElement(view.Content, 12, CreateBrush("#1E3A8A"), textWrapping: TextWrapping.Wrap),
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            root.Children.Add(contentBorder);
+        }
+
+        root.Children.Add(headerButton);
+
+        // 未展开时不创建超长文本控件，避免首屏与窗口 resize 时参与布局。
+        if (view.IsExpanded)
+        {
+            chevronPath.Data = expandedChevron;
+            EnsureContent();
+        }
+
         headerButton.PointerPressed += (_, e) =>
         {
             if (!e.GetCurrentPoint(headerButton).Properties.IsLeftButtonPressed)
@@ -726,13 +757,20 @@ public partial class SessionWindow : Window
                 return;
             }
 
-            isExpanded = !isExpanded;
-            contentBorder.IsVisible = isExpanded;
-            chevronPath.Data = isExpanded ? expandedChevron : collapsedChevron;
+            view.IsExpanded = !view.IsExpanded;
+            if (view.IsExpanded)
+            {
+                EnsureContent();
+            }
+
+            if (contentBorder is not null)
+            {
+                contentBorder.IsVisible = view.IsExpanded;
+            }
+
+            chevronPath.Data = view.IsExpanded ? expandedChevron : collapsedChevron;
         };
 
-        root.Children.Add(headerButton);
-        root.Children.Add(contentBorder);
         return root;
     }
 
@@ -785,9 +823,9 @@ public partial class SessionWindow : Window
 
     private void ClearMessages()
     {
-        MessagesPanel.Children.Clear();
+        MessagesItemsControl.ItemsSource = null;
         // Bitmap 持有原生像素内存，移除控件后应立即释放。
-        foreach (var image in _messageImages)
+        foreach (var image in _messageImages.Values)
         {
             image.Dispose();
         }
@@ -802,13 +840,16 @@ public partial class SessionWindow : Window
             return null;
         }
 
-        var image = DecodeImage(imageBytes);
-        if (image is null)
+        if (!_messageImages.TryGetValue(imageDataUrl, out var image))
         {
-            return null;
-        }
+            image = DecodeImage(imageBytes);
+            if (image is null)
+            {
+                return null;
+            }
 
-        _messageImages.Add(image);
+            _messageImages[imageDataUrl] = image;
+        }
         var imageControl = new Image
         {
             Source = image,
@@ -950,13 +991,14 @@ public partial class SessionWindow : Window
 
     private static List<SessionGroupItem> BuildSessionGroups(
         IReadOnlyList<SessionListItem> items,
-        bool isExpanded)
+        bool isExpanded,
+        IReadOnlySet<string>? expandedGroups = null)
     {
         return items
             .GroupBy(item => item.ProjectGroupName)
             .Select(group => new SessionGroupItem(group.Key, group.ToList())
             {
-                IsExpanded = isExpanded
+                IsExpanded = isExpanded || (expandedGroups?.Contains(group.Key) ?? false)
             })
             .ToList();
     }
@@ -985,9 +1027,18 @@ public partial class SessionWindow : Window
         button.BorderThickness = new Thickness(1);
     }
 
+    private static readonly Dictionary<string, IBrush> BrushCache = new(StringComparer.OrdinalIgnoreCase);
+
     private static IBrush CreateBrush(string hexColor)
     {
-        return new SolidColorBrush(Color.Parse(hexColor));
+        if (BrushCache.TryGetValue(hexColor, out var cached))
+        {
+            return cached;
+        }
+
+        var brush = new SolidColorBrush(Color.Parse(hexColor));
+        BrushCache[hexColor] = brush;
+        return brush;
     }
 
     private sealed class SessionGroupItem

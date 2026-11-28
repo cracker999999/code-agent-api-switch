@@ -33,6 +33,8 @@ public sealed class ErrorMessageView : SessionMessageView
 
 public sealed class CollapsedMessageView : SessionMessageView
 {
+    // 虚拟化滚动回收容器后仍需保留用户对单条折叠消息的展开状态。
+    public bool IsExpanded { get; set; }
 }
 
 public sealed class PlanMessageView : SessionMessageView

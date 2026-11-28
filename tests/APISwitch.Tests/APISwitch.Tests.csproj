@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <SessionUi Condition="'$(SessionUi)' == ''">WPF</SessionUi>
+    <UseWPF Condition="'$(SessionUi)' == 'WPF'">true</UseWPF>
+    <DefineConstants Condition="'$(SessionUi)' == 'Avalonia'">$(DefineConstants);AVALONIA</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(SessionUi)' == 'WPF'">
+    <ProjectReference Include="../../src/WPF/WPF.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SessionUi)' == 'Avalonia'">
+    <ProjectReference Include="../../src/UI/UI.csproj" />
+  </ItemGroup>
+</Project>

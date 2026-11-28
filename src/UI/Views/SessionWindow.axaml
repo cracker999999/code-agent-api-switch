@@ -82,6 +82,10 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
 
+    <Style Selector="ItemsControl#MessagesItemsControl > ContentPresenter">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
     <Style Selector="Expander.session-group-expander">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -241,7 +245,7 @@
               <ItemsControl x:Name="SessionGroupsItemsControl">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                      <Expander Classes="session-group-expander" IsExpanded="{Binding IsExpanded}">
+                      <Expander Classes="session-group-expander" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
                         <Expander.Header>
                           <TextBlock Classes="session-group-title"
                                      Text="{Binding GroupName}" />
@@ -398,7 +402,13 @@
                         Grid.Row="1"
                         VerticalScrollBarVisibility="Auto"
                         HorizontalScrollBarVisibility="Disabled">
-            <StackPanel x:Name="MessagesPanel" Margin="14,0,14,14" />
+            <ItemsControl x:Name="MessagesItemsControl" Margin="14,0,14,14">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
           </ScrollViewer>
         </Grid>
       </Border>

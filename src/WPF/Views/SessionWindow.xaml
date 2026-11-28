@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:md="clr-namespace:MdXaml;assembly=MdXaml"
         xmlns:models="clr-namespace:APISwitch.Models;assembly=Core"
+        xmlns:views="clr-namespace:WPF.Views"
         Title="会话管理"
         Width="900"
         Height="640"
@@ -11,6 +12,7 @@
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <views:SessionMessageContentConverter x:Key="SessionMessageContentConverter" />
 
         <!-- 计划是不可变快照，单次绑定避免属性监听长期保留消息数据。 -->
         <DataTemplate DataType="{x:Type models:PlanMessageView}">
@@ -248,18 +250,11 @@
                                             <Setter Property="Template">
                                                 <Setter.Value>
                                                     <ControlTemplate TargetType="{x:Type GroupItem}">
-                                                        <Expander Margin="0,0,0,8">
-                                                            <Expander.Style>
-                                                                <Style TargetType="Expander">
-                                                                    <Setter Property="IsExpanded" Value="False" />
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsSessionSearchActive, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
-                                                                                     Value="True">
-                                                                            <Setter Property="IsExpanded" Value="True" />
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Expander.Style>
+                                                        <Expander Margin="0,0,0,8"
+                                                                  Loaded="GroupExpander_Loaded"
+                                                                  DataContextChanged="GroupExpander_DataContextChanged"
+                                                                  Expanded="GroupExpander_ExpandedChanged"
+                                                                  Collapsed="GroupExpander_ExpandedChanged">
                                                             <Expander.Header>
                                                                 <TextBlock Text="{Binding Name}"
                                                                            Margin="2,4,2,2"
@@ -432,13 +427,44 @@
                         </StackPanel>
                     </Grid>
 
-                    <ScrollViewer x:Name="MessagesScrollViewer"
+                    <ItemsControl x:Name="MessagesListControl"
                                   Grid.Row="1"
+                                  Margin="14,0,0,0"
                                   PreviewMouseWheel="MessagesScrollViewer_PreviewMouseWheel"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel x:Name="MessagesPanel" Margin="14,0,14,14" />
-                    </ScrollViewer>
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  VirtualizingPanel.ScrollUnit="Pixel"
+                                  ScrollViewer.CanContentScroll="True">
+                        <ItemsControl.Template>
+                            <ControlTemplate TargetType="ItemsControl">
+                                <ScrollViewer x:Name="MessagesScrollViewer"
+                                              Padding="0,0,14,14"
+                                              CanContentScroll="True"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsPresenter />
+                                </ScrollViewer>
+                            </ControlTemplate>
+                        </ItemsControl.Template>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ContentControl HorizontalContentAlignment="Stretch"
+                                                Focusable="False">
+                                    <ContentControl.Content>
+                                        <MultiBinding Converter="{StaticResource SessionMessageContentConverter}">
+                                            <Binding />
+                                            <Binding RelativeSource="{RelativeSource AncestorType=Window}" />
+                                        </MultiBinding>
+                                    </ContentControl.Content>
+                                </ContentControl>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Grid>
             </Border>
         </Grid>
